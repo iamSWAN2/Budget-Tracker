@@ -1,145 +1,245 @@
+import { supabase } from './supabase';
+import { Account, Transaction, TransactionType, AccountPropensity } from '../types';
 
-import { MOCK_ACCOUNTS, MOCK_TRANSACTIONS } from '../constants';
-import { Account, Transaction, TransactionType } from '../types';
+// Convert database row to Account type
+const mapDbAccount = (row: any): Account => ({
+  id: row.id,
+  name: row.name,
+  balance: parseFloat(row.balance),
+  propensity: row.propensity as AccountPropensity
+});
 
-// This is a mock database. In a real application, you would use the Supabase client.
-let accounts: Account[] = JSON.parse(JSON.stringify(MOCK_ACCOUNTS));
-let transactions: Transaction[] = JSON.parse(JSON.stringify(MOCK_TRANSACTIONS));
-
-// Reset function to restore initial data
-export const resetData = (): void => {
-  accounts = JSON.parse(JSON.stringify(MOCK_ACCOUNTS));
-  transactions = JSON.parse(JSON.stringify(MOCK_TRANSACTIONS));
-  recalculateAllBalances();
-};
-
-const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
-
-const recalculateAccountBalance = (accountId: string): void => {
-    const account = accounts.find(a => a.id === accountId);
-    if (!account) return;
-
-    const newBalance = transactions.reduce((balance, t) => {
-        if (t.accountId !== accountId) return balance;
-        if (t.type === TransactionType.INCOME) return balance + t.amount;
-        if (t.type === TransactionType.EXPENSE) return balance - t.amount;
-        // Assuming transfer out for simplicity
-        if (t.type === TransactionType.TRANSFER) return balance - t.amount;
-        return balance;
-    }, 0); // Start from 0 and rebuild; adjust if initial balance is a separate concept.
-
-    // This mock assumes balance is fully derived. A real system might have an initial balance.
-    // For now, let's find an initial state and adjust from there.
-    const originalAccount = MOCK_ACCOUNTS.find(a => a.id === accountId);
-    let startingBalance = originalAccount ? originalAccount.balance : 0;
-
-    const originalTransactions = MOCK_TRANSACTIONS.filter(t => t.accountId === accountId);
-    
-    originalTransactions.forEach(t => {
-      if (t.type === TransactionType.INCOME) startingBalance -= t.amount;
-      if (t.type === TransactionType.EXPENSE) startingBalance += t.amount;
-      if (t.type === TransactionType.TRANSFER) startingBalance += t.amount;
-    });
-
-    const finalBalance = transactions
-      .filter(t => t.accountId === accountId)
-      .reduce((bal, t) => {
-          if (t.type === TransactionType.INCOME) return bal + t.amount;
-          if (t.type === TransactionType.EXPENSE) return bal - t.amount;
-          if (t.type === TransactionType.TRANSFER) return bal - t.amount; // Simplified
-          return bal;
-      }, startingBalance);
-
-
-    account.balance = finalBalance;
-};
-
-const recalculateAllBalances = () => {
-    accounts.forEach(acc => recalculateAccountBalance(acc.id));
-}
-
-// Initialize balances on load
-recalculateAllBalances();
-
+// Convert database row to Transaction type
+const mapDbTransaction = (row: any): Transaction => ({
+  id: row.id,
+  date: row.date,
+  description: row.description,
+  amount: parseFloat(row.amount),
+  type: row.type as TransactionType,
+  category: row.category,
+  accountId: row.account_id,
+  installmentMonths: row.installment_months
+});
 
 export const getAccounts = async (): Promise<Account[]> => {
-  await delay(500);
-  console.log("Supabase Mock: Fetching accounts");
-  return JSON.parse(JSON.stringify(accounts));
+  console.log("Supabase: Fetching accounts");
+  
+  const { data, error } = await supabase
+    .from('accounts')
+    .select('*')
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching accounts:', error);
+    throw new Error(`Failed to fetch accounts: ${error.message}`);
+  }
+
+  return data?.map(mapDbAccount) || [];
 };
 
 export const getTransactions = async (): Promise<Transaction[]> => {
-  await delay(500);
-  console.log("Supabase Mock: Fetching transactions");
-  return JSON.parse(JSON.stringify(transactions)).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  console.log("Supabase: Fetching transactions");
+  
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('*')
+    .order('date', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching transactions:', error);
+    throw new Error(`Failed to fetch transactions: ${error.message}`);
+  }
+
+  return data?.map(mapDbTransaction) || [];
 };
 
 export const addTransaction = async (transaction: Omit<Transaction, 'id'>): Promise<Transaction> => {
-  await delay(300);
-  console.log("Supabase Mock: Adding transaction", transaction);
-  const newTransaction: Transaction = {
-    ...transaction,
-    id: `txn${Date.now()}`,
+  console.log("Supabase: Adding transaction", transaction);
+  
+  const dbTransaction = {
+    date: transaction.date,
+    description: transaction.description,
+    amount: transaction.amount,
+    type: transaction.type,
+    category: transaction.category,
+    account_id: transaction.accountId,
+    installment_months: transaction.installmentMonths || null
   };
-  transactions.push(newTransaction);
-  recalculateAccountBalance(transaction.accountId);
-  return JSON.parse(JSON.stringify(newTransaction));
+
+  const { data, error } = await supabase
+    .from('transactions')
+    .insert([dbTransaction])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error adding transaction:', error);
+    throw new Error(`Failed to add transaction: ${error.message}`);
+  }
+
+  return mapDbTransaction(data);
 };
 
 export const updateTransaction = async (transaction: Transaction): Promise<Transaction> => {
-    await delay(300);
-    console.log("Supabase Mock: Updating transaction", transaction);
-    const index = transactions.findIndex(t => t.id === transaction.id);
-    if (index === -1) throw new Error("Transaction not found");
-    const oldTransaction = transactions[index];
-    transactions[index] = transaction;
-    recalculateAccountBalance(oldTransaction.accountId);
-    if (oldTransaction.accountId !== transaction.accountId) {
-        recalculateAccountBalance(transaction.accountId);
-    }
-    return JSON.parse(JSON.stringify(transaction));
+  console.log("Supabase: Updating transaction", transaction);
+  
+  const dbTransaction = {
+    date: transaction.date,
+    description: transaction.description,
+    amount: transaction.amount,
+    type: transaction.type,
+    category: transaction.category,
+    account_id: transaction.accountId,
+    installment_months: transaction.installmentMonths || null
+  };
+
+  const { data, error } = await supabase
+    .from('transactions')
+    .update(dbTransaction)
+    .eq('id', transaction.id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating transaction:', error);
+    throw new Error(`Failed to update transaction: ${error.message}`);
+  }
+
+  return mapDbTransaction(data);
 };
 
 export const deleteTransaction = async (id: string): Promise<void> => {
-    await delay(300);
-    console.log("Supabase Mock: Deleting transaction", id);
-    const index = transactions.findIndex(t => t.id === id);
-    if (index === -1) throw new Error("Transaction not found");
-    const deletedTransaction = transactions[index];
-    transactions.splice(index, 1);
-    recalculateAccountBalance(deletedTransaction.accountId);
+  console.log("Supabase: Deleting transaction", id);
+  
+  const { error } = await supabase
+    .from('transactions')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error deleting transaction:', error);
+    throw new Error(`Failed to delete transaction: ${error.message}`);
+  }
 };
 
 export const addAccount = async (account: Omit<Account, 'id'>): Promise<Account> => {
-    await delay(300);
-    console.log("Supabase Mock: Adding account", account);
-    const newAccount: Account = {
-        ...account,
-        id: `acc${Date.now()}`,
-    };
-    accounts.push(newAccount);
-    return JSON.parse(JSON.stringify(newAccount));
+  console.log("Supabase: Adding account", account);
+  
+  const dbAccount = {
+    name: account.name,
+    balance: account.balance,
+    propensity: account.propensity
+  };
+
+  const { data, error } = await supabase
+    .from('accounts')
+    .insert([dbAccount])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error adding account:', error);
+    throw new Error(`Failed to add account: ${error.message}`);
+  }
+
+  return mapDbAccount(data);
 };
 
 export const updateAccount = async (account: Account): Promise<Account> => {
-    await delay(300);
-    console.log("Supabase Mock: Updating account", account);
-    const index = accounts.findIndex(a => a.id === account.id);
-    if (index === -1) throw new Error("Account not found");
-    accounts[index] = account;
-    return JSON.parse(JSON.stringify(account));
+  console.log("Supabase: Updating account", account);
+  
+  const dbAccount = {
+    name: account.name,
+    balance: account.balance,
+    propensity: account.propensity
+  };
+
+  const { data, error } = await supabase
+    .from('accounts')
+    .update(dbAccount)
+    .eq('id', account.id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating account:', error);
+    throw new Error(`Failed to update account: ${error.message}`);
+  }
+
+  return mapDbAccount(data);
 };
 
 export const deleteAccount = async (id: string): Promise<void> => {
-    await delay(300);
-    console.log("Supabase Mock: Deleting account", id);
-    // You might want to check if there are transactions associated with this account first.
-    // For this mock, we'll just delete it.
-    const index = accounts.findIndex(a => a.id === id);
-    if (index !== -1) {
-        accounts.splice(index, 1);
-        transactions = transactions.filter(t => t.accountId !== id);
-    } else {
-        throw new Error("Account not found");
+  console.log("Supabase: Deleting account", id);
+  
+  // First check if there are transactions associated with this account
+  const { data: transactions, error: transactionError } = await supabase
+    .from('transactions')
+    .select('id')
+    .eq('account_id', id)
+    .limit(1);
+
+  if (transactionError) {
+    console.error('Error checking transactions:', transactionError);
+    throw new Error(`Failed to check account transactions: ${transactionError.message}`);
+  }
+
+  if (transactions && transactions.length > 0) {
+    throw new Error('Cannot delete account with existing transactions');
+  }
+
+  const { error } = await supabase
+    .from('accounts')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error deleting account:', error);
+    throw new Error(`Failed to delete account: ${error.message}`);
+  }
+};
+
+// Utility function to calculate account balance based on transactions
+export const calculateAccountBalance = async (accountId: string): Promise<number> => {
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('amount, type')
+    .eq('account_id', accountId);
+
+  if (error) {
+    console.error('Error calculating balance:', error);
+    return 0;
+  }
+
+  const balance = data.reduce((sum: number, transaction: any) => {
+    switch (transaction.type) {
+      case TransactionType.INCOME:
+        return sum + parseFloat(transaction.amount);
+      case TransactionType.EXPENSE:
+        return sum - parseFloat(transaction.amount);
+      case TransactionType.TRANSFER:
+        // For transfers, this would need more complex logic
+        // For now, treating as expense
+        return sum - parseFloat(transaction.amount);
+      default:
+        return sum;
     }
+  }, 0);
+
+  return balance;
+};
+
+// Function to update account balance
+export const updateAccountBalance = async (accountId: string): Promise<void> => {
+  const balance = await calculateAccountBalance(accountId);
+  
+  const { error } = await supabase
+    .from('accounts')
+    .update({ balance })
+    .eq('id', accountId);
+
+  if (error) {
+    console.error('Error updating account balance:', error);
+    throw new Error(`Failed to update account balance: ${error.message}`);
+  }
 };

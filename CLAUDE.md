@@ -2,6 +2,18 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Language Policy
+
+Claude Code must ALWAYS respond in Korean (한국어) to all user interactions and communications throughout this project.
+
+## File Maintenance
+
+When CLAUDE.md is modified, Claude Code must:
+1. Read the entire contents of the updated CLAUDE.md file
+2. Create a complete Korean translation of all content
+3. Save the Korean version as CLAUDE_KO.md in the same directory
+4. Ensure all technical terms and concepts are properly translated while maintaining accuracy
+
 ## Project Overview
 
 This is an AI-powered household ledger application built with React 19, TypeScript, and Vite. The app integrates with Google Gemini AI for transaction analysis from bank statement images and uses a mock Supabase service for data persistence.
@@ -91,3 +103,35 @@ The codebase uses a feature-based structure:
 - Mock data arrays in `constants.ts` start empty - real data comes through the service layer
 - Error handling is consistent across all async operations with try/catch patterns
 - All service calls include artificial delays to simulate real API behavior
+
+## Claude Code Action Guidelines
+
+When working with this codebase, Claude Code should follow these interaction protocols:
+
+### Command Execution Protocol
+Before executing any system commands, Claude Code must:
+1. **Explain the Action**: Clearly describe what the command will do and its purpose
+2. **Request Confirmation**: Ask the user for explicit permission before execution
+3. **Example Format**: 
+   ```
+   I need to run `git push origin main` to upload your local commits to GitHub.
+   This will make your code publicly available on the remote repository.
+   Should I proceed with this action?
+   ```
+
+### Git Operations
+- Always explain git commands before execution (add, commit, push, pull, etc.)
+- Describe the impact on version control and remote repositories
+- Confirm destructive operations (force push, reset, rebase) with extra caution
+
+### File System Operations
+- Explain file creation, modification, or deletion operations
+- Describe the purpose and impact of structural changes
+- Request permission for operations that affect project configuration
+
+### Build and Deploy Operations
+- Explain build processes and their outputs
+- Describe deployment implications and targets
+- Confirm operations that may affect production or public access
+
+This protocol ensures transparent communication and prevents unintended system modifications.
