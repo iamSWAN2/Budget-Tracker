@@ -1,0 +1,93 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+This is an AI-powered household ledger application built with React 19, TypeScript, and Vite. The app integrates with Google Gemini AI for transaction analysis from bank statement images and uses a mock Supabase service for data persistence.
+
+## Development Commands
+
+- `npm run dev` - Start development server with Vite
+- `npm run build` - Build production bundle
+- `npm run preview` - Preview production build locally
+- `npm install` - Install dependencies
+
+## Environment Setup
+
+The app requires a `GEMINI_API_KEY` in `.env.local` for AI features to work. The vite.config.ts exposes this as both `process.env.API_KEY` and `process.env.GEMINI_API_KEY` in the client.
+
+## Architecture Overview
+
+### Data Flow Pattern
+The app follows a centralized data management pattern using a custom hook:
+
+1. **useData Hook** (`hooks/useData.ts`) - Central data management layer that:
+   - Manages accounts, transactions, and derived installments state
+   - Provides CRUD operations for accounts and transactions  
+   - Automatically recalculates account balances and installments when transactions change
+   - Handles loading states and error management
+
+2. **Service Layer** - Two service implementations:
+   - `supabaseService.ts` - Mock database service with artificial delays
+   - `geminiService.ts` - Google Gemini AI integration for transaction analysis
+
+### State Management Strategy
+- All data flows through the `useData` hook which provides a `UseDataReturn` interface
+- Pages receive data and operations via this hook and pass them down to components
+- Account balances are automatically recalculated when transactions are modified
+- Installments are derived from transactions with `installmentMonths > 1`
+
+### Page Structure
+- **App.tsx** - Main router component with sidebar navigation
+- **DashboardPage** - Charts and financial overview using Recharts
+- **AccountsPage** - Account management with CRUD operations
+- **InstallmentsPage** - Auto-calculated installment tracking
+- **TransactionsPage** - Transaction management
+
+### AI Integration Pattern
+The AI assistant (`components/AIAssist.tsx`) follows a multi-step workflow:
+1. File upload (bank statement image)
+2. Gemini API analysis with structured schema
+3. Transaction confirmation/editing interface  
+4. Batch transaction import via `addMultipleTransactions`
+
+## Key Implementation Details
+
+### Balance Calculation
+Account balances are automatically recalculated in `supabaseService.ts` whenever transactions are modified. The system:
+- Starts from original mock account balance
+- Subtracts original mock transactions to get initial balance
+- Applies current transactions to derive final balance
+
+### Installment Logic
+Installments are derived in `useData.ts` from transactions with `installmentMonths > 1`:
+- Calculates months elapsed since transaction date
+- Determines remaining months and payments
+- Filters out completed installments
+
+### TypeScript Patterns
+- Extensive use of enums (`TransactionType`, `AccountPropensity`)
+- Generic CRUD patterns: `Omit<T, 'id'>` for creation, full `T` for updates
+- Consistent return type patterns from hooks (`UseDataReturn`)
+
+### Component Conventions
+- Modal-based forms for data entry
+- Consistent currency formatting with `Intl.NumberFormat`
+- Recharts for data visualization with consistent color schemes from `constants.ts`
+
+## File Organization
+
+The codebase uses a feature-based structure:
+- `/components` - Reusable UI components (layout, ui, icons)
+- `/pages` - Route-level page components
+- `/services` - External API integrations and data access
+- `/hooks` - Custom React hooks for state management
+- Root-level files: types, constants, and configuration
+
+## Development Notes
+
+- The app uses path aliases (`@/`) configured in both tsconfig.json and vite.config.ts
+- Mock data arrays in `constants.ts` start empty - real data comes through the service layer
+- Error handling is consistent across all async operations with try/catch patterns
+- All service calls include artificial delays to simulate real API behavior
