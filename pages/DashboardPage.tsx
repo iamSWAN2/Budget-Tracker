@@ -233,24 +233,24 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
         {/* Main Content Grid - Optimized Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {/* Add New Transaction - Compact */}
-          <div className="bg-white rounded-lg shadow-md p-5 lg:col-span-2">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-semibold text-slate-800">{t('form.addTransaction')}</h3>
+          <div className="bg-white rounded-lg shadow-md p-4 lg:col-span-2">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-slate-800">{t('form.addTransaction')}</h3>
               <AIAssist data={data} />
             </div>
             
-            <form onSubmit={handleSubmit} className="space-y-3">
+            <form onSubmit={handleSubmit} className="space-y-2">
               {/* Type Selection */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">{t('form.type')}</label>
-                <div className="flex">
+                <label className="block text-xs font-medium text-slate-700 mb-1">{t('form.type')}</label>
+                <div className="inline-flex rounded-md overflow-hidden border border-slate-300">
                   <button
                     type="button"
                     onClick={() => setTransactionType(TransactionType.INCOME)}
-                    className={`flex-1 py-2 text-sm rounded-l-md border ${
+                    className={`px-3 py-1.5 text-xs ${
                       transactionType === TransactionType.INCOME
-                        ? 'bg-green-600 text-white border-green-600'
-                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                        ? 'bg-green-600 text-white'
+                        : 'bg-white text-slate-700 hover:bg-slate-50'
                     }`}
                   >
                     {t('form.income')}
@@ -258,10 +258,10 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                   <button
                     type="button"
                     onClick={() => setTransactionType(TransactionType.EXPENSE)}
-                    className={`flex-1 py-2 text-sm rounded-r-md border-t border-r border-b ${
+                    className={`px-3 py-1.5 text-xs border-l ${
                       transactionType === TransactionType.EXPENSE
-                        ? 'bg-red-600 text-white border-red-600'
-                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                        ? 'bg-red-600 text-white'
+                        : 'bg-white text-slate-700 hover:bg-slate-50'
                     }`}
                   >
                     {t('form.expense')}
@@ -271,29 +271,29 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
 
               {/* Description */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">{t('form.description')}</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">{t('form.description')}</label>
                 <input
                   type="text"
                   name="description"
                   value={formData.description}
                   onChange={handleFormChange}
                   placeholder={t('form.description')}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-2.5 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                   required
                 />
               </div>
 
               {/* Amount */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">{t('form.amount')}</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">{t('form.amount')}</label>
                 <input
                   type="number"
                   name="amount"
                   value={formData.amount}
                   onChange={handleFormChange}
-                  placeholder="0.00"
-                  step="0.01"
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="0"
+                  step="1"
+                  className="w-full px-2.5 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                   required
                 />
               </div>
@@ -301,12 +301,12 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
               {/* Account & Category Row */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">{t('form.account')}</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">{t('form.account')}</label>
                   <select
                     name="accountId"
                     value={formData.accountId}
                     onChange={handleFormChange}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-2.5 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                     required
                   >
                     <option value="">현금</option>
@@ -318,44 +318,53 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">{t('form.category')}</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">{t('form.category')}</label>
                   <select
                     name="category"
                     value={formData.category}
                     onChange={handleFormChange}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full px-2.5 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                     required
                   >
-                    <option value="">식비</option>
-                    {categories
-                      .filter(cat => cat.type === transactionType)
-                      .map(category => (
-                        <option key={category.id} value={category.name}>
-                          {category.name}
-                        </option>
-                      ))}
+                    {(() => {
+                      const typeFiltered = categories.filter(c => c.type === transactionType && c.isActive);
+                      const parents = typeFiltered.filter(c => !c.parentId);
+                      const byParent = parents.reduce((acc, parent) => {
+                        const children = typeFiltered.filter(sc => sc.parentId === parent.id);
+                        acc.push(
+                          <optgroup key={parent.id} label={parent.name}>
+                            {children.map(sc => (
+                              <option key={sc.id} value={sc.name}>{sc.name}</option>
+                            ))}
+                            <option key={`${parent.id}-self`} value={parent.name}>📁 {parent.name} (전체)</option>
+                          </optgroup>
+                        );
+                        return acc;
+                      }, [] as JSX.Element[]);
+                      return byParent.length > 0 ? byParent : [<option key="loading" value="" disabled>카테고리 로딩 중...</option>];
+                    })()}
                   </select>
                 </div>
               </div>
 
               {/* Date */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">{t('form.date')}</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">{t('form.date')}</label>
                 <input
                   type="date"
                   name="date"
                   value={formData.date}
                   onChange={handleFormChange}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-2.5 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                   required
                 />
               </div>
 
               {/* Installment Fields - Only for Expense */}
               {transactionType === TransactionType.EXPENSE && (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">할부 개월</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">할부 개월</label>
                     <input
                       type="number"
                       name="installmentMonths"
@@ -363,7 +372,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                       step="1"
                       value={formData.installmentMonths}
                       onChange={handleFormChange}
-                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                      className="w-full px-2.5 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                     />
                   </div>
                   
