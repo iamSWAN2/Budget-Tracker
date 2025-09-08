@@ -48,21 +48,28 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   const monthlyBalance = useMemo(() => monthlyIncomeTotal - monthlyExpenseTotal, [monthlyIncomeTotal, monthlyExpenseTotal]);
 
   const monthlyExpenseByCategory = useMemo(() => {
-    const expenses = transactions.filter(t => 
-      t.type === TransactionType.EXPENSE && 
-      new Date(t.date).getMonth() === currentMonth && 
-      new Date(t.date).getFullYear() === currentYear
-    );
-    
-    const categoryTotals = expenses.reduce((acc, curr) => {
-      acc[curr.category] = (acc[curr.category] || 0) + curr.amount;
-      return acc;
-    }, {} as { [key: string]: number });
+    try {
+      const expenses = transactions.filter(t =>
+        t.type === TransactionType.EXPENSE &&
+        new Date(t.date).getMonth() === currentMonth &&
+        new Date(t.date).getFullYear() === currentYear
+      );
 
-    return Object.entries(categoryTotals)
-      .map(([category, amount]) => ({ category, amount }))
-      .sort((a, b) => b.amount - a.amount)
-      .slice(0, 5);
+      const categoryTotals = expenses.reduce((acc, curr) => {
+        const key = curr.category || '기타';
+        const amount = Number(curr.amount) || 0;
+        acc[key] = (acc[key] || 0) + amount;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const items: { category: string; amount: number }[] = Object.entries(categoryTotals)
+        .map(([category, amount]) => ({ category, amount: Number(amount) || 0 }));
+
+      items.sort((a, b) => (b?.amount ?? 0) - (a?.amount ?? 0));
+      return items.slice(0, 5);
+    } catch {
+      return [] as { category: string; amount: number }[];
+    }
   }, [transactions, currentMonth, currentYear]);
 
   const recentTransactions = useMemo(() => {
