@@ -8,6 +8,7 @@ import { TransactionForm } from '../components/forms/TransactionForm';
 import AIAssist from '../components/AIAssist';
 import { formatCurrency, formatDateDisplay } from '../utils/format';
 import { useI18n } from '../i18n/I18nProvider';
+import { useUISettings } from '../ui/UISettingsProvider';
 
 export const TransactionsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
     const { transactions, accounts, categories, addTransaction, updateTransaction, deleteTransaction } = data;
