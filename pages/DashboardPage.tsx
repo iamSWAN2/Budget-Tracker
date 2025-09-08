@@ -17,6 +17,16 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
   const totalAssets = useMemo(() => accounts.reduce((sum, acc) => sum + acc.balance, 0), [accounts]);
+  const monthlyIncomeTotal = useMemo(() => (
+    transactions
+      .filter(t => t.type === TransactionType.INCOME && new Date(t.date).getMonth() === new Date().getMonth())
+      .reduce((sum, t) => sum + t.amount, 0)
+  ), [transactions]);
+  const monthlyExpenseTotal = useMemo(() => (
+    transactions
+      .filter(t => t.type === TransactionType.EXPENSE && new Date(t.date).getMonth() === new Date().getMonth())
+      .reduce((sum, t) => sum + t.amount, 0)
+  ), [transactions]);
 
   const assetDistributionData = useMemo(() => {
     const positiveAccounts = accounts.filter(a => a.balance > 0);
@@ -89,22 +99,25 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   return (
     <>
       <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-3 gap-4 lg:gap-6">
-        {/* Summary Cards */}
-        <Card title="총 자산" className="lg:col-span-1">
-          <div className="text-center">
-              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-600">{formatCurrency(totalAssets)}</p>
+        {/* Summary Strip: unified background with subtle section colors */}
+        <div className="lg:col-span-3">
+          <div className="bg-white rounded-xl shadow-md p-4 lg:p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className="rounded-lg bg-slate-50 p-4 text-center">
+                <h4 className="text-sm font-medium text-slate-600 mb-1">총 자산</h4>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-800">{formatCurrency(totalAssets)}</p>
+              </div>
+              <div className="rounded-lg bg-green-50 p-4 text-center">
+                <h4 className="text-sm font-medium text-green-700 mb-1">이번 달 수입</h4>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-600">{formatCurrency(monthlyIncomeTotal)}</p>
+              </div>
+              <div className="rounded-lg bg-red-50 p-4 text-center">
+                <h4 className="text-sm font-medium text-red-700 mb-1">이번 달 지출</h4>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-red-600">{formatCurrency(monthlyExpenseTotal)}</p>
+              </div>
+            </div>
           </div>
-        </Card>
-        <Card title="이번 달 수입" className="lg:col-span-1">
-          <div className="text-center">
-              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-600">{formatCurrency(transactions.filter(t => t.type === TransactionType.INCOME && new Date(t.date).getMonth() === new Date().getMonth()).reduce((sum, t) => sum + t.amount, 0))}</p>
-          </div>
-        </Card>
-        <Card title="이번 달 지출" className="lg:col-span-1">
-          <div className="text-center">
-              <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-red-600">{formatCurrency(transactions.filter(t => t.type === TransactionType.EXPENSE && new Date(t.date).getMonth() === new Date().getMonth()).reduce((sum, t) => sum + t.amount, 0))}</p>
-          </div>
-        </Card>
+        </div>
 
         {/* Transaction History */}
         <Card title="거래 내역" className="lg:col-span-2 lg:col-start-1 lg:row-start-2 xl:col-span-2 xl:col-start-1 xl:row-start-2">
