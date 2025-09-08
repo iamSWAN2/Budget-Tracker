@@ -218,8 +218,8 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
         </Card>
 
         {/* Asset Distribution to the right of Transaction History */}
-        <Card title="Asset Distribution" className="lg:col-span-1 lg:col-start-3 lg:row-start-2 xl:col-span-1 xl:col-start-3 xl:row-start-2">
-          <div className="h-full">
+        <Card title="Asset Distribution" className="lg:col-span-1 lg:col-start-3 lg:row-start-2 xl:col-span-1 xl:col-start-3 xl:row-start-2 h-auto">
+          <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
