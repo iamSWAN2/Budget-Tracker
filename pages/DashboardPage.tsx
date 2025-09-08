@@ -136,8 +136,8 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                 <table className="w-full text-sm text-left text-slate-500">
                   <thead className="text-xs text-slate-700 uppercase bg-slate-50 sticky top-0">
                     <tr>
-                      <th scope="col" className="px-4 py-3">설명</th>
                       <th scope="col" className="px-4 py-3">날짜</th>
+                      <th scope="col" className="px-4 py-3">설명</th>
                       <th scope="col" className="px-4 py-3">금액</th>
                       <th scope="col" className="px-4 py-3">카테고리</th>
                       <th scope="col" className="px-4 py-3">계좌</th>
@@ -147,8 +147,21 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                   <tbody>
                     {transactions.map((t: Transaction) => (
                       <tr key={t.id} className="bg-white border-b hover:bg-slate-50">
-                        <td className="px-4 py-3 font-medium text-slate-900">{t.description}</td>
-                        <td className="px-4 py-3">{t.date}</td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex items-center px-2 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-medium">
+                            {t.date}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center flex-wrap gap-2">
+                            <span className="font-medium text-slate-900">{t.description}</span>
+                            {t.installmentMonths && t.installmentMonths > 1 && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 text-[10px] font-semibold">
+                                할부 {t.installmentMonths}개월
+                              </span>
+                            )}
+                          </div>
+                        </td>
                         <td className={`px-4 py-3 font-semibold ${t.type === TransactionType.INCOME ? 'text-green-600' : 'text-red-600'}`}>
                           {t.type === TransactionType.INCOME ? '+' : '-'}
                           {formatCurrency(t.amount)}
@@ -172,7 +185,17 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                 {transactions.map((t: Transaction) => (
                   <div key={t.id} className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
                     <div className="flex justify-between items-start mb-2">
-                      <h4 className="font-semibold text-slate-900 text-sm">{t.description}</h4>
+                      <div>
+                        <span className="inline-flex items-center px-2 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-medium">
+                          {t.date}
+                        </span>
+                        <h4 className="mt-1 font-semibold text-slate-900 text-sm">{t.description}</h4>
+                        {t.installmentMonths && t.installmentMonths > 1 && (
+                          <span className="mt-1 inline-flex items-center px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 text-[10px] font-semibold">
+                            할부 {t.installmentMonths}개월
+                          </span>
+                        )}
+                      </div>
                       <div className="flex space-x-2">
                         <button 
                           onClick={() => handleEdit(t)} 
@@ -190,10 +213,6 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                     </div>
                     
                     <div className="text-sm space-y-1">
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">날짜:</span>
-                        <span className="ml-1 font-medium">{t.date}</span>
-                      </div>
                       <div className="flex justify-between">
                         <span className="text-slate-500">카테고리:</span>
                         <span className="ml-1 font-medium">{t.category}</span>

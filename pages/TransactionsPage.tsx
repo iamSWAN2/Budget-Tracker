@@ -71,8 +71,8 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn }> = ({ data }) =>
                 <table className="w-full text-sm text-left text-slate-500">
                     <thead className="text-xs text-slate-700 uppercase bg-slate-50">
                         <tr>
-                            <th scope="col" className="px-6 py-3">설명</th>
                             <th scope="col" className="px-6 py-3">날짜</th>
+                            <th scope="col" className="px-6 py-3">설명</th>
                             <th scope="col" className="px-6 py-3">금액</th>
                             <th scope="col" className="px-6 py-3">카테고리</th>
                             <th scope="col" className="px-6 py-3">계좌</th>
@@ -82,8 +82,21 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn }> = ({ data }) =>
                     <tbody>
                         {transactions.map(t => (
                             <tr key={t.id} className="bg-white border-b hover:bg-slate-50">
-                                <td className="px-6 py-4 font-medium text-slate-900">{t.description}</td>
-                                <td className="px-6 py-4">{t.date}</td>
+                                <td className="px-6 py-4">
+                                  <span className="inline-flex items-center px-2 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-medium">
+                                    {t.date}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div className="flex items-center flex-wrap gap-2">
+                                    <span className="font-medium text-slate-900">{t.description}</span>
+                                    {t.installmentMonths && t.installmentMonths > 1 && (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 text-[10px] font-semibold">
+                                        할부 {t.installmentMonths}개월
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
                                 <td className={`px-6 py-4 font-semibold ${t.type === TransactionType.INCOME ? 'text-green-600' : 'text-red-600'}`}>
                                     {t.type === TransactionType.INCOME ? '+' : '-'}
                                     {formatCurrency(t.amount)}
