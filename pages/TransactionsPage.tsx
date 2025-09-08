@@ -53,10 +53,10 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn }> = ({ data }) =>
                   <button 
                     onClick={handleAdd} 
                     disabled={accounts.length === 0}
-                    className={`flex items-center px-4 py-2 rounded-md shadow ${
+                    className={`flex items-center px-3 py-1.5 rounded-md ${
                       accounts.length === 0 
                         ? 'bg-slate-300 text-slate-500 cursor-not-allowed' 
-                        : 'bg-primary-600 text-white hover:bg-primary-700'
+                        : 'bg-indigo-600 text-white hover:bg-indigo-700'
                     }`}
                   >
                       <PlusIcon />
@@ -81,9 +81,11 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn }> = ({ data }) =>
                         <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
                           transaction.type === TransactionType.INCOME 
                             ? 'bg-green-100 text-green-700' 
-                            : 'bg-red-100 text-red-700'
+                            : transaction.type === TransactionType.EXPENSE
+                              ? 'bg-red-100 text-red-700'
+                              : 'bg-slate-200 text-slate-700'
                         }`}>
-                          {transaction.type === TransactionType.INCOME ? '+' : '-'}
+                          {transaction.type === TransactionType.INCOME ? '+' : transaction.type === TransactionType.EXPENSE ? '-' : '⇄'}
                         </div>
                         
                         {/* Transaction Info */}
@@ -114,7 +116,7 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn }> = ({ data }) =>
                       <div className="text-right flex items-center gap-3">
                         {/* Amount */}
                         <div className="text-right tabular-nums">
-                          {transaction.installmentMonths && transaction.installmentMonths > 1 ? (
+                          {transaction.type !== TransactionType.TRANSFER && transaction.installmentMonths && transaction.installmentMonths > 1 ? (
                             <div>
                               <p className={`font-semibold ${
                                 transaction.type === TransactionType.INCOME ? 'text-green-600' : 'text-red-600'
@@ -130,7 +132,7 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn }> = ({ data }) =>
                             </div>
                           ) : (
                             <p className={`font-semibold ${
-                              transaction.type === TransactionType.INCOME ? 'text-green-600' : 'text-red-600'
+                              transaction.type === TransactionType.INCOME ? 'text-green-600' : transaction.type === TransactionType.EXPENSE ? 'text-red-600' : 'text-slate-700'
                             } text-base md:text-lg`}>
                               {formatCurrency(transaction.amount)}
                             </p>

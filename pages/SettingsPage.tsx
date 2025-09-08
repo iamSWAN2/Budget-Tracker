@@ -180,6 +180,7 @@ const CategoryManager: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   // 수입/지출별로 카테고리 그룹화
   const incomeCategories = categories.filter(c => c.type === TransactionType.INCOME);
   const expenseCategories = categories.filter(c => c.type === TransactionType.EXPENSE);
+  const transferCategories = categories.filter(c => c.type === TransactionType.TRANSFER);
 
   const groupCategoriesByType = (cats: Category[]) => {
     return cats.reduce((acc, category) => {
@@ -292,6 +293,9 @@ const CategoryManager: React.FC<{ data: UseDataReturn }> = ({ data }) => {
 
         {/* 지출 카테고리 섹션 */}
         <CategorySection title="💸 지출 카테고리" groupedCategories={expenseGrouped} textColor="text-red-800" />
+
+        {/* 이체 카테고리 섹션 */}
+        <CategorySection title="⇄ 이체 카테고리" groupedCategories={groupCategoriesByType(transferCategories)} textColor="text-slate-800" />
       </div>
 
       <Modal 
@@ -402,7 +406,7 @@ const DataManager: React.FC<{ data: UseDataReturn }> = ({ data }) => {
 
 export const SettingsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-5xl mx-auto">
       <h2 className="text-2xl font-bold text-slate-900">설정</h2>
       
       <CategoryManager data={data} />

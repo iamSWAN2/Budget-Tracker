@@ -240,32 +240,19 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-2">
-              {/* Type Selection */}
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">{t('form.type')}</label>
-                <div className="inline-flex rounded-md overflow-hidden border border-slate-300">
-                  <button
-                    type="button"
-                    onClick={() => setTransactionType(TransactionType.INCOME)}
-                    className={`px-3 py-1.5 text-xs ${
-                      transactionType === TransactionType.INCOME
-                        ? 'bg-green-600 text-white'
-                        : 'bg-white text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    {t('form.income')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTransactionType(TransactionType.EXPENSE)}
-                    className={`px-3 py-1.5 text-xs border-l ${
-                      transactionType === TransactionType.EXPENSE
-                        ? 'bg-red-600 text-white'
-                        : 'bg-white text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    {t('form.expense')}
-                  </button>
+              {/* Row 1: Type (left) + Date (right) */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">{t('form.type')}</label>
+                  <div className="inline-flex rounded-md overflow-hidden border border-slate-300">
+                    <button type="button" onClick={() => setTransactionType(TransactionType.INCOME)} className={`px-3 py-1.5 text-xs ${transactionType === TransactionType.INCOME ? 'bg-green-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}>{t('form.income')}</button>
+                    <button type="button" onClick={() => setTransactionType(TransactionType.EXPENSE)} className={`px-3 py-1.5 text-xs border-l ${transactionType === TransactionType.EXPENSE ? 'bg-red-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}>{t('form.expense')}</button>
+                    <button type="button" onClick={() => setTransactionType(TransactionType.TRANSFER)} className={`px-3 py-1.5 text-xs border-l ${transactionType === TransactionType.TRANSFER ? 'bg-slate-700 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}>이체</button>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">{t('form.date')}</label>
+                  <input type="date" name="date" value={formData.date} onChange={handleFormChange} className="w-full px-2.5 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" required />
                 </div>
               </div>
 
@@ -283,19 +270,18 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                 />
               </div>
 
-              {/* Amount */}
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">{t('form.amount')}</label>
-                <input
-                  type="number"
-                  name="amount"
-                  value={formData.amount}
-                  onChange={handleFormChange}
-                  placeholder="0"
-                  step="1"
-                  className="w-full px-2.5 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                  required
-                />
+              {/* Row 3: Amount (left) + Installments (right when expense) */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">{t('form.amount')}</label>
+                  <input type="number" name="amount" value={formData.amount} onChange={handleFormChange} placeholder="0" step="1" className="w-full px-2.5 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" required />
+                </div>
+                {transactionType === TransactionType.EXPENSE && (
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">할부 개월</label>
+                    <input type="number" name="installmentMonths" min="1" step="1" value={formData.installmentMonths} onChange={handleFormChange} className="w-full px-2.5 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" />
+                  </div>
+                )}
               </div>
 
               {/* Account & Category Row */}
@@ -347,18 +333,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                 </div>
               </div>
 
-              {/* Date */}
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">{t('form.date')}</label>
-                <input
-                  type="date"
-                  name="date"
-                  value={formData.date}
-                  onChange={handleFormChange}
-                  className="w-full px-2.5 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                  required
-                />
-              </div>
+              {/* 기존 할부 상세 박스는 유지 */}
 
               {/* Installment Fields - Only for Expense */}
               {transactionType === TransactionType.EXPENSE && (

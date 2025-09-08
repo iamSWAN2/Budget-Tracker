@@ -123,7 +123,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                     >
                         {Object.values(TransactionType).map(type => (
                             <option key={type} value={type}>
-                                {type === 'INCOME' ? '수입' : type === 'EXPENSE' ? '지출' : type}
+                                {type === 'INCOME' ? '수입' : type === 'EXPENSE' ? '지출' : '이체'}
                             </option>
                         ))}
                     </select>

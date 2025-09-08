@@ -158,10 +158,11 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
     <>
       <button
         onClick={() => setIsModalOpen(true)}
-        className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 shadow"
+        className="flex items-center px-2.5 py-1.5 text-xs bg-purple-600 text-white rounded-md hover:bg-purple-700"
+        title="AI 가져오기"
       >
         <AIIcon />
-        <span className="ml-2">AI 가져오기</span>
+        <span className="ml-1.5">AI 가져오기</span>
       </button>
 
       <Modal isOpen={isModalOpen} onClose={handleClose} title="AI Transaction Import">
