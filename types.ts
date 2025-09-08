@@ -44,7 +44,18 @@ export interface Installment {
   accountId: string;
 }
 
-export type Page = 'dashboard' | 'accounts' | 'installments';
+export interface Category {
+  id: string;
+  name: string;
+  type: TransactionType;
+  icon?: string;
+  color?: string;
+  parentId?: string;
+  isDefault: boolean;
+  isActive: boolean;
+}
+
+export type Page = 'dashboard' | 'accounts' | 'transactions' | 'installments' | 'settings';
 
 export interface AITransaction {
   date: string; // YYYY-MM-DD

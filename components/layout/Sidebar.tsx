@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Page } from '../../types';
-import { DashboardIcon, AccountsIcon, InstallmentsIcon, LogoIcon } from '../icons/Icons';
+import { DashboardIcon, AccountsIcon, TransactionsIcon, InstallmentsIcon, SettingsIcon, LogoIcon } from '../icons/Icons';
 
 interface SidebarProps {
   currentPage: Page;
@@ -12,9 +12,11 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isOpen = true, onClose }) => {
   const navItems: { id: Page; label: string; icon: JSX.Element }[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
-    { id: 'accounts', label: 'Accounts', icon: <AccountsIcon /> },
-    { id: 'installments', label: 'Installments', icon: <InstallmentsIcon /> },
+    { id: 'dashboard', label: '대시보드', icon: <DashboardIcon /> },
+    { id: 'accounts', label: '계좌 관리', icon: <AccountsIcon /> },
+    { id: 'transactions', label: '거래 내역', icon: <TransactionsIcon /> },
+    { id: 'installments', label: '할부 내역', icon: <InstallmentsIcon /> },
+    { id: 'settings', label: '설정', icon: <SettingsIcon /> },
   ];
 
   const handleNavClick = (page: Page) => {
@@ -28,7 +30,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, i
       <nav className="hidden lg:flex w-64 bg-white shadow-md flex-col h-screen">
         <div className="flex items-center justify-center h-20 border-b">
           <LogoIcon />
-          <h1 className="text-xl font-bold text-slate-800 ml-2">Ledger</h1>
+          <h1 className="text-xl font-bold text-slate-800 ml-2">가계부</h1>
         </div>
         <ul className="flex-1 px-4 py-6">
           {navItems.map(item => (
@@ -48,7 +50,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, i
           ))}
         </ul>
         <div className="p-4 border-t text-center text-xs text-slate-400">
-          &copy; {new Date().getFullYear()} AI Household Ledger
+          &copy; {new Date().getFullYear()} AI 가계부
         </div>
       </nav>
 
@@ -59,7 +61,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, i
         <div className="flex items-center justify-between h-16 px-4 border-b">
           <div className="flex items-center">
             <LogoIcon />
-            <h1 className="text-lg font-bold text-slate-800 ml-2">Ledger</h1>
+            <h1 className="text-lg font-bold text-slate-800 ml-2">가계부</h1>
           </div>
           <button 
             onClick={onClose}
@@ -90,7 +92,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, i
         </ul>
         
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t text-center text-xs text-slate-400">
-          &copy; {new Date().getFullYear()} AI Household Ledger
+          &copy; {new Date().getFullYear()} AI 가계부
         </div>
       </nav>
     </>

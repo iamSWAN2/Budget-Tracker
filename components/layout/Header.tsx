@@ -12,6 +12,7 @@ const pageTitles: Record<Page, string> = {
   transactions: 'All Transactions',
   accounts: 'Manage Accounts',
   installments: 'Installment Payments',
+  settings: 'Settings',
 };
 
 export const Header: React.FC<HeaderProps> = ({ currentPage, onMenuClick }) => {

@@ -76,6 +76,44 @@ export type Database = {
           updated_at?: string;
         };
       };
+      categories: {
+        Row: {
+          id: string;
+          name: string;
+          type: string;
+          icon: string | null;
+          color: string | null;
+          parent_id: string | null;
+          is_default: boolean;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          name: string;
+          type: string;
+          icon?: string | null;
+          color?: string | null;
+          parent_id?: string | null;
+          is_default?: boolean;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          type?: string;
+          icon?: string | null;
+          color?: string | null;
+          parent_id?: string | null;
+          is_default?: boolean;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
     };
   };
 };

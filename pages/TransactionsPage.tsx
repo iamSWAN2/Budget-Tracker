@@ -1,95 +1,16 @@
 
 import React, { useState } from 'react';
 import { UseDataReturn } from '../hooks/useData';
-import { Transaction, TransactionType, Account } from '../types';
+import { Transaction, TransactionType } from '../types';
 import { EditIcon, DeleteIcon, PlusIcon } from '../components/icons/Icons';
 import { Modal } from '../components/ui/Modal';
+import { TransactionForm } from '../components/forms/TransactionForm';
 import AIAssist from '../components/AIAssist';
 
 const formatCurrency = (value: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
 
-const TransactionForm: React.FC<{
-    transaction: Partial<Transaction> | null;
-    accounts: Account[];
-    onSave: (transaction: Omit<Transaction, 'id'> | Transaction) => void;
-    onClose: () => void;
-}> = ({ transaction, accounts, onSave, onClose }) => {
-    const [formData, setFormData] = useState({
-        date: transaction?.date || new Date().toISOString().split('T')[0],
-        description: transaction?.description || '',
-        amount: transaction?.amount || 0,
-        type: transaction?.type || TransactionType.EXPENSE,
-        category: transaction?.category || '',
-        accountId: transaction?.accountId || (accounts[0]?.id || ''),
-        installmentMonths: transaction?.installmentMonths || 1,
-    });
-
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value, type } = e.target;
-        const isNumber = type === 'number';
-        setFormData(prev => ({ ...prev, [name]: isNumber ? parseFloat(value) : value }));
-    };
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (transaction && 'id' in transaction) {
-            onSave({ ...formData, id: transaction.id });
-        } else {
-            onSave(formData);
-        }
-        onClose();
-    };
-
-    return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-                <label className="block text-sm font-medium text-slate-700">Description</label>
-                <input type="text" name="description" value={formData.description} onChange={handleChange} required className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-                <div>
-                    <label className="block text-sm font-medium text-slate-700">Amount</label>
-                    <input type="number" name="amount" value={formData.amount} onChange={handleChange} required className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-slate-700">Date</label>
-                    <input type="date" name="date" value={formData.date} onChange={handleChange} required className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" />
-                </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-                <div>
-                    <label className="block text-sm font-medium text-slate-700">Type</label>
-                    <select name="type" value={formData.type} onChange={handleChange} className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm">
-                        {Object.values(TransactionType).map(type => <option key={type} value={type}>{type}</option>)}
-                    </select>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-slate-700">Account</label>
-                    <select name="accountId" value={formData.accountId} onChange={handleChange} required className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm">
-                        {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
-                    </select>
-                </div>
-            </div>
-            <div>
-                <label className="block text-sm font-medium text-slate-700">Category</label>
-                <input type="text" name="category" value={formData.category} onChange={handleChange} required className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" />
-            </div>
-             {formData.type === TransactionType.EXPENSE && (
-                <div>
-                    <label className="block text-sm font-medium text-slate-700">Installment Months (1 for no installment)</label>
-                    <input type="number" name="installmentMonths" min="1" step="1" value={formData.installmentMonths} onChange={handleChange} className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" />
-                </div>
-            )}
-            <div className="flex justify-end pt-4 space-x-2">
-                <button type="button" onClick={onClose} className="px-4 py-2 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">Save Transaction</button>
-            </div>
-        </form>
-    );
-};
-
 export const TransactionsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
-    const { transactions, accounts, addTransaction, updateTransaction, deleteTransaction } = data;
+    const { transactions, accounts, categories, addTransaction, updateTransaction, deleteTransaction } = data;
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
@@ -104,7 +25,7 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn }> = ({ data }) =>
     };
 
     const handleDelete = (id: string) => {
-        if (window.confirm('Are you sure you want to delete this transaction?')) {
+        if (window.confirm('이 거래를 삭제하시겠습니까?')) {
             deleteTransaction(id);
         }
     };
@@ -122,7 +43,7 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn }> = ({ data }) =>
     return (
         <div className="bg-white rounded-xl shadow-md p-6">
             <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-slate-700">Transaction History</h3>
+                <h3 className="text-lg font-semibold text-slate-700">거래 내역</h3>
                 <div className="flex items-center space-x-2">
                   <AIAssist data={data} />
                   <button 
@@ -135,7 +56,7 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn }> = ({ data }) =>
                     }`}
                   >
                       <PlusIcon />
-                      <span className="ml-2">Add Transaction</span>
+                      <span className="ml-2">거래 추가</span>
                   </button>
                 </div>
             </div>
@@ -150,12 +71,12 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn }> = ({ data }) =>
                 <table className="w-full text-sm text-left text-slate-500">
                     <thead className="text-xs text-slate-700 uppercase bg-slate-50">
                         <tr>
-                            <th scope="col" className="px-6 py-3">Description</th>
-                            <th scope="col" className="px-6 py-3">Date</th>
-                            <th scope="col" className="px-6 py-3">Amount</th>
-                            <th scope="col" className="px-6 py-3">Category</th>
-                            <th scope="col" className="px-6 py-3">Account</th>
-                            <th scope="col" className="px-6 py-3">Actions</th>
+                            <th scope="col" className="px-6 py-3">설명</th>
+                            <th scope="col" className="px-6 py-3">날짜</th>
+                            <th scope="col" className="px-6 py-3">금액</th>
+                            <th scope="col" className="px-6 py-3">카테고리</th>
+                            <th scope="col" className="px-6 py-3">계좌</th>
+                            <th scope="col" className="px-6 py-3">작업</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -181,10 +102,11 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn }> = ({ data }) =>
                 </table>
             </div>
 
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingTransaction ? 'Edit Transaction' : 'Add Transaction'}>
+            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingTransaction ? '거래 수정' : '거래 추가'}>
                 <TransactionForm
                     transaction={editingTransaction}
                     accounts={accounts}
+                    categories={categories}
                     onSave={handleSave}
                     onClose={() => setIsModalOpen(false)}
                 />

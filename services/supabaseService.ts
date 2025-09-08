@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
-import { Account, Transaction, TransactionType, AccountPropensity } from '../types';
+import { Account, Transaction, Category, TransactionType, AccountPropensity } from '../types';
+import { DEFAULT_CATEGORIES } from '../constants';
 
 // Convert database row to Account type
 const mapDbAccount = (row: any): Account => ({
@@ -19,6 +20,18 @@ const mapDbTransaction = (row: any): Transaction => ({
   category: row.category,
   accountId: row.account_id,
   installmentMonths: row.installment_months
+});
+
+// Convert database row to Category type
+const mapDbCategory = (row: any): Category => ({
+  id: row.id,
+  name: row.name,
+  type: row.type as TransactionType,
+  icon: row.icon,
+  color: row.color,
+  parentId: row.parent_id,
+  isDefault: row.is_default,
+  isActive: row.is_active
 });
 
 export const getAccounts = async (): Promise<Account[]> => {
@@ -309,5 +322,270 @@ export const updateAccountBalance = async (accountId: string): Promise<void> => 
   if (error) {
     console.error('Error updating account balance:', error);
     throw new Error(`Failed to update account balance: ${error.message}`);
+  }
+};
+
+// Category management functions
+export const getCategories = async (): Promise<Category[]> => {
+  console.log("Supabase: Fetching categories");
+  
+  const { data, error } = await supabase
+    .from('categories')
+    .select('*')
+    .order('name', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching categories:', error);
+    // Return default categories if DB query fails
+    return DEFAULT_CATEGORIES;
+  }
+
+  const categories = data?.map(mapDbCategory) || [];
+  
+  // If no categories exist, initialize with defaults
+  if (categories.length === 0) {
+    await initializeDefaultCategories();
+    return DEFAULT_CATEGORIES;
+  }
+  
+  return categories;
+};
+
+export const addCategory = async (category: Omit<Category, 'id'>): Promise<Category> => {
+  console.log("Supabase: Adding category", category);
+  
+  const dbCategory = {
+    name: category.name,
+    type: category.type,
+    icon: category.icon || null,
+    color: category.color || null,
+    parent_id: category.parentId || null,
+    is_default: category.isDefault,
+    is_active: category.isActive
+  };
+
+  const { data, error } = await supabase
+    .from('categories')
+    .insert([dbCategory])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error adding category:', error);
+    throw new Error(`Failed to add category: ${error.message}`);
+  }
+
+  return mapDbCategory(data);
+};
+
+export const updateCategory = async (category: Category): Promise<Category> => {
+  console.log("Supabase: Updating category", category);
+  
+  const dbCategory = {
+    name: category.name,
+    type: category.type,
+    icon: category.icon || null,
+    color: category.color || null,
+    parent_id: category.parentId || null,
+    is_default: category.isDefault,
+    is_active: category.isActive
+  };
+
+  const { data, error } = await supabase
+    .from('categories')
+    .update(dbCategory)
+    .eq('id', category.id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating category:', error);
+    throw new Error(`Failed to update category: ${error.message}`);
+  }
+
+  return mapDbCategory(data);
+};
+
+export const deleteCategory = async (id: string): Promise<void> => {
+  console.log("Supabase: Deleting category", id);
+  
+  // First check if there are transactions using this category
+  const { data: transactions, error: transactionError } = await supabase
+    .from('transactions')
+    .select('id')
+    .eq('category', id)
+    .limit(1);
+
+  if (transactionError) {
+    console.error('Error checking transactions:', transactionError);
+    throw new Error(`Failed to check category transactions: ${transactionError.message}`);
+  }
+
+  if (transactions && transactions.length > 0) {
+    throw new Error('Cannot delete category with existing transactions');
+  }
+
+  const { error } = await supabase
+    .from('categories')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error deleting category:', error);
+    throw new Error(`Failed to delete category: ${error.message}`);
+  }
+};
+
+export const initializeDefaultCategories = async (): Promise<void> => {
+  console.log("Supabase: Initializing default categories");
+  
+  const dbCategories = DEFAULT_CATEGORIES.map(category => ({
+    id: category.id,
+    name: category.name,
+    type: category.type,
+    icon: category.icon || null,
+    color: category.color || null,
+    parent_id: category.parentId || null,
+    is_default: category.isDefault,
+    is_active: category.isActive
+  }));
+
+  const { error } = await supabase
+    .from('categories')
+    .insert(dbCategories);
+
+  if (error) {
+    console.error('Error initializing categories:', error);
+    // Don't throw here as we can fall back to in-memory defaults
+  }
+};
+
+// Data management functions
+export const clearAllData = async (): Promise<void> => {
+  console.log("Supabase: Clearing all data");
+  
+  // Delete transactions first (due to foreign key constraints)
+  const { error: transactionError } = await supabase
+    .from('transactions')
+    .delete()
+    .gt('created_at', '1970-01-01'); // 모든 데이터 삭제 (1970년 이후 모든 데이터)
+
+  if (transactionError) {
+    console.error('Error clearing transactions:', transactionError);
+    throw new Error(`Failed to clear transactions: ${transactionError.message}`);
+  }
+  
+  // Delete accounts
+  const { error: accountError } = await supabase
+    .from('accounts')
+    .delete()
+    .gt('created_at', '1970-01-01'); // 모든 데이터 삭제
+
+  if (accountError) {
+    console.error('Error clearing accounts:', accountError);
+    throw new Error(`Failed to clear accounts: ${accountError.message}`);
+  }
+  
+  // Delete non-default categories only
+  const { error: categoryError } = await supabase
+    .from('categories')
+    .delete()
+    .eq('is_default', false); // 기본 카테고리가 아닌 것만 삭제
+
+  if (categoryError) {
+    console.error('Error clearing custom categories:', categoryError);
+    // Don't throw here, we can continue
+  }
+  
+  // Clear initial balances cache
+  accountInitialBalances.clear();
+};
+
+export const exportData = async (): Promise<{ accounts: Account[], transactions: Transaction[], categories: Category[] }> => {
+  console.log("Supabase: Exporting all data");
+  
+  const [accounts, transactions, categories] = await Promise.all([
+    getAccounts(),
+    getTransactions(),
+    getCategories()
+  ]);
+  
+  return { accounts, transactions, categories };
+};
+
+export const importData = async (data: { accounts: Account[], transactions: Transaction[], categories: Category[] }): Promise<void> => {
+  console.log("Supabase: Importing data");
+  
+  // Clear existing data first
+  await clearAllData();
+  
+  // Import categories first
+  if (data.categories && data.categories.length > 0) {
+    const dbCategories = data.categories.map(category => ({
+      id: category.id,
+      name: category.name,
+      type: category.type,
+      icon: category.icon || null,
+      color: category.color || null,
+      parent_id: category.parentId || null,
+      is_default: category.isDefault,
+      is_active: category.isActive
+    }));
+
+    const { error: categoryError } = await supabase
+      .from('categories')
+      .insert(dbCategories);
+
+    if (categoryError) {
+      console.error('Error importing categories:', categoryError);
+      // Continue with default categories
+    }
+  }
+  
+  // Import accounts
+  if (data.accounts && data.accounts.length > 0) {
+    const dbAccounts = data.accounts.map(account => ({
+      id: account.id,
+      name: account.name,
+      balance: account.balance,
+      propensity: account.propensity
+    }));
+
+    const { error: accountError } = await supabase
+      .from('accounts')
+      .insert(dbAccounts);
+
+    if (accountError) {
+      console.error('Error importing accounts:', accountError);
+      throw new Error(`Failed to import accounts: ${accountError.message}`);
+    }
+    
+    // Store initial balances
+    data.accounts.forEach(account => {
+      accountInitialBalances.set(account.id, account.balance);
+    });
+  }
+  
+  // Import transactions
+  if (data.transactions && data.transactions.length > 0) {
+    const dbTransactions = data.transactions.map(transaction => ({
+      id: transaction.id,
+      date: transaction.date,
+      description: transaction.description,
+      amount: transaction.amount,
+      type: transaction.type,
+      category: transaction.category,
+      account_id: transaction.accountId,
+      installment_months: transaction.installmentMonths || null
+    }));
+
+    const { error: transactionError } = await supabase
+      .from('transactions')
+      .insert(dbTransactions);
+
+    if (transactionError) {
+      console.error('Error importing transactions:', transactionError);
+      throw new Error(`Failed to import transactions: ${transactionError.message}`);
+    }
   }
 };

@@ -4,6 +4,8 @@ import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { DashboardPage } from './pages/DashboardPage';
 import { AccountsPage } from './pages/AccountsPage';
+import { TransactionsPage } from './pages/TransactionsPage';
+import { SettingsPage } from './pages/SettingsPage';
 import { useData } from './hooks/useData';
 import { Page } from './types';
 import { InstallmentsPage } from './pages/InstallmentsPage';
@@ -19,8 +21,12 @@ export default function App() {
         return <DashboardPage data={data} />;
       case 'accounts':
         return <AccountsPage data={data} />;
+      case 'transactions':
+        return <TransactionsPage data={data} />;
       case 'installments':
         return <InstallmentsPage data={data} />;
+      case 'settings':
+        return <SettingsPage data={data} />;
       default:
         return <DashboardPage data={data} />;
     }

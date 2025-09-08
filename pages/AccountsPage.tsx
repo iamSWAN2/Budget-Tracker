@@ -40,18 +40,19 @@ const AccountForm: React.FC<{
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-                <label className="block text-sm font-medium text-slate-700">Account Name</label>
-                <input type="text" name="name" value={formData.name} onChange={handleChange} required className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" />
+                <label htmlFor="account-name" className="block text-sm font-medium text-slate-700">계좌명</label>
+                <input id="account-name" type="text" name="name" value={formData.name} onChange={handleChange} required className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" />
             </div>
             <div>
-                <label className="block text-sm font-medium text-slate-700">Account Propensity</label>
-                <select name="propensity" value={formData.propensity} onChange={handleChange} className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm">
+                <label htmlFor="account-propensity" className="block text-sm font-medium text-slate-700">계좌 유형</label>
+                <select id="account-propensity" name="propensity" value={formData.propensity} onChange={handleChange} className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm">
                     {Object.values(AccountPropensity).map(type => <option key={type} value={type}>{type}</option>)}
                 </select>
             </div>
             <div>
-                <label className="block text-sm font-medium text-slate-700">Initial Balance</label>
+                <label htmlFor="account-balance" className="block text-sm font-medium text-slate-700">초기 잔액</label>
                 <input 
+                    id="account-balance"
                     type="number" 
                     name="balance" 
                     value={formData.balance} 
@@ -62,8 +63,8 @@ const AccountForm: React.FC<{
                 />
             </div>
             <div className="flex justify-end pt-4 space-x-2">
-                <button type="button" onClick={onClose} className="px-4 py-2 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">Save Account</button>
+                <button type="button" onClick={onClose} className="px-4 py-2 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300">취소</button>
+                <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">계좌 저장</button>
             </div>
         </form>
     );
@@ -85,7 +86,7 @@ export const AccountsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
     };
 
     const handleDelete = (id: string) => {
-        if (window.confirm('Are you sure you want to delete this account? This will also delete all associated transactions.')) {
+        if (window.confirm('이 계좌를 삭제하시겠습니까? 관련된 모든 거래 내역도 함께 삭제됩니다.')) {
             deleteAccount(id);
         }
     };
@@ -103,7 +104,7 @@ export const AccountsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
             <div className="flex justify-end mb-6">
                 <button onClick={handleAdd} className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 shadow">
                     <PlusIcon />
-                    <span className="ml-2">Add Account</span>
+                    <span className="ml-2">계좌 추가</span>
                 </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -124,7 +125,7 @@ export const AccountsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                 ))}
             </div>
 
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingAccount ? 'Edit Account' : 'Add Account'}>
+            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingAccount ? '계좌 수정' : '계좌 추가'}>
                 <AccountForm
                     account={editingAccount}
                     onSave={handleSave}

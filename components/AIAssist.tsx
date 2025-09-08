@@ -41,7 +41,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
       } else {
         // 로컬 파싱
         if (!file.name.toLowerCase().endsWith('.csv')) {
-          throw new Error('Local parsing only supports CSV files.');
+          throw new Error('로컬 파싱은 CSV 파일만 지원합니다.');
         }
         
         const { headers, rows } = await LocalCsvParser.parseFile(file);
@@ -75,7 +75,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
         setStep('mapping');
       }
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "An error occurred while processing the file.");
+      setErrorMessage(error instanceof Error ? error.message : "파일 처리 중 오류가 발생했습니다.");
       setStep('error');
     }
   };
@@ -92,14 +92,14 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
       setAnalyzedTransactions(transactions);
       setStep('confirm');
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "An error occurred while converting data.");
+      setErrorMessage(error instanceof Error ? error.message : "데이터 변환 중 오류가 발생했습니다.");
       setStep('error');
     }
   };
 
   const handleConfirm = async () => {
     if (!selectedAccountId) {
-        setErrorMessage("Please select an account.");
+        setErrorMessage("계좌을 선택해주세요.");
         setStep('error');
         return;
     }
@@ -108,7 +108,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
         await addMultipleTransactions(analyzedTransactions, selectedAccountId);
         handleClose();
     } catch (error) {
-        setErrorMessage("Failed to save transactions.");
+        setErrorMessage("거래 내역 저장에 실패했습니다.");
         setStep('error');
     }
   };
@@ -162,7 +162,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
         className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 shadow"
       >
         <AIIcon />
-        <span className="ml-2">AI Import</span>
+        <span className="ml-2">AI 가져오기</span>
       </button>
 
       <Modal isOpen={isModalOpen} onClose={handleClose} title="AI Transaction Import">
@@ -170,32 +170,32 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
           <div className="flex flex-col items-center justify-center h-48">
             <Spinner />
             <p className="mt-4 text-slate-600">
-              {parseMode === 'ai' ? 'Analyzing your document with AI... Please wait.' : 'Processing your CSV file... Please wait.'}
+              {parseMode === 'ai' ? 'AI로 문서를 분석 중입니다... 잠시만 기다려주세요.' : 'CSV 파일을 처리 중입니다... 잠시만 기다려주세요.'}
             </p>
           </div>
         )}
 
         {step === 'error' && (
           <div className="flex flex-col items-center justify-center h-48 text-center">
-            <p className="text-red-600 font-semibold">Processing Failed</p>
+            <p className="text-red-600 font-semibold">처리 실패</p>
             <p className="mt-2 text-slate-600">{errorMessage}</p>
             <button
                 onClick={() => setStep('account')}
                 className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
             >
-                Try Again
+                다시 시도
             </button>
           </div>
         )}
 
         {step === 'account' && (
           <div>
-            <h3 className="text-lg font-medium text-slate-900 mb-4">Select Account</h3>
-            <p className="text-slate-600 mb-4">Choose an existing account or create a new one for your transactions.</p>
+            <h3 className="text-lg font-medium text-slate-900 mb-4">계좌 선택</h3>
+            <p className="text-slate-600 mb-4">기존 계좌을 선택하거나 거래를 위한 새 계좌을 만드세요.</p>
             
             {accounts.length > 0 ? (
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-slate-700 mb-2">Select existing account:</label>
+              <fieldset className="mb-6">
+                <legend className="block text-sm font-medium text-slate-700 mb-2">기존 계좌 선택:</legend>
                 <div className="space-y-2">
                   {accounts.map(account => (
                     <label key={account.id} className="flex items-center p-3 border rounded-md hover:bg-slate-50 cursor-pointer">
@@ -209,16 +209,16 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                       <div className="flex-1">
                         <div className="font-medium">{account.name}</div>
                         <div className="text-sm text-slate-500">
-                          Balance: {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(account.balance)} | {account.propensity}
+                          잔액: {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(account.balance)} | {account.propensity}
                         </div>
                       </div>
                     </label>
                   ))}
                 </div>
-              </div>
+              </fieldset>
             ) : (
               <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
-                <p className="text-yellow-800">No accounts found. Please create a new account first.</p>
+                <p className="text-yellow-800">계좌이 없습니다. 먼저 새 계좌을 만들어 주세요.</p>
               </div>
             )}
 
@@ -228,7 +228,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                 onClick={() => setStep('new-account')}
                 className="w-full p-3 border-2 border-dashed border-slate-300 rounded-md text-slate-600 hover:border-primary-500 hover:text-primary-600 transition-colors"
               >
-                + Create New Account
+                + 새 계좌 생성
               </button>
             </div>
 
@@ -239,7 +239,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                 disabled={!selectedAccountId}
                 className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
               >
-                Next
+                다음
               </button>
             </div>
           </div>
@@ -247,8 +247,8 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
 
         {step === 'upload' && (
           <div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-slate-700 mb-2">Choose parsing method:</label>
+            <fieldset className="mb-4">
+              <legend className="block text-sm font-medium text-slate-700 mb-2">파싱 방법 선택:</legend>
               <div className="flex space-x-4">
                 <label className="flex items-center">
                   <input
@@ -258,7 +258,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                     onChange={(e) => setParseMode(e.target.value as 'ai' | 'local')}
                     className="mr-2"
                   />
-                  AI Parsing (Images, PDF supported)
+                  AI 파싱 (이미지, PDF 지원)
                 </label>
                 <label className="flex items-center">
                   <input
@@ -268,21 +268,21 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                     onChange={(e) => setParseMode(e.target.value as 'ai' | 'local')}
                     className="mr-2"
                   />
-                  Local Parsing (CSV only)
+                  로컬 파싱 (CSV만 지원)
                 </label>
               </div>
-            </div>
+            </fieldset>
             
             <p className="text-slate-600 mb-4">
               {parseMode === 'ai' 
-                ? 'Upload bank statement images or documents to automatically extract transactions using AI.'
-                : 'Upload CSV files to parse transactions locally and securely.'
+                ? '은행 명세서 이미지나 문서를 업로드하여 AI로 거래 내역을 자동 추출합니다.'
+                : 'CSV 파일을 업로드하여 로컬에서 안전하게 거래 내역을 처리합니다.'
               }
             </p>
             
             <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center">
               <label htmlFor="file-upload" className="cursor-pointer text-primary-600 font-semibold">
-                Choose a file
+파일 선택
               </label>
               <input 
                 id="file-upload" 
@@ -304,15 +304,15 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
 
         {step === 'mapping' && csvData && parsedColumns.length > 0 && (
           <div>
-            <h3 className="text-lg font-medium text-slate-900 mb-4">Column Mapping Setup</h3>
-            <p className="text-slate-600 mb-4">Please confirm or modify what each CSV column represents.</p>
+            <h3 className="text-lg font-medium text-slate-900 mb-4">열 매핑 설정</h3>
+            <p className="text-slate-600 mb-4">각 CSV 열이 무엇을 나타내는지 확인하거나 수정해주세요.</p>
             
             <div className="space-y-4 mb-6">
               {[
-                { key: 'date', label: 'Date', required: true },
-                { key: 'description', label: 'Description', required: true },
-                { key: 'amount', label: 'Amount', required: true },
-                { key: 'type', label: 'Transaction Type', required: false }
+                { key: 'date', label: '날짜', required: true },
+                { key: 'description', label: '설명', required: true },
+                { key: 'amount', label: '금액', required: true },
+                { key: 'type', label: '거래 유형', required: false }
               ].map(({ key, label, required }) => (
                 <div key={key} className="flex items-center space-x-4">
                   <label className="w-20 text-sm font-medium text-slate-700">
@@ -326,7 +326,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                     }))}
                     className="flex-1 rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
                   >
-                    <option value="">None selected</option>
+                    <option value="">선택되지 않음</option>
                     {parsedColumns.map((col, index) => (
                       <option key={index} value={index}>
                         {col.name} ({col.detectedType}, confidence: {(col.confidence * 100).toFixed(0)}%)
@@ -338,7 +338,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
             </div>
 
             <div className="mb-4">
-              <h4 className="font-medium text-slate-700 mb-2">Data Preview:</h4>
+              <h4 className="font-medium text-slate-700 mb-2">데이터 미리보기:</h4>
               <div className="max-h-48 overflow-auto border rounded-md bg-slate-50">
                 <table className="w-full text-xs">
                   <thead className="bg-slate-100">
@@ -373,7 +373,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                 onClick={() => setStep('account')} 
                 className="px-4 py-2 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300"
               >
-                Back
+                이전
               </button>
               <button 
                 type="button" 
@@ -390,7 +390,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                 disabled={columnMapping.date === undefined || columnMapping.description === undefined || columnMapping.amount === undefined}
                 className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
               >
-                Next
+                다음
               </button>
             </div>
           </div>
@@ -401,7 +401,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
             <p className="text-slate-700 mb-2">Review the transactions found and confirm to add them.</p>
             <div className="mb-4">
               <div className="bg-slate-50 p-3 rounded-md">
-                <span className="text-sm font-medium text-slate-700">Target Account: </span>
+                <span className="text-sm font-medium text-slate-700">대상 계좌: </span>
                 <span className="text-slate-900">{accounts.find(acc => acc.id === selectedAccountId)?.name}</span>
               </div>
             </div>
@@ -409,9 +409,9 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-slate-600">
-                    <th className="p-2">Date</th>
-                    <th className="p-2">Description</th>
-                    <th className="p-2">Amount</th>
+                    <th className="p-2">날짜</th>
+                    <th className="p-2">설명</th>
+                    <th className="p-2">금액</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -429,8 +429,8 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
               </table>
             </div>
             <div className="flex justify-end pt-4 space-x-2">
-                <button type="button" onClick={() => setStep(parseMode === 'local' ? 'mapping' : 'upload')} className="px-4 py-2 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300">Back</button>
-                <button type="button" onClick={handleConfirm} className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">Confirm and Add</button>
+                <button type="button" onClick={() => setStep(parseMode === 'local' ? 'mapping' : 'upload')} className="px-4 py-2 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300">이전</button>
+                <button type="button" onClick={handleConfirm} className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">확인 및 추가</button>
             </div>
           </div>
         )}
@@ -440,8 +440,9 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
             <h3 className="text-lg font-medium text-slate-900 mb-4">새 계좌 생성</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700">계좌명</label>
+                <label htmlFor="ai-account-name" className="block text-sm font-medium text-slate-700">계좌명</label>
                 <input 
+                  id="ai-account-name"
                   type="text" 
                   value={newAccountForm.name} 
                   onChange={(e) => setNewAccountForm(prev => ({ ...prev, name: e.target.value }))}
@@ -450,8 +451,9 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700">계좌 유형</label>
+                <label htmlFor="ai-account-type" className="block text-sm font-medium text-slate-700">계좌 유형</label>
                 <select 
+                  id="ai-account-type"
                   value={newAccountForm.propensity} 
                   onChange={(e) => setNewAccountForm(prev => ({ ...prev, propensity: e.target.value as AccountPropensity }))}
                   className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
@@ -462,8 +464,9 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700">초기 잔액</label>
+                <label htmlFor="ai-account-balance" className="block text-sm font-medium text-slate-700">초기 잔액</label>
                 <input 
+                  id="ai-account-balance"
                   type="number" 
                   value={newAccountForm.balance} 
                   onChange={(e) => setNewAccountForm(prev => ({ ...prev, balance: parseFloat(e.target.value) || 0 }))}
