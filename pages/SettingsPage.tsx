@@ -198,28 +198,28 @@ const CategoryManager: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   const CategorySection: React.FC<{
     title: string;
     groupedCategories: Record<string, { parent: Category, children: Category[] }>;
-    bgColor: string;
-    textColor: string;
-  }> = ({ title, groupedCategories, bgColor, textColor }) => (
-    <div className="space-y-4">
-      <h4 className={`text-lg font-semibold ${textColor} border-b pb-2`}>{title}</h4>
-      <div className="space-y-3">
+    textColor?: string;
+  }> = ({ title, groupedCategories, textColor = 'text-slate-800' }) => (
+    <div className="space-y-3">
+      <h4 className={`text-lg font-semibold ${textColor}`}>{title}</h4>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {Object.values(groupedCategories).map(({ parent, children }) => (
-          <div key={parent.id} className={`${bgColor} rounded-lg p-4 border-l-4`} style={{borderLeftColor: parent.color}}>
-            <div className="flex items-center justify-between mb-2">
+          <div key={parent.id} className="relative rounded-md border p-3 pl-4">
+            <div className="absolute left-0 top-0 h-full w-[3px] rounded-l" style={{ backgroundColor: parent.color }} />
+            <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <div 
                   className="w-4 h-4 rounded" 
                   style={{ backgroundColor: parent.color }}
                 />
-                <span className="font-semibold text-base">{parent.name}</span>
+                <span className="font-semibold text-sm">{parent.name}</span>
                 {!parent.isActive && (
-                  <span className="text-xs bg-slate-200 text-slate-600 px-2 py-1 rounded">
+                  <span className="text-[10px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded">
                     비활성
                   </span>
                 )}
               </div>
-              <div className="flex space-x-2">
+              <div className="flex space-x-1.5">
                 <button 
                   onClick={() => handleEdit(parent)} 
                   className="text-primary-600 hover:text-primary-800"
@@ -238,35 +238,25 @@ const CategoryManager: React.FC<{ data: UseDataReturn }> = ({ data }) => {
             </div>
             
             {children.length > 0 && (
-              <div className="ml-6 space-y-2">
+              <div className="mt-2 ml-4 divide-y divide-slate-200">
                 {children.map(child => (
-                  <div key={child.id} className="flex items-center justify-between py-2 border-t">
-                    <div className="flex items-center space-x-3">
+                  <div key={child.id} className="group flex items-center justify-between py-1.5">
+                    <div className="flex items-center gap-2">
                       <div 
-                        className="w-3 h-3 rounded" 
+                        className="w-2.5 h-2.5 rounded" 
                         style={{ backgroundColor: child.color }}
                       />
                       <span className="text-sm">{child.name}</span>
                       {!child.isActive && (
-                        <span className="text-xs bg-slate-200 text-slate-600 px-2 py-1 rounded">
+                        <span className="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded">
                           비활성
                         </span>
                       )}
                     </div>
-                    <div className="flex space-x-2">
-                      <button 
-                        onClick={() => handleEdit(child)} 
-                        className="text-primary-600 hover:text-primary-800"
-                      >
-                        <EditIcon />
-                      </button>
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1.5">
+                      <button onClick={() => handleEdit(child)} className="text-primary-600 hover:text-primary-800"><EditIcon /></button>
                       {!child.isDefault && (
-                        <button 
-                          onClick={() => handleDelete(child.id)} 
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <DeleteIcon />
-                        </button>
+                        <button onClick={() => handleDelete(child.id)} className="text-red-600 hover:text-red-800"><DeleteIcon /></button>
                       )}
                     </div>
                   </div>
@@ -292,22 +282,12 @@ const CategoryManager: React.FC<{ data: UseDataReturn }> = ({ data }) => {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto space-y-8">
+      <div className="flex-1 overflow-y-auto space-y-6">
         {/* 수입 카테고리 섹션 */}
-        <CategorySection 
-          title="💰 수입 카테고리"
-          groupedCategories={incomeGrouped}
-          bgColor="bg-green-50"
-          textColor="text-green-800"
-        />
+        <CategorySection title="💰 수입 카테고리" groupedCategories={incomeGrouped} textColor="text-green-800" />
 
         {/* 지출 카테고리 섹션 */}
-        <CategorySection 
-          title="💸 지출 카테고리"
-          groupedCategories={expenseGrouped}
-          bgColor="bg-red-50"
-          textColor="text-red-800"
-        />
+        <CategorySection title="💸 지출 카테고리" groupedCategories={expenseGrouped} textColor="text-red-800" />
       </div>
 
       <Modal 

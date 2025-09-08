@@ -68,14 +68,14 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn }> = ({ data }) =>
               </div>
             )}
             
-            <div className="space-y-2 flex-1 overflow-y-auto" style={{maxHeight: 'calc(100vh - 200px)'}}>
+            <div className="flex-1 overflow-y-auto" style={{maxHeight: 'calc(100vh - 200px)'}}>
               {transactions.length > 0 ? (
                 transactions.map((transaction) => (
-                  <div key={transaction.id} className="group relative bg-slate-50 hover:bg-slate-100 rounded-lg p-4 transition-colors min-h-[80px] flex items-center">
+                  <div key={transaction.id} className="group flex items-center justify-between py-2.5 px-3 hover:bg-slate-50 transition-colors">
                     <div className="flex items-center justify-between w-full">
-                      <div className="flex items-center space-x-4 flex-1">
+                      <div className="flex items-center gap-3 flex-1">
                         {/* Type Icon */}
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
                           transaction.type === TransactionType.INCOME 
                             ? 'bg-green-100 text-green-700' 
                             : 'bg-red-100 text-red-700'
@@ -85,70 +85,61 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn }> = ({ data }) =>
                         
                         {/* Transaction Info */}
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <p className="font-semibold text-slate-900 text-base truncate">{transaction.description}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-slate-900 text-sm truncate">{transaction.description}</p>
                             {/* 할부 관련 뱃지들을 별도 그룹으로 분리 */}
                             {transaction.installmentMonths && transaction.installmentMonths > 1 && (
-                              <div className="flex items-center space-x-1">
-                                <span className="inline-flex items-center px-2 py-1 rounded-full bg-violet-100 text-violet-700 text-xs font-medium whitespace-nowrap">
+                              <div className="flex items-center gap-1">
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 text-[11px] font-medium whitespace-nowrap">
                                   {transaction.installmentMonths}개월
                                 </span>
                                 {transaction.isInterestFree && (
-                                  <span className="inline-flex items-center px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-medium whitespace-nowrap">
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[11px] font-medium whitespace-nowrap">
                                     무이자
                                   </span>
                                 )}
                               </div>
                             )}
                           </div>
-                          {/* 정보 뱃지들을 2줄로 배치하여 가독성 향상 */}
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-xs px-2 py-1 bg-slate-200 text-slate-700 rounded-full font-medium">
-                              {formatDateDisplay(transaction.date)}
-                            </span>
-                            <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full font-medium">
-                              {transaction.category}
-                            </span>
-                            <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded-full font-medium">
-                              {getAccountName(transaction.accountId)}
-                            </span>
-                          </div>
+                          <p className="mt-0.5 text-[11px] text-slate-500 truncate">
+                            {formatDateDisplay(transaction.date)} • {transaction.category} • {getAccountName(transaction.accountId)}
+                          </p>
                         </div>
                       </div>
                       
                       {/* Amount and Actions */}
-                      <div className="text-right flex items-center space-x-3">
+                      <div className="text-right flex items-center gap-3">
                         {/* Amount */}
-                        <div className="text-right">
+                        <div className="text-right tabular-nums">
                           {transaction.installmentMonths && transaction.installmentMonths > 1 ? (
                             <div>
-                              <p className={`font-bold text-xl ${
+                              <p className={`font-semibold ${
                                 transaction.type === TransactionType.INCOME ? 'text-green-600' : 'text-red-600'
-                              }`}>
+                              } text-base md:text-lg`}>
                                 {formatCurrency(transaction.amount / transaction.installmentMonths)}
-                                <span className="text-xs text-slate-500 ml-1">/월</span>
+                                <span className="text-[11px] text-slate-500 ml-1">/월</span>
                               </p>
-                              <p className={`text-sm font-medium ${
+                              <p className={`text-[11px] font-medium ${
                                 transaction.type === TransactionType.INCOME ? 'text-green-500' : 'text-red-500'
                               }`}>
                                 총 {formatCurrency(transaction.amount)}
                               </p>
                             </div>
                           ) : (
-                            <p className={`font-bold text-xl ${
+                            <p className={`font-semibold ${
                               transaction.type === TransactionType.INCOME ? 'text-green-600' : 'text-red-600'
-                            }`}>
+                            } text-base md:text-lg`}>
                               {formatCurrency(transaction.amount)}
                             </p>
                           )}
                         </div>
                         
-                        {/* Actions - Always visible but subtle */}
-                        <div className="opacity-60 group-hover:opacity-100 transition-opacity">
-                          <div className="flex flex-col space-y-1">
+                        {/* Actions - hover only for compactness */}
+                        <div className="hidden group-hover:flex transition-opacity">
+                          <div className="flex flex-col">
                             <button 
                               onClick={() => handleEdit(transaction)}
-                              className="p-2 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-indigo-600 transition-colors"
+                              className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-indigo-600 transition-colors"
                               title="수정"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -157,7 +148,7 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn }> = ({ data }) =>
                             </button>
                             <button 
                               onClick={() => handleDelete(transaction.id)}
-                              className="p-2 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-red-600 transition-colors"
+                              className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-red-600 transition-colors"
                               title="삭제"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
