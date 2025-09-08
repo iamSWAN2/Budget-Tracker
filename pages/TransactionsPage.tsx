@@ -6,11 +6,12 @@ import { EditIcon, DeleteIcon, PlusIcon } from '../components/icons/Icons';
 import { Modal } from '../components/ui/Modal';
 import { TransactionForm } from '../components/forms/TransactionForm';
 import AIAssist from '../components/AIAssist';
-
-const formatCurrency = (value: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Math.round(value));
+import { formatCurrency, formatDateDisplay } from '../utils/format';
+import { useI18n } from '../i18n/I18nProvider';
 
 export const TransactionsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
     const { transactions, accounts, categories, addTransaction, updateTransaction, deleteTransaction } = data;
+    const { t } = useI18n();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
@@ -43,7 +44,7 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn }> = ({ data }) =>
     return (
         <div className="bg-white rounded-xl shadow-md p-6 h-full flex flex-col">
             <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-slate-700">거래 내역</h3>
+                <h3 className="text-lg font-semibold text-slate-700">{t('nav.transactions')}</h3>
                 <div className="flex items-center space-x-2">
                   <AIAssist data={data} />
                   <button 
@@ -56,7 +57,7 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn }> = ({ data }) =>
                     }`}
                   >
                       <PlusIcon />
-                      <span className="ml-2">거래 추가</span>
+                      <span className="ml-2">{t('form.addTransaction')}</span>
                   </button>
                 </div>
             </div>
@@ -103,7 +104,7 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn }> = ({ data }) =>
                           {/* 정보 뱃지들을 2줄로 배치하여 가독성 향상 */}
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="text-xs px-2 py-1 bg-slate-200 text-slate-700 rounded-full font-medium">
-                              {transaction.date}
+                              {formatDateDisplay(transaction.date)}
                             </span>
                             <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full font-medium">
                               {transaction.category}

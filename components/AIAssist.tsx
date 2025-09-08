@@ -7,8 +7,7 @@ import { analyzeTransactionsFromFile } from '../services/geminiService';
 import { LocalCsvParser, ParsedColumn, ColumnMapping } from '../services/localCsvParser';
 import { AITransaction, Account, AccountPropensity } from '../types';
 import { UseDataReturn } from '../hooks/useData';
-
-const formatCurrency = (value: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+import { formatCurrency } from '../utils/format';
 
 const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
   const { accounts, addMultipleTransactions, addAccount } = data;
@@ -209,7 +208,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                       <div className="flex-1">
                         <div className="font-medium">{account.name}</div>
                         <div className="text-sm text-slate-500">
-                          잔액: {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(account.balance)} | {account.propensity}
+                          잔액: {formatCurrency(account.balance)} | {account.propensity}
                         </div>
                       </div>
                     </label>

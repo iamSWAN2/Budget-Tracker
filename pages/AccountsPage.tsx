@@ -3,8 +3,8 @@ import React, { useState, useMemo } from 'react';
 import { UseDataReturn } from '../hooks/useData';
 import { Account, AccountPropensity, TransactionType } from '../types';
 import { Modal } from '../components/ui/Modal';
-
-const formatCurrency = (value: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+import { formatCurrency } from '../utils/format';
+import { useI18n } from '../i18n/I18nProvider';
 
 const AccountForm: React.FC<{
     account: Partial<Account> | null;
@@ -70,6 +70,7 @@ const AccountForm: React.FC<{
 
 export const AccountsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
     const { accounts, transactions, addAccount, updateAccount, deleteAccount } = data;
+    const { t } = useI18n();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingAccount, setEditingAccount] = useState<Account | null>(null);
 
@@ -134,18 +135,18 @@ export const AccountsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                         
                         <div className="space-y-3">
                             <div className="flex justify-between items-center">
-                                <span className="text-sm text-slate-600">Total Income:</span>
+                                <span className="text-sm text-slate-600">{t('summary.income')}:</span>
                                 <span className="font-semibold text-green-600">{formatCurrency(account.totalIncome)}</span>
                             </div>
                             
                             <div className="flex justify-between items-center">
-                                <span className="text-sm text-slate-600">Total Expenses:</span>
+                                <span className="text-sm text-slate-600">{t('summary.expense')}:</span>
                                 <span className="font-semibold text-red-600">{formatCurrency(account.totalExpenses)}</span>
                             </div>
                             
                             <div className="border-t pt-3">
                                 <div className="flex justify-between items-center">
-                                    <span className="text-sm font-medium text-slate-700">Balance:</span>
+                                    <span className="text-sm font-medium text-slate-700">{t('summary.balance')}:</span>
                                     <span className={`text-lg font-bold ${account.balance >= 0 ? 'text-slate-800' : 'text-red-600'}`}>
                                         {formatCurrency(account.balance)}
                                     </span>

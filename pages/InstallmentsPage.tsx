@@ -3,8 +3,7 @@ import React from 'react';
 import { UseDataReturn } from '../hooks/useData';
 import { Card } from '../components/ui/Card';
 import { Installment } from '../types';
-
-const formatCurrency = (value: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+import { formatCurrency } from '../utils/format';
 
 export const InstallmentsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   const { installments, accounts } = data;

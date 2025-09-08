@@ -6,10 +6,12 @@ import { TransactionsPage } from './pages/TransactionsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { useData } from './hooks/useData';
 import { Page } from './types';
+import { I18nProvider, useI18n } from './i18n/I18nProvider';
 
-export default function App() {
+function AppInner() {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const data = useData();
+  const { t, lang, toggle } = useI18n();
 
   const CurrentPageComponent = useMemo(() => {
     switch (currentPage) {
@@ -33,11 +35,11 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="text-center">
             <h1 className="text-3xl font-bold text-indigo-600 mb-2">Household Ledger</h1>
-            <p className="text-slate-600">Your personal finance dashboard.</p>
+            <p className="text-slate-600">{t('app.subtitle')}</p>
           </div>
           
           {/* Navigation */}
-          <nav className="mt-6 flex justify-center">
+          <nav className="mt-6 flex justify-center items-center space-x-3">
             <div className="inline-flex rounded-lg bg-slate-100 p-1">
               <button
                 onClick={() => setCurrentPage('dashboard')}
@@ -47,7 +49,7 @@ export default function App() {
                     : 'text-slate-700 hover:text-slate-900'
                 }`}
               >
-                Dashboard
+                {t('nav.dashboard')}
               </button>
               <button
                 onClick={() => setCurrentPage('accounts')}
@@ -57,7 +59,7 @@ export default function App() {
                     : 'text-slate-700 hover:text-slate-900'
                 }`}
               >
-                Accounts
+                {t('nav.accounts')}
               </button>
               <button
                 onClick={() => setCurrentPage('transactions')}
@@ -67,7 +69,7 @@ export default function App() {
                     : 'text-slate-700 hover:text-slate-900'
                 }`}
               >
-                Transactions
+                {t('nav.transactions')}
               </button>
               <button
                 onClick={() => setCurrentPage('settings')}
@@ -77,9 +79,17 @@ export default function App() {
                     : 'text-slate-700 hover:text-slate-900'
                 }`}
               >
-                Settings
+                {t('nav.settings')}
               </button>
             </div>
+            {/* 언어 토글 */}
+            <button
+              onClick={toggle}
+              className="px-3 py-1.5 rounded-md text-xs border border-slate-300 text-slate-700 hover:bg-slate-50"
+              aria-label="toggle-language"
+            >
+              {lang === 'ko' ? '한국어' : 'EN'}
+            </button>
           </nav>
         </div>
       </header>
@@ -92,13 +102,13 @@ export default function App() {
         {data.isLoading ? (
           <div className="flex justify-center items-center" style={{height: 'calc(100vh - 300px)'}}>
             <div className="text-lg text-slate-600 text-center">
-              Loading your financial data...
+              {t('loading')}
             </div>
           </div>
         ) : data.error ? (
           <div className="flex justify-center items-center" style={{height: 'calc(100vh - 300px)'}}>
             <div className="text-lg text-red-500 bg-red-100 p-4 rounded-lg max-w-md">
-              {data.error}
+              {t('error')}
             </div>
           </div>
         ) : (
@@ -108,5 +118,13 @@ export default function App() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <I18nProvider>
+      <AppInner />
+    </I18nProvider>
   );
 }

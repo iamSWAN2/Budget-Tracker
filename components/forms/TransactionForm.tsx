@@ -222,23 +222,23 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                                 <div className="text-sm space-y-1">
                                     <div className="flex justify-between">
                                         <span className="text-slate-600">원금:</span>
-                                        <span className="font-medium">${Math.round(amountValue).toLocaleString()}</span>
+                                        <span className="font-medium">{new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(amountValue)}</span>
                                     </div>
                                     {!formData.isInterestFree && (
                                         <>
                                             <div className="flex justify-between">
                                                 <span className="text-slate-600">수수료 ({formData.installmentMonths <= 5 ? '2.5' : '3.5'}%):</span>
-                                                <span className="font-medium text-red-600">${Math.round(interestAmount).toLocaleString()}</span>
+                                                <span className="font-medium text-red-600">{new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(interestAmount)}</span>
                                             </div>
                                             <div className="flex justify-between border-t pt-1">
                                                 <span className="text-slate-600">총 금액:</span>
-                                                <span className="font-semibold">${Math.round(totalWithInterest).toLocaleString()}</span>
+                                                <span className="font-semibold">{new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(totalWithInterest)}</span>
                                             </div>
                                         </>
                                     )}
                                     <div className="flex justify-between border-t pt-1">
                                         <span className="text-slate-700 font-medium">월 납부금:</span>
-                                        <span className="font-bold text-lg text-indigo-600">${Math.round(monthlyPayment).toLocaleString()}</span>
+                                        <span className="font-bold text-lg text-indigo-600">{new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(monthlyPayment)}</span>
                                     </div>
                                 </div>
                             </div>

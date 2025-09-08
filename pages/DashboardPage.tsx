@@ -4,11 +4,12 @@ import { TransactionType, Transaction } from '../types';
 import AIAssist from '../components/AIAssist';
 import { Modal } from '../components/ui/Modal';
 import { TransactionForm } from '../components/forms/TransactionForm';
-
-const formatCurrency = (value: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(Math.round(value));
+import { formatCurrency, formatDateDisplay, formatMonthKo } from '../utils/format';
+import { useI18n } from '../i18n/I18nProvider';
 
 export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   const { accounts, transactions, categories, addTransaction, updateTransaction, deleteTransaction } = data;
+  const { t } = useI18n();
   const [transactionType, setTransactionType] = useState<TransactionType>(TransactionType.EXPENSE);
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
@@ -145,10 +146,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
 
   const getAccountName = (accountId: string) => accounts.find(a => a.id === accountId)?.name || 'N/A';
 
-  const formatMonth = (month: number, year: number) => {
-    const date = new Date(year, month);
-    return date.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long' });
-  };
+  const formatMonth = (month: number, year: number) => formatMonthKo(month, year);
 
   const navigateMonth = (direction: 'prev' | 'next') => {
     if (direction === 'prev') {
@@ -176,7 +174,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
           onClick={() => navigateMonth('prev')}
           className="p-2 rounded-md hover:bg-slate-200 text-slate-600"
         >
-          ← Previous
+          ← {t('month.prev')}
         </button>
         <h2 className="mx-6 text-xl font-semibold text-slate-800">
           {formatMonth(currentMonth, currentYear)}
@@ -185,7 +183,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
           onClick={() => navigateMonth('next')}
           className="p-2 rounded-md hover:bg-slate-200 text-slate-600"
         >
-          Next →
+          {t('month.next')} →
         </button>
       </div>
 
@@ -193,24 +191,24 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-sm font-medium text-slate-600 mb-2">Total Income</h3>
+            <h3 className="text-sm font-medium text-slate-600 mb-2">{t('summary.income')}</h3>
             <p className="text-2xl font-bold text-green-600">{formatCurrency(monthlyIncomeTotal)}</p>
           </div>
           
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-sm font-medium text-slate-600 mb-2">Total Expenses</h3>
+            <h3 className="text-sm font-medium text-slate-600 mb-2">{t('summary.expense')}</h3>
             <p className="text-2xl font-bold text-red-600">{formatCurrency(monthlyExpenseTotal)}</p>
           </div>
           
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-sm font-medium text-slate-600 mb-2">Balance</h3>
+            <h3 className="text-sm font-medium text-slate-600 mb-2">{t('summary.balance')}</h3>
             <p className={`text-2xl font-bold ${monthlyBalance >= 0 ? 'text-slate-800' : 'text-red-600'}`}>
               {formatCurrency(monthlyBalance)}
             </p>
           </div>
 
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-sm font-medium text-slate-600 mb-2">Expense Breakdown</h3>
+            <h3 className="text-sm font-medium text-slate-600 mb-2">{t('summary.breakdown')}</h3>
             <div className="space-y-2">
               {monthlyExpenseByCategory.length > 0 ? (
                 monthlyExpenseByCategory.slice(0, 3).map((item, index) => (
@@ -230,14 +228,14 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
           {/* Add New Transaction - Compact */}
           <div className="bg-white rounded-lg shadow-md p-5 lg:col-span-2">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-semibold text-slate-800">Add Transaction</h3>
+              <h3 className="text-base font-semibold text-slate-800">{t('form.addTransaction')}</h3>
               <AIAssist data={data} />
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-3">
               {/* Type Selection */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Type</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">{t('form.type')}</label>
                 <div className="flex">
                   <button
                     type="button"
@@ -248,7 +246,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                         : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
                     }`}
                   >
-                    Income
+                    {t('form.income')}
                   </button>
                   <button
                     type="button"
@@ -259,20 +257,20 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                         : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
                     }`}
                   >
-                    Expense
+                    {t('form.expense')}
                   </button>
                 </div>
               </div>
 
               {/* Description */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Description</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">{t('form.description')}</label>
                 <input
                   type="text"
                   name="description"
                   value={formData.description}
                   onChange={handleFormChange}
-                  placeholder="e.g., Groceries, Salary"
+                  placeholder={t('form.description')}
                   className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                   required
                 />
@@ -280,7 +278,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
 
               {/* Amount */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Amount</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">{t('form.amount')}</label>
                 <input
                   type="number"
                   name="amount"
@@ -296,7 +294,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
               {/* Account & Category Row */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Account</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">{t('form.account')}</label>
                   <select
                     name="accountId"
                     value={formData.accountId}
@@ -304,7 +302,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                     className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                     required
                   >
-                    <option value="">Cash</option>
+                    <option value="">현금</option>
                     {accounts.map(account => (
                       <option key={account.id} value={account.id}>
                         {account.name}
@@ -313,7 +311,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Category</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">{t('form.category')}</label>
                   <select
                     name="category"
                     value={formData.category}
@@ -321,7 +319,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                     className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                     required
                   >
-                    <option value="">Food & Groceries</option>
+                    <option value="">식비</option>
                     {categories
                       .filter(cat => cat.type === transactionType)
                       .map(category => (
@@ -335,7 +333,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
 
               {/* Date */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Date</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">{t('form.date')}</label>
                 <input
                   type="date"
                   name="date"
@@ -383,9 +381,9 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                         <div className="flex justify-between items-center">
                           <span className="text-slate-600">월 납부금:</span>
                           <span className="font-bold text-indigo-600">
-                            {formData.amount ? 
-                              `$${(parseFloat(formData.amount) / formData.installmentMonths).toLocaleString()}` 
-                              : '$0'}
+                            {formData.amount
+                              ? formatCurrency(parseFloat(formData.amount) / Math.max(1, formData.installmentMonths))
+                              : formatCurrency(0)}
                           </span>
                         </div>
                         {!formData.isInterestFree && formData.amount && (
@@ -405,7 +403,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                   type="submit"
                   className="w-full bg-indigo-600 text-white py-3 px-4 rounded-md hover:bg-indigo-700 font-medium text-sm"
                 >
-                  Add Transaction
+                  {t('form.addTransaction')}
                 </button>
               </div>
             </form>
@@ -414,10 +412,10 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
           {/* Transaction History - Expanded */}
           <div className="bg-white rounded-lg shadow-md p-6 lg:col-span-3 flex flex-col">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-slate-800">Transaction History</h3>
+              <h3 className="text-lg font-semibold text-slate-800">{t('nav.transactions')}</h3>
               <input
                 type="text"
-                placeholder="Search transactions..."
+                placeholder={t('placeholder.search')}
                 className="px-3 py-1.5 text-sm border border-slate-300 rounded-md w-64"
               />
             </div>
@@ -458,7 +456,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                           {/* 정보 뱃지들을 2줄로 배치하여 가독성 향상 */}
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="text-xs px-2 py-1 bg-slate-200 text-slate-700 rounded-full font-medium">
-                              {transaction.date}
+                              {formatDateDisplay(transaction.date)}
                             </span>
                             <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full font-medium">
                               {transaction.category}
