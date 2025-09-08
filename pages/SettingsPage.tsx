@@ -176,42 +176,43 @@ const CategoryManager: React.FC<{ data: UseDataReturn }> = ({ data }) => {
     }
   };
 
-  const groupedCategories = categories.reduce((acc, category) => {
-    if (!category.parentId) {
-      acc[category.id] = {
-        parent: category,
-        children: categories.filter(c => c.parentId === category.id)
-      };
-    }
-    return acc;
-  }, {} as Record<string, { parent: Category, children: Category[] }>);
+  // 수입/지출별로 카테고리 그룹화
+  const incomeCategories = categories.filter(c => c.type === TransactionType.INCOME);
+  const expenseCategories = categories.filter(c => c.type === TransactionType.EXPENSE);
 
-  return (
-    <div className="bg-white rounded-xl shadow-md p-6">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold text-slate-700">카테고리 관리</h3>
-        <button 
-          onClick={handleAdd} 
-          className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
-        >
-          <PlusIcon />
-          <span className="ml-2">카테고리 추가</span>
-        </button>
-      </div>
+  const groupCategoriesByType = (cats: Category[]) => {
+    return cats.reduce((acc, category) => {
+      if (!category.parentId) {
+        acc[category.id] = {
+          parent: category,
+          children: cats.filter(c => c.parentId === category.id)
+        };
+      }
+      return acc;
+    }, {} as Record<string, { parent: Category, children: Category[] }>);
+  };
 
-      <div className="space-y-4">
+  const incomeGrouped = groupCategoriesByType(incomeCategories);
+  const expenseGrouped = groupCategoriesByType(expenseCategories);
+
+  const CategorySection: React.FC<{
+    title: string;
+    groupedCategories: Record<string, { parent: Category, children: Category[] }>;
+    bgColor: string;
+    textColor: string;
+  }> = ({ title, groupedCategories, bgColor, textColor }) => (
+    <div className="space-y-4">
+      <h4 className={`text-lg font-semibold ${textColor} border-b pb-2`}>{title}</h4>
+      <div className="space-y-3">
         {Object.values(groupedCategories).map(({ parent, children }) => (
-          <div key={parent.id} className="border rounded-lg p-4">
+          <div key={parent.id} className={`${bgColor} rounded-lg p-4 border-l-4`} style={{borderLeftColor: parent.color}}>
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center space-x-3">
                 <div 
                   className="w-4 h-4 rounded" 
                   style={{ backgroundColor: parent.color }}
                 />
-                <span className="font-medium">{parent.name}</span>
-                <span className="text-sm text-slate-500">
-                  ({parent.type === TransactionType.INCOME ? '수입' : '지출'})
-                </span>
+                <span className="font-semibold text-base">{parent.name}</span>
                 {!parent.isActive && (
                   <span className="text-xs bg-slate-200 text-slate-600 px-2 py-1 rounded">
                     비활성
@@ -274,6 +275,39 @@ const CategoryManager: React.FC<{ data: UseDataReturn }> = ({ data }) => {
             )}
           </div>
         ))}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="bg-white rounded-xl shadow-md p-6 h-full flex flex-col">
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-xl font-semibold text-slate-800">설정</h3>
+        <button 
+          onClick={handleAdd} 
+          className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+        >
+          <PlusIcon />
+          <span className="ml-2">카테고리 추가</span>
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto space-y-8">
+        {/* 수입 카테고리 섹션 */}
+        <CategorySection 
+          title="💰 수입 카테고리"
+          groupedCategories={incomeGrouped}
+          bgColor="bg-green-50"
+          textColor="text-green-800"
+        />
+
+        {/* 지출 카테고리 섹션 */}
+        <CategorySection 
+          title="💸 지출 카테고리"
+          groupedCategories={expenseGrouped}
+          bgColor="bg-red-50"
+          textColor="text-red-800"
+        />
       </div>
 
       <Modal 

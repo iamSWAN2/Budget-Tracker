@@ -30,6 +30,7 @@ export interface Transaction {
   category: string;
   accountId: string;
   installmentMonths?: number;
+  isInterestFree?: boolean; // 무이자 할부 여부
 }
 
 export interface Installment {

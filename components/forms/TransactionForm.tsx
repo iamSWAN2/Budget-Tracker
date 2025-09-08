@@ -19,21 +19,34 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     const [formData, setFormData] = useState({
         date: transaction?.date || new Date().toISOString().split('T')[0],
         description: transaction?.description || '',
-        amount: transaction?.amount || 0,
+        amount: transaction?.amount ? transaction.amount.toString() : '',
         type: transaction?.type || TransactionType.EXPENSE,
         category: transaction?.category || '',
         accountId: transaction?.accountId || (accounts[0]?.id || ''),
         installmentMonths: transaction?.installmentMonths || 1,
+        isInterestFree: transaction?.isInterestFree || false,
     });
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value, type } = e.target;
-        const isNumber = type === 'number';
+    // 할부 수수료 계산 함수 (실제 할부 수수료 방식으로 수정)
+    const calculateInstallmentInterest = (amount: number, months: number, isInterestFree: boolean) => {
+        if (isInterestFree || months === 1) return 0;
         
-        if (isNumber) {
-            // 빈 값이거나 NaN인 경우 0으로 설정
-            const numValue = value === '' ? 0 : parseFloat(value);
-            setFormData(prev => ({ ...prev, [name]: isNaN(numValue) ? 0 : numValue }));
+        // 실제 할부 수수료는 원금에 대한 일정 비율
+        const feeRate = months <= 5 ? 0.025 : 0.035; // 2-5개월: 2.5%, 6개월 이상: 3.5%
+        const totalFee = amount * feeRate;
+        return totalFee;
+    };
+
+    const amountValue = parseFloat(formData.amount) || 0;
+    const interestAmount = calculateInstallmentInterest(amountValue, formData.installmentMonths, formData.isInterestFree);
+    const totalWithInterest = amountValue + interestAmount;
+    const monthlyPayment = formData.installmentMonths > 1 ? totalWithInterest / formData.installmentMonths : amountValue;
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value, type, checked } = e.target as HTMLInputElement;
+        
+        if (type === 'checkbox') {
+            setFormData(prev => ({ ...prev, [name]: checked }));
         } else {
             setFormData(prev => ({ ...prev, [name]: value }));
         }
@@ -41,10 +54,15 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        const submitData = {
+            ...formData,
+            amount: parseFloat(formData.amount) || 0
+        };
+        
         if (transaction && 'id' in transaction) {
-            onSave({ ...formData, id: transaction.id });
+            onSave({ ...submitData, id: transaction.id });
         } else {
-            onSave(formData);
+            onSave(submitData);
         }
         onClose();
     };
@@ -166,19 +184,66 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 </select>
             </div>
              {formData.type === TransactionType.EXPENSE && (
-                <div>
-                    <label htmlFor="transaction-installments" className="block text-sm font-medium text-slate-700">할부 개월 (1: 일시불)</label>
-                    <input 
-                        id="transaction-installments" 
-                        type="number" 
-                        name="installmentMonths" 
-                        min="1" 
-                        step="1" 
-                        value={formData.installmentMonths} 
-                        onChange={handleChange} 
-                        autoComplete="off" 
-                        className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" 
-                    />
+                <div className="space-y-4">
+                    <div>
+                        <label htmlFor="transaction-installments" className="block text-sm font-medium text-slate-700">할부 개월 (1: 일시불)</label>
+                        <input 
+                            id="transaction-installments" 
+                            type="number" 
+                            name="installmentMonths" 
+                            min="1" 
+                            step="1" 
+                            value={formData.installmentMonths} 
+                            onChange={handleChange} 
+                            autoComplete="off" 
+                            className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" 
+                        />
+                    </div>
+                    
+                    {formData.installmentMonths > 1 && (
+                        <>
+                            <div className="flex items-center">
+                                <input 
+                                    id="transaction-interest-free"
+                                    type="checkbox" 
+                                    name="isInterestFree" 
+                                    checked={formData.isInterestFree}
+                                    onChange={handleChange} 
+                                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-slate-300 rounded"
+                                />
+                                <label htmlFor="transaction-interest-free" className="ml-2 block text-sm text-slate-700">
+                                    무이자 할부
+                                </label>
+                            </div>
+                            
+                            {/* 할부 정보 표시 */}
+                            <div className="bg-slate-50 p-4 rounded-md space-y-2">
+                                <h4 className="font-medium text-slate-700">할부 정보</h4>
+                                <div className="text-sm space-y-1">
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-600">원금:</span>
+                                        <span className="font-medium">${Math.round(amountValue).toLocaleString()}</span>
+                                    </div>
+                                    {!formData.isInterestFree && (
+                                        <>
+                                            <div className="flex justify-between">
+                                                <span className="text-slate-600">수수료 ({formData.installmentMonths <= 5 ? '2.5' : '3.5'}%):</span>
+                                                <span className="font-medium text-red-600">${Math.round(interestAmount).toLocaleString()}</span>
+                                            </div>
+                                            <div className="flex justify-between border-t pt-1">
+                                                <span className="text-slate-600">총 금액:</span>
+                                                <span className="font-semibold">${Math.round(totalWithInterest).toLocaleString()}</span>
+                                            </div>
+                                        </>
+                                    )}
+                                    <div className="flex justify-between border-t pt-1">
+                                        <span className="text-slate-700 font-medium">월 납부금:</span>
+                                        <span className="font-bold text-lg text-indigo-600">${Math.round(monthlyPayment).toLocaleString()}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </div>
             )}
             <div className="flex justify-end pt-4 space-x-2">
