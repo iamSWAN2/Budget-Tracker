@@ -107,7 +107,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
         </Card>
 
         {/* Transaction History */}
-        <Card title="거래 내역" className="lg:col-span-2 xl:col-span-2">
+        <Card title="거래 내역" className="lg:col-span-2 lg:col-start-1 lg:row-start-2 xl:col-span-2 xl:col-start-1 xl:row-start-2">
           <div className="flex justify-between items-center mb-4">
                   <div></div>
                   <div className="flex items-center space-x-2">
@@ -218,7 +218,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
         </Card>
 
         {/* Asset Distribution to the right of Transaction History */}
-        <Card title="Asset Distribution" className="lg:col-span-1 xl:col-span-1">
+        <Card title="Asset Distribution" className="lg:col-span-1 lg:col-start-3 lg:row-start-2 xl:col-span-1 xl:col-start-3 xl:row-start-2">
           <div className="h-full">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
