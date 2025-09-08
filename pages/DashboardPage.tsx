@@ -88,7 +88,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   
   return (
     <>
-      <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-3 gap-4 lg:gap-6">
         {/* Summary Cards */}
         <Card title="총 자산" className="lg:col-span-1">
           <div className="text-center">
@@ -107,7 +107,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
         </Card>
 
         {/* Transaction History */}
-        <Card title="거래 내역" className="xl:col-span-2">
+        <Card title="거래 내역" className="lg:col-span-2 xl:col-span-2">
           <div className="flex justify-between items-center mb-4">
                   <div></div>
                   <div className="flex items-center space-x-2">
@@ -216,6 +216,31 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
               </ResponsiveContainer>
           </div>
         </Card>
+
+        {/* Asset Distribution to the right of Transaction History */}
+        <Card title="Asset Distribution" className="lg:col-span-1 xl:col-span-1">
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={assetDistributionData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                  outerRadius={80}
+                  fill="#3b82f6"
+                  dataKey="value"
+                >
+                  {assetDistributionData.map((entry, index) => (
+                    <Cell key={`asset-cell-${index}`} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
         
         <Card title="Monthly Expense by Category" className="xl:col-span-2">
           <div className="h-64">
@@ -241,29 +266,6 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
           </div>
         </Card>
 
-        <Card title="Asset Distribution" className="xl:col-span-2">
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={assetDistributionData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                  outerRadius={80}
-                  fill="#3b82f6"
-                  dataKey="value"
-                >
-                  {assetDistributionData.map((entry, index) => (
-                    <Cell key={`asset-cell-${index}`} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
       </div>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingTransaction ? '거래 수정' : '거래 추가'}>
