@@ -7,11 +7,13 @@ import { SettingsPage } from './pages/SettingsPage';
 import { useData } from './hooks/useData';
 import { Page } from './types';
 import { I18nProvider, useI18n } from './i18n/I18nProvider';
+import { UISettingsProvider, useUISettings } from './ui/UISettingsProvider';
 
 function AppInner() {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const data = useData();
   const { t, lang, toggle } = useI18n();
+  const { density, toggleDensity } = useUISettings();
 
   const CurrentPageComponent = useMemo(() => {
     switch (currentPage) {
@@ -90,6 +92,14 @@ function AppInner() {
             >
               {lang === 'ko' ? '한국어' : 'EN'}
             </button>
+            {/* 보기 밀도 토글 */}
+            <button
+              onClick={toggleDensity}
+              className="px-3 py-1.5 rounded-md text-xs border border-slate-300 text-slate-700 hover:bg-slate-50"
+              aria-label="toggle-density"
+            >
+              밀도: {density === 'compact' ? '컴팩트' : '보통'}
+            </button>
           </nav>
         </div>
       </header>
@@ -124,7 +134,9 @@ function AppInner() {
 export default function App() {
   return (
     <I18nProvider>
-      <AppInner />
+      <UISettingsProvider>
+        <AppInner />
+      </UISettingsProvider>
     </I18nProvider>
   );
 }

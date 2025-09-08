@@ -12,6 +12,8 @@ import { useI18n } from '../i18n/I18nProvider';
 export const TransactionsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
     const { transactions, accounts, categories, addTransaction, updateTransaction, deleteTransaction } = data;
     const { t } = useI18n();
+    const { density } = useUISettings();
+    const rowY = density === 'compact' ? 'py-1.5' : 'py-2.5';
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
@@ -71,7 +73,7 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn }> = ({ data }) =>
             <div className="flex-1 overflow-y-auto" style={{maxHeight: 'calc(100vh - 200px)'}}>
               {transactions.length > 0 ? (
                 transactions.map((transaction) => (
-                  <div key={transaction.id} className="group flex items-center justify-between py-2.5 px-3 hover:bg-slate-50 transition-colors">
+                  <div key={transaction.id} className={`group flex items-center justify-between ${rowY} px-3 hover:bg-slate-50 transition-colors`}>
                     <div className="flex items-center justify-between w-full">
                       <div className="flex items-center gap-3 flex-1">
                         {/* Type Icon */}

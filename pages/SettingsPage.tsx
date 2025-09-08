@@ -3,6 +3,7 @@ import { UseDataReturn } from '../hooks/useData';
 import { Category, TransactionType } from '../types';
 import { Modal } from '../components/ui/Modal';
 import { EditIcon, DeleteIcon, PlusIcon } from '../components/icons/Icons';
+import { useUISettings } from '../ui/UISettingsProvider';
 
 const CategoryForm: React.FC<{
   category: Partial<Category> | null;
@@ -195,6 +196,9 @@ const CategoryManager: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   const incomeGrouped = groupCategoriesByType(incomeCategories);
   const expenseGrouped = groupCategoriesByType(expenseCategories);
 
+  const { density } = useUISettings();
+  const rowY = density === 'compact' ? 'py-1' : 'py-1.5';
+
   const CategorySection: React.FC<{
     title: string;
     groupedCategories: Record<string, { parent: Category, children: Category[] }>;
@@ -204,7 +208,7 @@ const CategoryManager: React.FC<{ data: UseDataReturn }> = ({ data }) => {
       <h4 className={`text-lg font-semibold ${textColor}`}>{title}</h4>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {Object.values(groupedCategories).map(({ parent, children }) => (
-          <div key={parent.id} className="relative rounded-md border p-3 pl-4">
+          <div key={parent.id} className={`relative rounded-md border ${density === 'compact' ? 'p-2 pl-3' : 'p-3 pl-4'}`}>
             <div className="absolute left-0 top-0 h-full w-[3px] rounded-l" style={{ backgroundColor: parent.color }} />
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
@@ -240,7 +244,7 @@ const CategoryManager: React.FC<{ data: UseDataReturn }> = ({ data }) => {
             {children.length > 0 && (
               <div className="mt-2 ml-4 divide-y divide-slate-200">
                 {children.map(child => (
-                  <div key={child.id} className="group flex items-center justify-between py-1.5">
+                  <div key={child.id} className={`group flex items-center justify-between ${rowY}`}>
                     <div className="flex items-center gap-2">
                       <div 
                         className="w-2.5 h-2.5 rounded" 
