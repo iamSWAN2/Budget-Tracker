@@ -116,9 +116,9 @@ export const useData = () => {
     }
   };
   
-  const addAccount = async (account: Omit<Account, 'id' | 'balance'>) => {
+  const addAccount = async (account: Omit<Account, 'id'>) => {
     try {
-        const newAccount = await apiAddAccount({ ...account, balance: 0 });
+        const newAccount = await apiAddAccount(account);
         setAccounts(prev => [...prev, newAccount]);
     } catch (err) {
         setError('Failed to add account.');

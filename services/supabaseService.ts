@@ -77,11 +77,23 @@ export const addTransaction = async (transaction: Omit<Transaction, 'id'>): Prom
     throw new Error(`Failed to add transaction: ${error.message}`);
   }
 
+  // Update account balance after adding transaction
+  await updateAccountBalance(transaction.accountId);
+
   return mapDbTransaction(data);
 };
 
 export const updateTransaction = async (transaction: Transaction): Promise<Transaction> => {
   console.log("Supabase: Updating transaction", transaction);
+  
+  // Get the old transaction to check if account changed
+  const { data: oldTransaction } = await supabase
+    .from('transactions')
+    .select('account_id')
+    .eq('id', transaction.id)
+    .single();
+  
+  const oldAccountId = oldTransaction?.account_id;
   
   const dbTransaction = {
     date: transaction.date,
@@ -105,11 +117,26 @@ export const updateTransaction = async (transaction: Transaction): Promise<Trans
     throw new Error(`Failed to update transaction: ${error.message}`);
   }
 
+  // Update balance for the new account
+  await updateAccountBalance(transaction.accountId);
+  
+  // If account changed, also update the old account balance
+  if (oldAccountId && oldAccountId !== transaction.accountId) {
+    await updateAccountBalance(oldAccountId);
+  }
+
   return mapDbTransaction(data);
 };
 
 export const deleteTransaction = async (id: string): Promise<void> => {
   console.log("Supabase: Deleting transaction", id);
+  
+  // Get the transaction to find which account to update
+  const { data: transactionToDelete } = await supabase
+    .from('transactions')
+    .select('account_id')
+    .eq('id', id)
+    .single();
   
   const { error } = await supabase
     .from('transactions')
@@ -119,6 +146,11 @@ export const deleteTransaction = async (id: string): Promise<void> => {
   if (error) {
     console.error('Error deleting transaction:', error);
     throw new Error(`Failed to delete transaction: ${error.message}`);
+  }
+
+  // Update account balance after deleting transaction
+  if (transactionToDelete?.account_id) {
+    await updateAccountBalance(transactionToDelete.account_id);
   }
 };
 
@@ -142,7 +174,12 @@ export const addAccount = async (account: Omit<Account, 'id'>): Promise<Account>
     throw new Error(`Failed to add account: ${error.message}`);
   }
 
-  return mapDbAccount(data);
+  const newAccount = mapDbAccount(data);
+  
+  // Store the initial balance for this account
+  accountInitialBalances.set(newAccount.id, newAccount.balance);
+
+  return newAccount;
 };
 
 export const updateAccount = async (account: Account): Promise<Account> => {
@@ -199,19 +236,50 @@ export const deleteAccount = async (id: string): Promise<void> => {
   }
 };
 
-// Utility function to calculate account balance based on transactions
-export const calculateAccountBalance = async (accountId: string): Promise<number> => {
-  const { data, error } = await supabase
+// Add a special flag to track if this is initial balance calculation
+let accountInitialBalances = new Map<string, number>();
+
+// Utility function to get account's original initial balance
+export const getAccountInitialBalance = async (accountId: string): Promise<number> => {
+  if (accountInitialBalances.has(accountId)) {
+    return accountInitialBalances.get(accountId)!;
+  }
+  
+  // Get the account creation data
+  const { data: accountData, error } = await supabase
+    .from('accounts')
+    .select('balance')
+    .eq('id', accountId)
+    .single();
+
+  if (error) {
+    console.error('Error getting initial balance:', error);
+    return 0;
+  }
+
+  const initialBalance = parseFloat(accountData.balance) || 0;
+  accountInitialBalances.set(accountId, initialBalance);
+  return initialBalance;
+};
+
+// Utility function to recalculate account balance from initial + transactions
+export const recalculateAccountBalance = async (accountId: string): Promise<number> => {
+  // Get the account's initial balance (set when account was created)
+  const initialBalance = await getAccountInitialBalance(accountId);
+  
+  // Get all transactions for this account
+  const { data: transactions, error: transactionsError } = await supabase
     .from('transactions')
     .select('amount, type')
     .eq('account_id', accountId);
 
-  if (error) {
-    console.error('Error calculating balance:', error);
-    return 0;
+  if (transactionsError) {
+    console.error('Error calculating balance:', transactionsError);
+    return initialBalance;
   }
 
-  const balance = data.reduce((sum: number, transaction: any) => {
+  // Calculate transaction total
+  const transactionTotal = transactions.reduce((sum: number, transaction: any) => {
     switch (transaction.type) {
       case TransactionType.INCOME:
         return sum + parseFloat(transaction.amount);
@@ -226,12 +294,12 @@ export const calculateAccountBalance = async (accountId: string): Promise<number
     }
   }, 0);
 
-  return balance;
+  return initialBalance + transactionTotal;
 };
 
 // Function to update account balance
 export const updateAccountBalance = async (accountId: string): Promise<void> => {
-  const balance = await calculateAccountBalance(accountId);
+  const balance = await recalculateAccountBalance(accountId);
   
   const { error } = await supabase
     .from('accounts')

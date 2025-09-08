@@ -125,12 +125,27 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn }> = ({ data }) =>
                 <h3 className="text-lg font-semibold text-slate-700">Transaction History</h3>
                 <div className="flex items-center space-x-2">
                   <AIAssist data={data} />
-                  <button onClick={handleAdd} className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 shadow">
+                  <button 
+                    onClick={handleAdd} 
+                    disabled={accounts.length === 0}
+                    className={`flex items-center px-4 py-2 rounded-md shadow ${
+                      accounts.length === 0 
+                        ? 'bg-slate-300 text-slate-500 cursor-not-allowed' 
+                        : 'bg-primary-600 text-white hover:bg-primary-700'
+                    }`}
+                  >
                       <PlusIcon />
                       <span className="ml-2">Add Transaction</span>
                   </button>
                 </div>
             </div>
+            
+            {accounts.length === 0 && (
+              <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                <p className="text-yellow-800">거래를 추가하려면 먼저 계좌를 생성해주세요.</p>
+              </div>
+            )}
+            
             <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left text-slate-500">
                     <thead className="text-xs text-slate-700 uppercase bg-slate-50">
