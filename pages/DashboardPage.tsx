@@ -107,7 +107,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
         </Card>
 
         {/* Transaction History */}
-        <Card title="거래 내역" className="lg:col-span-2 lg:col-start-1 lg:row-start-2 xl:col-span-2 xl:col-start-1 xl:row-start-2 lg:min-h-[60vh]">
+        <Card title="거래 내역" className="lg:col-span-2 lg:col-start-1 lg:row-start-2 xl:col-span-2 xl:col-start-1 xl:row-start-2">
           <div className="flex justify-between items-center mb-4">
                   <div></div>
                   <div className="flex items-center space-x-2">
@@ -119,7 +119,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                   </div>
               </div>
               {/* Desktop Table View */}
-              <div className="hidden md:block overflow-auto h-full">
+              <div className="hidden md:block overflow-x-auto max-h-80">
                 <table className="w-full text-sm text-left text-slate-500">
                   <thead className="text-xs text-slate-700 uppercase bg-slate-50 sticky top-0">
                     <tr>
@@ -155,7 +155,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
               </div>
               
               {/* Mobile Card View */}
-              <div className="md:hidden h-full overflow-y-auto space-y-3">
+              <div className="md:hidden max-h-80 overflow-y-auto space-y-3">
                 {transactions.map((t: Transaction) => (
                   <div key={t.id} className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
                     <div className="flex justify-between items-start mb-2">
