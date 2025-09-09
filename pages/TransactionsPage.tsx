@@ -13,6 +13,7 @@ import { formatDateDisplay } from '../utils/format';
 import { useI18n } from '../i18n/I18nProvider';
 import { useUISettings } from '../ui/UISettingsProvider';
 import { TransactionItem } from '../components/transactions/TransactionItem';
+import { TransactionsList } from '../components/transactions/TransactionsList';
 
 export const TransactionsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
     const { transactions, accounts, categories, addTransaction, updateTransaction, deleteTransaction } = data;
@@ -85,19 +86,14 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn }> = ({ data }) =>
             <div className="flex-1 overflow-y-auto min-h-0">
               <div className="space-y-2">
                 {transactions.length > 0 ? (
-                  transactions.map((transaction) => (
-                    <TransactionItem
-                      key={transaction.id}
-                      transaction={transaction}
-                      accountName={getAccountName(transaction.accountId)}
-                      categoryLabel={getCategoryPath(transaction.category)}
-                      onDelete={handleDelete}
-                      onDeleteDirect={deleteTransaction}
-                      onUpdate={updateTransaction}
-                      accounts={accounts}
-                      categories={categories}
-                    />
-                  ))
+                  <TransactionsList
+                    transactions={transactions}
+                    accounts={accounts}
+                    categories={categories}
+                    onUpdate={updateTransaction}
+                    onDelete={handleDelete}
+                    onDeleteDirect={deleteTransaction}
+                  />
                 ) : (
                   <div className="text-center py-16">
                     <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-100 flex items-center justify-center">

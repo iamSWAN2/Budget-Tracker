@@ -8,6 +8,7 @@ import { AddTransactionFormInline } from '../components/forms/AddTransactionForm
 import { formatCurrency, formatDateDisplay, formatMonthKo } from '../utils/format';
 import { useI18n } from '../i18n/I18nProvider';
 import { TransactionItem } from '../components/transactions/TransactionItem';
+import { TransactionsList } from '../components/transactions/TransactionsList';
 import { PlusIcon } from '../components/icons/Icons';
 
 export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
@@ -289,19 +290,14 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
             
             <div className="space-y-2 flex-1 min-h-0 overflow-visible lg:overflow-y-auto lg:max-h-[50vh] touch-pan-y">
               {recentTransactions.length > 0 ? (
-                recentTransactions.map((transaction) => (
-                  <TransactionItem
-                    key={transaction.id}
-                    transaction={transaction}
-                    accountName={getAccountName(transaction.accountId)}
-                    categoryLabel={getCategoryPath(transaction.category)}
-                    onDelete={handleDelete}
-                    onDeleteDirect={deleteTransaction}
-                    onUpdate={updateTransaction}
-                    accounts={accounts}
-                    categories={categories}
-                  />
-                ))
+                <TransactionsList
+                  transactions={recentTransactions}
+                  accounts={accounts}
+                  categories={categories}
+                  onUpdate={updateTransaction}
+                  onDelete={handleDelete}
+                  onDeleteDirect={deleteTransaction}
+                />
               ) : (
                 <div className="text-center py-8">
                   <div className="w-8 h-8 mx-auto mb-2 rounded-full bg-slate-100 flex items-center justify-center">
