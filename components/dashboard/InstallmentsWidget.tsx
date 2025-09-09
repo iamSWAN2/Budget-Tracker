@@ -49,10 +49,23 @@ export const InstallmentsWidget: React.FC<Props> = ({ installments, viewMode, cu
 
   const total = useMemo(() => due.reduce((sum, i) => sum + (i.monthlyPayment || 0), 0), [due]);
 
+  const periodLabel = useMemo(() => {
+    if (viewMode === 'month') {
+      return `${currentYear}년 ${currentMonth + 1}월`;
+    }
+    const m = start.getMonth() + 1;
+    const s = start.getDate();
+    const e = end.getDate();
+    return `${m}월 ${s}–${e}일`;
+  }, [viewMode, start, end, currentMonth, currentYear]);
+
   return (
     <div className="bg-white rounded-lg shadow-md p-3 md:p-4">
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-xs font-medium text-slate-600">{viewMode === 'week' ? '이번 주 할부 납부' : '이번 달 할부 납부'}</h3>
+        <div className="flex items-baseline gap-2">
+          <h3 className="text-xs font-medium text-slate-600">{viewMode === 'week' ? '이번 주 할부 납부' : '이번 달 할부 납부'}</h3>
+          <span className="text-[11px] text-slate-500">{periodLabel}</span>
+        </div>
         <div className="text-xs text-slate-500">{due.length}건</div>
       </div>
       <div className="flex items-end justify-between">
@@ -62,13 +75,20 @@ export const InstallmentsWidget: React.FC<Props> = ({ installments, viewMode, cu
       <div className="mt-3 space-y-2 max-h-40 overflow-auto">
         {due.length > 0 ? (
           due.map(item => (
-            <div key={item.id} className="flex items-center justify-between text-xs border rounded-md px-2 py-1.5">
+            <button
+              key={item.id}
+              className="w-full flex items-center justify-between text-left text-xs border rounded-md px-2 py-1.5 hover:bg-slate-50"
+              onClick={() => {
+                // 거래 탭으로 드릴스루(간단 네비게이션 이벤트)
+                window.dispatchEvent(new CustomEvent('app:navigate', { detail: { page: 'transactions' } }));
+              }}
+            >
               <div className="truncate pr-2 text-slate-700">{item.description}</div>
               <div className="flex items-center gap-2 flex-shrink-0 text-slate-600">
                 <span className="font-medium text-slate-800">{formatCurrency(item.monthlyPayment)}</span>
                 <span className="text-[11px]">잔여 {item.remainingMonths}개월</span>
               </div>
-            </div>
+            </button>
           ))
         ) : (
           <div className="text-xs text-slate-400">해당 기간에 납부할 할부가 없습니다.</div>
@@ -79,4 +99,3 @@ export const InstallmentsWidget: React.FC<Props> = ({ installments, viewMode, cu
 };
 
 export default InstallmentsWidget;
-

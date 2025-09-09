@@ -15,6 +15,16 @@ function AppInner() {
   const { t, lang, toggle } = useI18n();
   const { density, toggleDensity } = useUISettings();
 
+  React.useEffect(() => {
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent;
+      const page = ce.detail?.page as Page | undefined;
+      if (page) setCurrentPage(page);
+    };
+    window.addEventListener('app:navigate', handler as EventListener);
+    return () => window.removeEventListener('app:navigate', handler as EventListener);
+  }, []);
+
   const CurrentPageComponent = useMemo(() => {
     switch (currentPage) {
       case 'dashboard':
