@@ -31,9 +31,9 @@ function AppInner() {
   }, [currentPage, data]);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="h-screen bg-slate-50 flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200">
+      <header className="bg-white border-b border-slate-200 flex-shrink-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="text-center">
             <h1 className="text-3xl font-bold text-indigo-600 mb-2">Household Ledger</h1>
@@ -88,25 +88,22 @@ function AppInner() {
         </div>
       </header>
 
-      {/* Main Content - Full Viewport Optimization */}
-      <main 
-        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6" 
-        style={{minHeight: 'calc(100vh - 180px)'}}
-      >
+      {/* Main Content */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 overflow-hidden">
         {data.isLoading ? (
-          <div className="flex justify-center items-center" style={{height: 'calc(100vh - 300px)'}}>
+          <div className="flex justify-center items-center h-full">
             <div className="text-lg text-slate-600 text-center">
               {t('loading')}
             </div>
           </div>
         ) : data.error ? (
-          <div className="flex justify-center items-center" style={{height: 'calc(100vh - 300px)'}}>
+          <div className="flex justify-center items-center h-full">
             <div className="text-lg text-red-500 bg-red-100 p-4 rounded-lg max-w-md">
               {t('error')}
             </div>
           </div>
         ) : (
-          <div style={{height: 'calc(100vh - 220px)'}}>
+          <div className="h-full">
             {CurrentPageComponent}
           </div>
         )}

@@ -49,9 +49,10 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
         setCsvData({ headers, rows });
         setParsedColumns(columns);
         
-        // 자동 매핑 시도
+        // 자동 매핑 시도 (신뢰도 기반)
         const autoMapping: ColumnMapping = {};
         columns.forEach((col, index) => {
+          // 높은 신뢰도(0.7+) 필드들은 자동 매핑
           if (col.confidence > 0.7) {
             switch (col.detectedType) {
               case 'date':
@@ -65,6 +66,29 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                 break;
               case 'type':
                 if (!autoMapping.type) autoMapping.type = index;
+                break;
+              case 'reference':
+                if (!autoMapping.reference) autoMapping.reference = index;
+                break;
+              case 'category':
+                if (!autoMapping.category) autoMapping.category = index;
+                break;
+              case 'balance':
+                if (!autoMapping.balance) autoMapping.balance = index;
+                break;
+            }
+          }
+          // 중간 신뢰도(0.5+) 필드들도 참고용으로 매핑
+          else if (col.confidence > 0.5) {
+            switch (col.detectedType) {
+              case 'reference':
+                if (!autoMapping.reference) autoMapping.reference = index;
+                break;
+              case 'category':
+                if (!autoMapping.category) autoMapping.category = index;
+                break;
+              case 'balance':
+                if (!autoMapping.balance) autoMapping.balance = index;
                 break;
             }
           }
@@ -307,32 +331,55 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
             <h3 className="text-lg font-medium text-slate-900 mb-4">열 매핑 설정</h3>
             <p className="text-slate-600 mb-4">각 CSV 열이 무엇을 나타내는지 확인하거나 수정해주세요.</p>
             
-            <div className="space-y-4 mb-6">
+            <div className="space-y-3 mb-6">
               {[
-                { key: 'date', label: '날짜', required: true },
-                { key: 'description', label: '설명', required: true },
-                { key: 'amount', label: '금액', required: true },
-                { key: 'type', label: '거래 유형', required: false }
-              ].map(({ key, label, required }) => (
-                <div key={key} className="flex items-center space-x-4">
-                  <label className="w-20 text-sm font-medium text-slate-700">
-                    {label} {required && <span className="text-red-500">*</span>}
-                  </label>
-                  <select
-                    value={columnMapping[key as keyof ColumnMapping] ?? ''}
-                    onChange={(e) => setColumnMapping(prev => ({
-                      ...prev,
-                      [key]: e.target.value ? parseInt(e.target.value) : undefined
-                    }))}
-                    className="flex-1 rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                  >
-                    <option value="">선택되지 않음</option>
-                    {parsedColumns.map((col, index) => (
-                      <option key={index} value={index}>
-                        {col.name} ({col.detectedType}, confidence: {(col.confidence * 100).toFixed(0)}%)
-                      </option>
-                    ))}
-                  </select>
+                { key: 'date', label: '날짜', required: true, description: '거래 발생 일자' },
+                { key: 'description', label: '설명', required: true, description: '거래 내역 또는 가맹점명' },
+                { key: 'amount', label: '금액', required: true, description: '거래 금액 (양수/음수 구분)' },
+                { key: 'type', label: '거래 유형', required: false, description: '입금/출금/이체 구분' },
+                { key: 'reference', label: '참조번호', required: false, description: '거래 고유번호 또는 승인번호' },
+                { key: 'category', label: '카테고리', required: false, description: '거래 카테고리 (자동 분류용)' },
+                { key: 'balance', label: '잔액', required: false, description: '거래 후 계좌 잔액' }
+              ].map(({ key, label, required, description }) => (
+                <div key={key} className={`rounded-lg border p-4 ${
+                  required 
+                    ? 'border-red-200 bg-red-50/30' 
+                    : 'border-slate-200 bg-slate-50/30'
+                }`}>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
+                    <div className="space-y-1">
+                      <label className="block text-sm font-semibold text-slate-700">
+                        {required ? '🔴' : '🔵'} {label}
+                        {required && <span className="text-red-500 ml-1">*</span>}
+                      </label>
+                      <p className="text-xs text-slate-500 leading-tight">{description}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <select
+                        value={columnMapping[key as keyof ColumnMapping] ?? ''}
+                        onChange={(e) => setColumnMapping(prev => ({
+                          ...prev,
+                          [key]: e.target.value ? parseInt(e.target.value) : undefined
+                        }))}
+                        className="w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                      >
+                        <option value="">{required ? '⚠️ 필수 선택' : '📋 선택 안함'}</option>
+                        {parsedColumns.map((col, index) => (
+                          <option key={index} value={index}>
+                            📊 {col.name} ({col.detectedType}, 신뢰도: {(col.confidence * 100).toFixed(0)}%)
+                          </option>
+                        ))}
+                      </select>
+                      {columnMapping[key as keyof ColumnMapping] !== undefined && (
+                        <div className="mt-2 p-2 bg-white rounded border text-xs">
+                          <span className="font-semibold text-green-700">✅ 매핑된 값:</span>
+                          <span className="ml-2 text-slate-700 font-mono">
+                            "{csvData?.rows[0]?.[columnMapping[key as keyof ColumnMapping]!] || 'N/A'}"
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>

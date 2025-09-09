@@ -6,12 +6,16 @@ export interface ColumnMapping {
   amount?: number;
   type?: number;
   account?: number;
+  // 신규 HIGH 우선순위 필드들
+  reference?: number;    // 참조번호 - 중복 방지
+  category?: number;     // 카테고리 - 자동 분류
+  balance?: number;      // 잔액 - 거래 후 잔액
 }
 
 export interface ParsedColumn {
   index: number;
   name: string;
-  detectedType: 'date' | 'amount' | 'description' | 'type' | 'account' | 'unknown';
+  detectedType: 'date' | 'amount' | 'description' | 'type' | 'account' | 'reference' | 'category' | 'balance' | 'unknown';
   confidence: number;
   samples: string[];
 }
@@ -35,6 +39,22 @@ const PATTERNS = {
     /수입|입금|입력|충전/,
     /expense|debit|withdrawal/i,
     /income|credit|deposit/i
+  ],
+  // 신규 패턴들
+  reference: [
+    /^\d{10,}$/,                      // 10자리 이상 숫자 (거래번호)
+    /^[A-Z]\d{8,}$/,                  // 영문+숫자 조합
+    /승인|approval|ref|transaction/i  // 승인번호 키워드
+  ],
+  category: [
+    /식당|음식|카페|coffee/i,          // 식비 관련
+    /마트|마켓|편의점|convenience/i,   // 쇼핑 관련
+    /교통|버스|지하철|택시|transport/i, // 교통비 관련
+    /의료|병원|약국|medical/i          // 의료비 관련
+  ],
+  balance: [
+    /잔액|balance|남은|remain/i,       // 잔액 키워드
+    /^[\d,]+$/                        // 순수 숫자 (금액과 유사하지만 맥락으로 구분)
   ]
 };
 
@@ -44,7 +64,11 @@ const HEADER_KEYWORDS = {
   amount: ['금액', 'amount', '거래금액', '금액', 'transaction_amount', '출금', '입금'],
   description: ['내용', 'description', '거래내용', '상세', 'detail', 'memo', '적요'],
   type: ['거래유형', 'type', '거래구분', '타입', 'transaction_type', '구분'],
-  account: ['계좌', 'account', '카드', 'card', '은행', 'bank', '계좌명', 'account_name']
+  account: ['계좌', 'account', '카드', 'card', '은행', 'bank', '계좌명', 'account_name'],
+  // 신규 헤더 키워드들
+  reference: ['참조번호', 'reference', '거래번호', '승인번호', 'transaction_id', 'approval', 'ref_no'],
+  category: ['카테고리', 'category', '분류', '업종', '가맹점', 'merchant', 'business_type'],
+  balance: ['잔액', 'balance', '잔고', '현재잔액', 'current_balance', 'remaining']
 };
 
 export class LocalCsvParser {
@@ -103,7 +127,7 @@ export class LocalCsvParser {
   }
 
   // 컬럼 타입 감지
-  static detectColumnType(header: string, samples: string[]): 'date' | 'amount' | 'description' | 'type' | 'account' | 'unknown' {
+  static detectColumnType(header: string, samples: string[]): 'date' | 'amount' | 'description' | 'type' | 'account' | 'reference' | 'category' | 'balance' | 'unknown' {
     const headerLower = header.toLowerCase();
     
     // 헤더명으로 먼저 판단
@@ -129,6 +153,22 @@ export class LocalCsvParser {
     // 거래유형 패턴 체크
     if (PATTERNS.type.some(pattern => samples.some(sample => pattern.test(sample)))) {
       return 'type';
+    }
+
+    // 참조번호 패턴 체크
+    if (PATTERNS.reference.some(pattern => samples.some(sample => pattern.test(sample)))) {
+      return 'reference';
+    }
+
+    // 카테고리 패턴 체크
+    if (PATTERNS.category.some(pattern => samples.some(sample => pattern.test(sample)))) {
+      return 'category';
+    }
+
+    // 잔액 패턴 체크 (금액과 구분하기 위해 헤더명 우선 고려)
+    if (PATTERNS.balance.some(pattern => samples.some(sample => pattern.test(sample))) &&
+        HEADER_KEYWORDS.balance.some(keyword => header.toLowerCase().includes(keyword.toLowerCase()))) {
+      return 'balance';
     }
 
     // 계좌/카드 패턴 체크 (일반적으로 은행명/카드사명 포함)
