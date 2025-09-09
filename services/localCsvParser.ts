@@ -279,11 +279,12 @@ export class LocalCsvParser {
             this.normalizeType(row[mapping.type] || 'expense') : 
             TransactionType.EXPENSE;
 
+          const aiType: AITransaction['type'] = type === TransactionType.EXPENSE ? 'EXPENSE' : 'INCOME';
           return {
             date,
             description: description.trim(),
             amount,
-            type: type === TransactionType.EXPENSE ? 'EXPENSE' : 'INCOME'
+            type: aiType,
           };
         } catch (error) {
           console.warn(`Row ${index + 1} parsing error:`, error);

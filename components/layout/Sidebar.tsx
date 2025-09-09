@@ -11,7 +11,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isOpen = true, onClose }) => {
-  const navItems: { id: Page; label: string; icon: JSX.Element }[] = [
+  const navItems: { id: Page; label: string; icon: React.ReactNode }[] = [
     { id: 'dashboard', label: '대시보드', icon: <DashboardIcon /> },
     { id: 'accounts', label: '계좌 관리', icon: <AccountsIcon /> },
     { id: 'transactions', label: '거래 내역', icon: <TransactionsIcon /> },
