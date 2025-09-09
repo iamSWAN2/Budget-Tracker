@@ -11,6 +11,11 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   const { accounts, transactions, categories, addTransaction, updateTransaction, deleteTransaction } = data;
   const { t } = useI18n();
   const [transactionType, setTransactionType] = useState<TransactionType>(TransactionType.EXPENSE);
+  
+  // Debug transactionType changes
+  React.useEffect(() => {
+    console.log('TransactionType changed to:', transactionType);
+  }, [transactionType]);
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   
@@ -245,9 +250,9 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">{t('form.type')}</label>
                   <div className="inline-flex rounded-md overflow-hidden border border-slate-300">
-                    <button type="button" onClick={() => setTransactionType(TransactionType.INCOME)} className={`px-3 py-1.5 text-xs ${transactionType === TransactionType.INCOME ? 'bg-green-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}>{t('form.income')}</button>
-                    <button type="button" onClick={() => setTransactionType(TransactionType.EXPENSE)} className={`px-3 py-1.5 text-xs border-l ${transactionType === TransactionType.EXPENSE ? 'bg-red-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}>{t('form.expense')}</button>
-                    <button type="button" onClick={() => setTransactionType(TransactionType.TRANSFER)} className={`px-3 py-1.5 text-xs border-l ${transactionType === TransactionType.TRANSFER ? 'bg-slate-700 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}>이체</button>
+                    <button type="button" onClick={() => setTransactionType(TransactionType.INCOME)} className={`px-3 py-1.5 text-xs ${transactionType === TransactionType.INCOME ? 'bg-green-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300'}`}>{t('form.income')}</button>
+                    <button type="button" onClick={() => setTransactionType(TransactionType.EXPENSE)} className={`px-3 py-1.5 text-xs border-l ${transactionType === TransactionType.EXPENSE ? 'bg-red-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300'}`}>{t('form.expense')}</button>
+                    <button type="button" onClick={() => setTransactionType(TransactionType.TRANSFER)} className={`px-3 py-1.5 text-xs border-l ${transactionType === TransactionType.TRANSFER ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300'}`}>기타</button>
                   </div>
                 </div>
                 <div>
@@ -270,20 +275,6 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                 />
               </div>
 
-              {/* Row 3: Amount (left) + Installments (right when expense) */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">{t('form.amount')}</label>
-                  <input type="number" name="amount" value={formData.amount} onChange={handleFormChange} placeholder="0" step="1" className="w-full px-2.5 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" required />
-                </div>
-                {transactionType === TransactionType.EXPENSE && (
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">할부 개월</label>
-                    <input type="number" name="installmentMonths" min="1" step="1" value={formData.installmentMonths} onChange={handleFormChange} className="w-full px-2.5 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" />
-                  </div>
-                )}
-              </div>
-
               {/* Account & Category Row */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -295,10 +286,10 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                     className="w-full px-2.5 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                     required
                   >
-                    <option value="">현금</option>
+                    <option value="" disabled>계좌를 선택하세요</option>
                     {accounts.map(account => (
                       <option key={account.id} value={account.id}>
-                        {account.name}
+                        {account.name} ({account.propensity})
                       </option>
                     ))}
                   </select>
@@ -312,9 +303,17 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                     className="w-full px-2.5 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                     required
                   >
+                    <option value="" disabled>카테고리 선택</option>
                     {(() => {
                       const typeFiltered = categories.filter(c => c.type === transactionType && c.isActive);
+                      console.log('Transaction Type:', transactionType, 'Filtered Categories:', typeFiltered);
                       const parents = typeFiltered.filter(c => !c.parentId);
+                      console.log('Parent Categories:', parents);
+                      
+                      if (parents.length === 0) {
+                        return [<option key="no-categories" value="" disabled>해당 유형의 카테고리가 없습니다</option>];
+                      }
+                      
                       const byParent = parents.reduce((acc, parent) => {
                         const children = typeFiltered.filter(sc => sc.parentId === parent.id);
                         acc.push(
@@ -326,67 +325,111 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                           </optgroup>
                         );
                         return acc;
-                      }, [] as JSX.Element[]);
-                      return byParent.length > 0 ? byParent : [<option key="loading" value="" disabled>카테고리 로딩 중...</option>];
+                      }, [] as React.ReactElement[]);
+                      return byParent;
                     })()}
                   </select>
                 </div>
               </div>
 
-              {/* 기존 할부 상세 박스는 유지 */}
-
-              {/* Installment Fields - Only for Expense */}
-              {transactionType === TransactionType.EXPENSE && (
-                <div className="space-y-2">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">할부 개월</label>
-                    <input
-                      type="number"
-                      name="installmentMonths"
-                      min="1"
-                      step="1"
-                      value={formData.installmentMonths}
-                      onChange={handleFormChange}
-                      className="w-full px-2.5 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                    />
-                  </div>
+              {/* Row 3: Amount (left) + Installments + Interest Free (right when expense) */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">{t('form.amount')}</label>
+                  <input type="number" name="amount" value={formData.amount} onChange={handleFormChange} placeholder="0" step="1" className="w-full px-2.5 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" required />
+                </div>
+                
+                {/* Installment Months + Interest Free Checkbox in same row - Only for Expense */}
+                {transactionType === TransactionType.EXPENSE && (() => {
+                  // 선택된 계좌의 정보 찾기
+                  const selectedAccount = accounts.find(acc => acc.id === formData.accountId);
+                  const isCreditCard = selectedAccount?.propensity === 'Credit Card';
+                  const isInstallmentAvailable = isCreditCard;
                   
-                  {formData.installmentMonths > 1 && (
-                    <>
-                      <div className="flex items-center">
-                        <input 
-                          id="dashboard-interest-free"
-                          type="checkbox" 
-                          name="isInterestFree" 
-                          checked={formData.isInterestFree}
-                          onChange={handleFormChange} 
-                          className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded"
-                        />
-                        <label htmlFor="dashboard-interest-free" className="ml-2 block text-sm text-slate-700">
-                          무이자 할부
+                  return (
+                    <div className="flex items-end gap-3">
+                      <div className={formData.installmentMonths > 1 && isInstallmentAvailable ? "flex-shrink-0 w-20" : "flex-1"}>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">
+                          할부 개월
+                          {!isInstallmentAvailable && formData.accountId && (
+                            <span className="text-xs text-slate-400 ml-1">(신용카드만)</span>
+                          )}
                         </label>
+                        <input
+                          type="number"
+                          name="installmentMonths"
+                          min="1"
+                          step="1"
+                          value={isInstallmentAvailable ? formData.installmentMonths : 1}
+                          onChange={handleFormChange}
+                          disabled={!isInstallmentAvailable}
+                          className={`w-full px-2.5 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 ${
+                            !isInstallmentAvailable ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : ''
+                          }`}
+                        />
                       </div>
-                      
-                      {/* Quick Installment Info */}
-                      <div className="bg-slate-50 p-3 rounded-md text-xs">
-                        <div className="flex justify-between items-center">
-                          <span className="text-slate-600">월 납부금:</span>
-                          <span className="font-bold text-indigo-600">
-                            {formData.amount
-                              ? formatCurrency(parseFloat(formData.amount) / Math.max(1, formData.installmentMonths))
-                              : formatCurrency(0)}
-                          </span>
+                      {/* Interest Free Checkbox - Only when installments > 1 and credit card */}
+                      {formData.installmentMonths > 1 && isInstallmentAvailable && (
+                        <div className="flex-1">
+                          <label className="block text-xs font-medium text-slate-700 mb-1">무이자 할부</label>
+                          <div className="flex items-center h-[34px]">
+                            <input 
+                              id="dashboard-interest-free"
+                              type="checkbox" 
+                              name="isInterestFree" 
+                              checked={formData.isInterestFree}
+                              onChange={handleFormChange} 
+                              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded"
+                            />
+                          </div>
                         </div>
-                        {!formData.isInterestFree && formData.amount && (
-                          <div className="text-xs text-red-600 mt-1">
-                            수수료: {formData.installmentMonths <= 5 ? '16.5' : '19.5'}% 연리
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+              
+              {/* Installment Info Row - Only when expense with installments > 1 and credit card */}
+              {transactionType === TransactionType.EXPENSE && formData.installmentMonths > 1 && (() => {
+                const selectedAccount = accounts.find(acc => acc.id === formData.accountId);
+                const isCreditCard = selectedAccount?.propensity === 'Credit Card';
+                return isCreditCard;
+              })() && (
+                <div className="bg-slate-50 p-3 rounded-md space-y-2">
+                  <h4 className="text-xs font-semibold text-slate-700 mb-2">할부 정보</h4>
+                  {(() => {
+                    const amountValue = parseFloat(formData.amount) || 0;
+                    const feeRate = formData.installmentMonths <= 5 ? 0.025 : 0.035; // 2.5% or 3.5%
+                    const feeAmount = formData.isInterestFree ? 0 : amountValue * feeRate;
+                    const totalWithFee = amountValue + feeAmount;
+                    const monthlyPayment = totalWithFee / formData.installmentMonths;
+                    
+                    return (
+                      <div className="text-xs space-y-1">
+                        <div className="flex justify-between">
+                          <span className="text-slate-600">원금:</span>
+                          <span className="font-medium">{formatCurrency(amountValue)}</span>
+                        </div>
+                        {!formData.isInterestFree && (
+                          <div className="flex justify-between">
+                            <span className="text-slate-600">수수료 ({formData.installmentMonths <= 5 ? '2.5' : '3.5'}%):</span>
+                            <span className="font-medium text-red-600">{formatCurrency(feeAmount)}</span>
                           </div>
                         )}
+                        <div className="flex justify-between border-t pt-1">
+                          <span className="text-slate-600">총 금액:</span>
+                          <span className="font-semibold">{formatCurrency(totalWithFee)}</span>
+                        </div>
+                        <div className="flex justify-between border-t pt-1">
+                          <span className="text-slate-700 font-medium">월 납부금:</span>
+                          <span className="font-bold text-indigo-600">{formatCurrency(monthlyPayment)}</span>
+                        </div>
                       </div>
-                    </>
-                  )}
+                    );
+                  })()}
                 </div>
               )}
+
 
               {/* Submit Button */}
               <div className="pt-2">

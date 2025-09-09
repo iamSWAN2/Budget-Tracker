@@ -85,7 +85,7 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn }> = ({ data }) =>
                               ? 'bg-red-100 text-red-700'
                               : 'bg-slate-200 text-slate-700'
                         }`}>
-                          {transaction.type === TransactionType.INCOME ? '+' : transaction.type === TransactionType.EXPENSE ? '-' : '⇄'}
+                          {transaction.type === TransactionType.INCOME ? '+' : transaction.type === TransactionType.EXPENSE ? '-' : '•'}
                         </div>
                         
                         {/* Transaction Info */}

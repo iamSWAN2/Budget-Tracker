@@ -181,7 +181,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
             <p className="mt-2 text-slate-600">{errorMessage}</p>
             <button
                 onClick={() => setStep('account')}
-                className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+                className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
             >
                 다시 시도
             </button>
@@ -226,7 +226,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
               <button
                 type="button"
                 onClick={() => setStep('new-account')}
-                className="w-full p-3 border-2 border-dashed border-slate-300 rounded-md text-slate-600 hover:border-primary-500 hover:text-primary-600 transition-colors"
+                className="w-full p-3 border-2 border-dashed border-slate-300 rounded-md text-slate-600 hover:border-indigo-500 hover:text-indigo-600 transition-colors"
               >
                 + 새 계좌 생성
               </button>
@@ -237,7 +237,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                 type="button"
                 onClick={() => setStep('upload')}
                 disabled={!selectedAccountId}
-                className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
               >
                 다음
               </button>
@@ -281,7 +281,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
             </p>
             
             <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center">
-              <label htmlFor="file-upload" className="cursor-pointer text-primary-600 font-semibold">
+              <label htmlFor="file-upload" className="cursor-pointer text-indigo-600 font-semibold">
 파일 선택
               </label>
               <input 
@@ -324,7 +324,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                       ...prev,
                       [key]: e.target.value ? parseInt(e.target.value) : undefined
                     }))}
-                    className="flex-1 rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                    className="flex-1 rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                   >
                     <option value="">선택되지 않음</option>
                     {parsedColumns.map((col, index) => (
@@ -388,7 +388,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                   handleMappingConfirm();
                 }}
                 disabled={columnMapping.date === undefined || columnMapping.description === undefined || columnMapping.amount === undefined}
-                className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
               >
                 다음
               </button>
@@ -430,7 +430,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
             </div>
             <div className="flex justify-end pt-4 space-x-2">
                 <button type="button" onClick={() => setStep(parseMode === 'local' ? 'mapping' : 'upload')} className="px-4 py-2 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300">이전</button>
-                <button type="button" onClick={handleConfirm} className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">확인 및 추가</button>
+                <button type="button" onClick={handleConfirm} className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">확인 및 추가</button>
             </div>
           </div>
         )}
@@ -447,7 +447,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                   value={newAccountForm.name} 
                   onChange={(e) => setNewAccountForm(prev => ({ ...prev, name: e.target.value }))}
                   required 
-                  className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" 
+                  className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" 
                 />
               </div>
               <div>
@@ -456,7 +456,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                   id="ai-account-type"
                   value={newAccountForm.propensity} 
                   onChange={(e) => setNewAccountForm(prev => ({ ...prev, propensity: e.target.value as AccountPropensity }))}
-                  className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                 >
                   {Object.values(AccountPropensity).map(type => 
                     <option key={type} value={type}>{type}</option>
@@ -472,7 +472,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                   onChange={(e) => setNewAccountForm(prev => ({ ...prev, balance: parseFloat(e.target.value) || 0 }))}
                   step="0.01" 
                   placeholder="0.00" 
-                  className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" 
+                  className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" 
                 />
               </div>
             </div>
@@ -487,7 +487,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
               <button 
                 type="button" 
                 onClick={handleCreateAccount}
-                className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
               >
                 계좌 생성
               </button>

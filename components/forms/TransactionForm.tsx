@@ -79,7 +79,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                     onChange={handleChange} 
                     required 
                     autoComplete="off" 
-                    className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" 
+                    className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" 
                 />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -93,7 +93,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                         onChange={handleChange} 
                         required 
                         autoComplete="off" 
-                        className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" 
+                        className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" 
                     />
                 </div>
                 <div>
@@ -106,7 +106,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                         onChange={handleChange} 
                         required 
                         autoComplete="off" 
-                        className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" 
+                        className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" 
                     />
                 </div>
             </div>
@@ -119,11 +119,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                         value={formData.type} 
                         onChange={handleChange} 
                         autoComplete="off" 
-                        className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                        className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                     >
                         {Object.values(TransactionType).map(type => (
                             <option key={type} value={type}>
-                                {type === 'INCOME' ? '수입' : type === 'EXPENSE' ? '지출' : '이체'}
+                                {type === 'INCOME' ? '수입' : type === 'EXPENSE' ? '지출' : '기타'}
                             </option>
                         ))}
                     </select>
@@ -137,7 +137,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                         onChange={handleChange} 
                         required 
                         autoComplete="off" 
-                        className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                        className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                     >
                         {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
                     </select>
@@ -151,8 +151,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                     value={formData.category} 
                     onChange={handleChange} 
                     required 
-                    autocomplete="off" 
-                    className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                    autoComplete="off" 
+                    className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                 >
                     <option value="">카테고리를 선택하세요</option>
                     {(() => {
@@ -178,7 +178,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                                 );
                             }
                             return acc;
-                        }, [] as JSX.Element[]);
+                        }, [] as React.ReactElement[]);
                     })()}
                     {categories.length === 0 && <option value="" disabled>카테고리 로딩 중...</option>}
                 </select>
@@ -196,7 +196,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                             value={formData.installmentMonths} 
                             onChange={handleChange} 
                             autoComplete="off" 
-                            className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" 
+                            className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" 
                         />
                     </div>
                     
@@ -209,7 +209,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                                     name="isInterestFree" 
                                     checked={formData.isInterestFree}
                                     onChange={handleChange} 
-                                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-slate-300 rounded"
+                                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded"
                                 />
                                 <label htmlFor="transaction-interest-free" className="ml-2 block text-sm text-slate-700">
                                     무이자 할부
@@ -256,7 +256,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 </button>
                 <button 
                     type="submit" 
-                    className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
                 >
                     저장
                 </button>

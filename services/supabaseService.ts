@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 import { Account, Transaction, Category, TransactionType, AccountPropensity } from '../types';
-import { DEFAULT_CATEGORIES } from '../constants';
+import { DEFAULT_CATEGORIES, DEFAULT_ACCOUNTS } from '../constants';
 
 // Convert database row to Account type
 const mapDbAccount = (row: any): Account => ({
@@ -37,6 +37,9 @@ const mapDbCategory = (row: any): Category => ({
 export const getAccounts = async (): Promise<Account[]> => {
   console.log("Supabase: Fetching accounts");
   
+  // Initialize default accounts first
+  await initializeDefaultAccounts();
+  
   const { data, error } = await supabase
     .from('accounts')
     .select('*')
@@ -47,7 +50,19 @@ export const getAccounts = async (): Promise<Account[]> => {
     throw new Error(`Failed to fetch accounts: ${error.message}`);
   }
 
-  return data?.map(mapDbAccount) || [];
+  const dbAccounts = data?.map(mapDbAccount) || [];
+  
+  // Check if default cash account exists
+  const hasCashAccount = dbAccounts.some(account => account.id === '00000000-0000-0000-0000-000000000001');
+  
+  if (!hasCashAccount) {
+    console.log("Cash account not found, adding default cash account");
+    // Force add the default cash account
+    const defaultCashAccount = DEFAULT_ACCOUNTS[0]; // Cash account
+    return [defaultCashAccount, ...dbAccounts];
+  }
+  
+  return dbAccounts;
 };
 
 export const getTransactions = async (): Promise<Transaction[]> => {
@@ -222,6 +237,12 @@ export const updateAccount = async (account: Account): Promise<Account> => {
 export const deleteAccount = async (id: string): Promise<void> => {
   console.log("Supabase: Deleting account", id);
   
+  // Check if this is a default account
+  const isDefaultAccount = DEFAULT_ACCOUNTS.some(account => account.id === id);
+  if (isDefaultAccount) {
+    throw new Error('기본 계좌는 삭제할 수 없습니다');
+  }
+  
   // First check if there are transactions associated with this account
   const { data: transactions, error: transactionError } = await supabase
     .from('transactions')
@@ -235,7 +256,7 @@ export const deleteAccount = async (id: string): Promise<void> => {
   }
 
   if (transactions && transactions.length > 0) {
-    throw new Error('Cannot delete account with existing transactions');
+    throw new Error('거래 내역이 있는 계좌는 삭제할 수 없습니다');
   }
 
   const { error } = await supabase
@@ -329,26 +350,10 @@ export const updateAccountBalance = async (accountId: string): Promise<void> => 
 export const getCategories = async (): Promise<Category[]> => {
   console.log("Supabase: Fetching categories");
   
-  const { data, error } = await supabase
-    .from('categories')
-    .select('*')
-    .order('name', { ascending: true });
-
-  if (error) {
-    console.error('Error fetching categories:', error);
-    // Return default categories if DB query fails
-    return DEFAULT_CATEGORIES;
-  }
-
-  const categories = data?.map(mapDbCategory) || [];
-  
-  // If no categories exist, initialize with defaults
-  if (categories.length === 0) {
-    await initializeDefaultCategories();
-    return DEFAULT_CATEGORIES;
-  }
-  
-  return categories;
+  // FORCE REINITIALIZE - Update existing categories with latest constants
+  console.log("Force updating categories from constants...");
+  await initializeDefaultCategories(); // This will upsert the latest data
+  return DEFAULT_CATEGORIES;
 };
 
 export const addCategory = async (category: Omit<Category, 'id'>): Promise<Category> => {
@@ -436,6 +441,31 @@ export const deleteCategory = async (id: string): Promise<void> => {
   }
 };
 
+export const initializeDefaultAccounts = async (): Promise<void> => {
+  console.log("Supabase: Initializing default accounts");
+  
+  const dbAccounts = DEFAULT_ACCOUNTS.map(account => ({
+    id: account.id,
+    name: account.name,
+    balance: account.balance,
+    propensity: account.propensity
+  }));
+
+  const { error } = await supabase
+    .from('accounts')
+    .upsert(dbAccounts, { onConflict: 'id' });
+
+  if (error) {
+    console.error('Error initializing default accounts:', error);
+    // Don't throw here as we can fall back to allowing manual account creation
+  }
+  
+  // Store initial balances for default accounts
+  DEFAULT_ACCOUNTS.forEach(account => {
+    accountInitialBalances.set(account.id, account.balance);
+  });
+};
+
 export const initializeDefaultCategories = async (): Promise<void> => {
   console.log("Supabase: Initializing default categories");
   
@@ -449,10 +479,20 @@ export const initializeDefaultCategories = async (): Promise<void> => {
     is_default: category.isDefault,
     is_active: category.isActive
   }));
+  
+  console.log('DEFAULT_CATEGORIES TRANSFER items:', DEFAULT_CATEGORIES.filter(c => c.type === 'TRANSFER'));
+  console.log('DB Categories TRANSFER items:', dbCategories.filter(c => c.type === 'TRANSFER'));
+  
+  // Delete removed categories from database
+  const categoriesToDelete = ['cat-savings', 'cat-monthly']; // 급여, 월세 (EXPENSE에서 제거)
+  for (const categoryId of categoriesToDelete) {
+    await supabase.from('categories').delete().eq('id', categoryId);
+    console.log('Deleted category:', categoryId);
+  }
 
   const { error } = await supabase
     .from('categories')
-    .insert(dbCategories);
+    .upsert(dbCategories, { onConflict: 'id' });
 
   if (error) {
     console.error('Error initializing categories:', error);

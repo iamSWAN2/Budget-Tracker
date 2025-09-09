@@ -39,8 +39,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, i
                 onClick={() => handleNavClick(item.id)}
                 className={`flex items-center w-full px-4 py-3 my-1 rounded-lg transition-colors duration-200
                   ${currentPage === item.id 
-                    ? 'bg-primary-500 text-white shadow-sm' 
-                    : 'text-slate-600 hover:bg-primary-100 hover:text-primary-600'
+                    ? 'bg-indigo-500 text-white shadow-sm' 
+                    : 'text-slate-600 hover:bg-indigo-100 hover:text-indigo-600'
                   }`}
               >
                 <span className="w-6 h-6">{item.icon}</span>
@@ -80,8 +80,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, i
                 onClick={() => handleNavClick(item.id)}
                 className={`flex items-center w-full px-4 py-3 rounded-lg transition-colors duration-200 text-left
                   ${currentPage === item.id 
-                    ? 'bg-primary-500 text-white shadow-sm' 
-                    : 'text-slate-600 hover:bg-primary-100 hover:text-primary-600'
+                    ? 'bg-indigo-500 text-white shadow-sm' 
+                    : 'text-slate-600 hover:bg-indigo-100 hover:text-indigo-600'
                   }`}
               >
                 <span className="w-6 h-6 flex-shrink-0">{item.icon}</span>

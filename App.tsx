@@ -61,7 +61,7 @@ function AppInner() {
                     : 'text-slate-700 hover:text-slate-900'
                 }`}
               >
-                {t('nav.accounts')}
+                자산
               </button>
               <button
                 onClick={() => setCurrentPage('transactions')}
@@ -84,22 +84,6 @@ function AppInner() {
                 {t('nav.settings')}
               </button>
             </div>
-            {/* 언어 토글 */}
-            <button
-              onClick={toggle}
-              className="px-3 py-1.5 rounded-md text-xs border border-slate-300 text-slate-700 hover:bg-slate-50"
-              aria-label="toggle-language"
-            >
-              {lang === 'ko' ? '한국어' : 'EN'}
-            </button>
-            {/* 보기 밀도 토글 */}
-            <button
-              onClick={toggleDensity}
-              className="px-3 py-1.5 rounded-md text-xs border border-slate-300 text-slate-700 hover:bg-slate-50"
-              aria-label="toggle-density"
-            >
-              밀도: {density === 'compact' ? '컴팩트' : '보통'}
-            </button>
           </nav>
         </div>
       </header>

@@ -6,6 +6,22 @@ import { Modal } from '../components/ui/Modal';
 import { formatCurrency } from '../utils/format';
 import { useI18n } from '../i18n/I18nProvider';
 
+// 계좌 유형별 분류 함수
+const getAccountCategory = (propensity: AccountPropensity): string => {
+    switch (propensity) {
+        case AccountPropensity.CHECKING:
+        case AccountPropensity.SAVINGS:
+        case AccountPropensity.INVESTMENT:
+        case AccountPropensity.LOAN:
+            return '계좌';
+        case AccountPropensity.CASH:
+        case AccountPropensity.CREDIT_CARD:
+            return '결제수단';
+        default:
+            return '기타';
+    }
+};
+
 const AccountForm: React.FC<{
     account: Partial<Account> | null;
     onSave: (account: Omit<Account, 'id'> | Account) => void;
@@ -39,12 +55,21 @@ const AccountForm: React.FC<{
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
                 <label htmlFor="account-name" className="block text-sm font-medium text-slate-700">계좌명</label>
-                <input id="account-name" type="text" name="name" value={formData.name} onChange={handleChange} required className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" />
+                <input id="account-name" type="text" name="name" value={formData.name} onChange={handleChange} required className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
             </div>
             <div>
                 <label htmlFor="account-propensity" className="block text-sm font-medium text-slate-700">계좌 유형</label>
-                <select id="account-propensity" name="propensity" value={formData.propensity} onChange={handleChange} className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm">
-                    {Object.values(AccountPropensity).map(type => <option key={type} value={type}>{type}</option>)}
+                <select id="account-propensity" name="propensity" value={formData.propensity} onChange={handleChange} className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                    <optgroup label="계좌">
+                        <option value={AccountPropensity.CHECKING}>{AccountPropensity.CHECKING}</option>
+                        <option value={AccountPropensity.SAVINGS}>{AccountPropensity.SAVINGS}</option>
+                        <option value={AccountPropensity.INVESTMENT}>{AccountPropensity.INVESTMENT}</option>
+                        <option value={AccountPropensity.LOAN}>{AccountPropensity.LOAN}</option>
+                    </optgroup>
+                    <optgroup label="결제수단">
+                        <option value={AccountPropensity.CASH}>{AccountPropensity.CASH}</option>
+                        <option value={AccountPropensity.CREDIT_CARD}>{AccountPropensity.CREDIT_CARD}</option>
+                    </optgroup>
                 </select>
             </div>
             <div>
@@ -57,12 +82,12 @@ const AccountForm: React.FC<{
                     onChange={handleChange} 
                     step="0.01" 
                     placeholder="0.00" 
-                    className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" 
+                    className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" 
                 />
             </div>
             <div className="flex justify-end pt-4 space-x-2">
                 <button type="button" onClick={onClose} className="px-4 py-2 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300">취소</button>
-                <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">계좌 저장</button>
+                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">계좌 저장</button>
             </div>
         </form>
     );
@@ -75,7 +100,7 @@ export const AccountsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
     const [editingAccount, setEditingAccount] = useState<Account | null>(null);
 
     const accountsWithStats = useMemo(() => {
-        return accounts.map(account => {
+        const accountsWithData = accounts.map(account => {
             const accountTransactions = transactions.filter(t => t.accountId === account.id);
             const totalIncome = accountTransactions
                 .filter(t => t.type === TransactionType.INCOME)
@@ -91,6 +116,16 @@ export const AccountsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                 transactionCount: accountTransactions.length
             };
         });
+
+        // 기본 계좌를 맨 앞으로 정렬
+        return accountsWithData.sort((a, b) => {
+            const isADefault = a.id === '00000000-0000-0000-0000-000000000001';
+            const isBDefault = b.id === '00000000-0000-0000-0000-000000000001';
+            
+            if (isADefault && !isBDefault) return -1;
+            if (!isADefault && isBDefault) return 1;
+            return 0; // 기본 계좌가 아닌 경우 원래 순서 유지
+        });
     }, [accounts, transactions]);
 
     const handleAdd = () => {
@@ -103,9 +138,23 @@ export const AccountsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
         setIsModalOpen(true);
     };
 
-    const handleDelete = (id: string) => {
-        if (window.confirm('이 계좌를 삭제하시겠습니까? 관련된 모든 거래 내역도 함께 삭제됩니다.')) {
-            deleteAccount(id);
+    const handleDelete = async (id: string) => {
+        // 해당 계좌의 거래 내역 개수 확인
+        const accountTransactions = transactions.filter(t => t.accountId === id);
+        const transactionCount = accountTransactions.length;
+        
+        let confirmMessage = '이 계좌를 삭제하시겠습니까?';
+        if (transactionCount > 0) {
+            confirmMessage += `\n\n⚠️ 이 계좌에는 ${transactionCount}개의 거래 내역이 있습니다.\n거래 내역이 있는 계좌는 삭제할 수 없습니다.`;
+        }
+        
+        if (window.confirm(confirmMessage)) {
+            try {
+                await deleteAccount(id);
+                // 성공 시 메시지는 필요없음 (자동으로 목록에서 제거됨)
+            } catch (error) {
+                alert(`❌ ${error instanceof Error ? error.message : '계좌 삭제에 실패했습니다.'}`);
+            }
         }
     };
     
@@ -126,10 +175,26 @@ export const AccountsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                     <div key={account.id} className="bg-white rounded-lg shadow-md p-6">
                         <div className="flex items-center justify-between mb-4">
                             <div>
-                                <h3 className="text-lg font-semibold text-indigo-600">{account.name}</h3>
-                                <span className="inline-block px-2 py-1 text-xs bg-slate-100 text-slate-600 rounded-full">
-                                    {account.propensity}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                    <h3 className="text-lg font-semibold text-indigo-600">{account.name}</h3>
+                                    {account.id === '00000000-0000-0000-0000-000000000001' && (
+                                        <span className="inline-block px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded-full font-medium">
+                                            기본
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="inline-block px-2 py-1 text-xs bg-slate-100 text-slate-600 rounded-full">
+                                        {account.propensity}
+                                    </span>
+                                    <span className={`inline-block px-2 py-1 text-xs rounded-full font-medium ${
+                                        getAccountCategory(account.propensity) === '계좌' 
+                                            ? 'bg-blue-100 text-blue-700' 
+                                            : 'bg-green-100 text-green-700'
+                                    }`}>
+                                        {getAccountCategory(account.propensity)}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                         
@@ -155,12 +220,23 @@ export const AccountsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                         </div>
                         
                         <div className="mt-4 pt-4 border-t">
-                            <button 
-                                onClick={() => handleEdit(account)}
-                                className="w-full bg-indigo-50 text-indigo-600 py-2 px-4 rounded-md hover:bg-indigo-100 text-sm font-medium"
-                            >
-                                Import Transactions
-                            </button>
+                            <div className="flex gap-2">
+                                <button 
+                                    onClick={() => handleEdit(account)}
+                                    className="flex-1 bg-indigo-50 text-indigo-600 py-2 px-4 rounded-md hover:bg-indigo-100 text-sm font-medium"
+                                >
+                                    수정
+                                </button>
+                                {/* 기본 계좌가 아닌 경우에만 삭제 버튼 표시 */}
+                                {account.id !== '00000000-0000-0000-0000-000000000001' && (
+                                    <button 
+                                        onClick={() => handleDelete(account.id)}
+                                        className="flex-1 bg-red-50 text-red-600 py-2 px-4 rounded-md hover:bg-red-100 text-sm font-medium"
+                                    >
+                                        삭제
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </div>
                 ))}
