@@ -2,3 +2,15 @@
 
 /* 숫자 정렬 품질 향상 */
 .tabular-nums { font-variant-numeric: tabular-nums; }
+
+/* 레이아웃 시프트 방지: 스크롤바 유무와 관계없이 안정적인 gutter 확보 */
+html {
+  scrollbar-gutter: stable;
+}
+
+/* 폴백: scrollbar-gutter 미지원 브라우저에서 항상 세로 스크롤 공간 확보 */
+@supports not (scrollbar-gutter: stable) {
+  html {
+    overflow-y: scroll;
+  }
+}

@@ -103,7 +103,7 @@ function AppInner() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 overflow-auto lg:overflow-hidden">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 overflow-y-auto">
         {data.isLoading ? (
           <div className="flex justify-center items-center h-full">
             <div className="text-lg text-slate-600 text-center">
