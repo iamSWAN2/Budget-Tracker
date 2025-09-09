@@ -11,6 +11,7 @@ import { TransactionItem } from '../components/transactions/TransactionItem';
 import { TransactionsList } from '../components/transactions/TransactionsList';
 import { PlusIcon } from '../components/icons/Icons';
 import { InstallmentsWidget } from '../components/dashboard/InstallmentsWidget';
+import { RecurringWidget } from '../components/dashboard/RecurringWidget';
 
 export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   const { accounts, transactions, categories, addTransaction, updateTransaction, deleteTransaction } = data;
@@ -297,6 +298,16 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
           <div className="col-span-4">
             <InstallmentsWidget
               installments={data.installments}
+              viewMode={viewMode}
+              currentMonth={currentMonth}
+              currentYear={currentYear}
+            />
+          </div>
+
+          {/* Recurring payments in selected period */}
+          <div className="col-span-4">
+            <RecurringWidget
+              transactions={transactions}
               viewMode={viewMode}
               currentMonth={currentMonth}
               currentYear={currentYear}
