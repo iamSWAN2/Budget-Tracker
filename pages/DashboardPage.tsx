@@ -10,6 +10,7 @@ import { useI18n } from '../i18n/I18nProvider';
 import { TransactionItem } from '../components/transactions/TransactionItem';
 import { TransactionsList } from '../components/transactions/TransactionsList';
 import { PlusIcon } from '../components/icons/Icons';
+import { InstallmentsWidget } from '../components/dashboard/InstallmentsWidget';
 
 export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   const { accounts, transactions, categories, addTransaction, updateTransaction, deleteTransaction } = data;
@@ -290,6 +291,16 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                 <p className="text-[11px] md:text-xs text-slate-400">No expenses to display.</p>
               )}
             </div>
+          </div>
+
+          {/* Installments due in selected period */}
+          <div className="col-span-4">
+            <InstallmentsWidget
+              installments={data.installments}
+              viewMode={viewMode}
+              currentMonth={currentMonth}
+              currentYear={currentYear}
+            />
           </div>
         </div>
 
