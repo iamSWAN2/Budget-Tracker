@@ -63,7 +63,7 @@ export const OutliersWidget: React.FC<Props> = ({ transactions, viewMode, curren
               className="w-full flex items-center justify-between text-left text-xs border rounded-md px-2 py-1.5 hover:bg-rose-50/50"
               title={tx.category}
               onClick={() => {
-                window.dispatchEvent(new CustomEvent('app:navigate', { detail: { page: 'transactions', filter: { q: tx.description } } }));
+                window.dispatchEvent(new CustomEvent('app:navigate', { detail: { page: 'transactions', filter: { q: tx.description, start: start.toISOString(), end: end.toISOString() } } }));
               }}
             >
               <div className="truncate pr-2 text-slate-700">{tx.description}</div>
@@ -81,4 +81,3 @@ export const OutliersWidget: React.FC<Props> = ({ transactions, viewMode, curren
 };
 
 export default OutliersWidget;
-

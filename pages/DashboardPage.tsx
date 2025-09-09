@@ -6,6 +6,7 @@ import { Modal } from '../components/ui/Modal';
 import { TransactionForm } from '../components/forms/TransactionForm';
 import { AddTransactionFormInline } from '../components/forms/AddTransactionFormInline';
 import { formatCurrency, formatDateDisplay, formatMonthKo } from '../utils/format';
+import { getPeriodRange } from '../utils/dateRange';
 import { useI18n } from '../i18n/I18nProvider';
 import { TransactionItem } from '../components/transactions/TransactionItem';
 import { TransactionsList } from '../components/transactions/TransactionsList';
@@ -242,6 +243,15 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
             {t('month.next')} →
           </button>
         </div>
+        {(() => {
+          const { start, end } = getPeriodRange(viewMode, currentMonth, currentYear);
+          const label = viewMode === 'month'
+            ? `${currentYear}년 ${currentMonth + 1}월`
+            : `${start.getMonth() + 1}월 ${start.getDate()}–${end.getDate()}일`;
+          return (
+            <div className="mt-1 text-[11px] text-slate-500">{label}</div>
+          );
+        })()}
         <div className="mt-2 inline-flex rounded-md overflow-hidden border border-slate-300 text-xs">
           <button
             type="button"

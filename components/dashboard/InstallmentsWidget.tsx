@@ -79,8 +79,8 @@ export const InstallmentsWidget: React.FC<Props> = ({ installments, viewMode, cu
               key={item.id}
               className="w-full flex items-center justify-between text-left text-xs border rounded-md px-2 py-1.5 hover:bg-slate-50"
               onClick={() => {
-                // 거래 탭으로 드릴스루(간단 네비게이션 이벤트)
-                window.dispatchEvent(new CustomEvent('app:navigate', { detail: { page: 'transactions' } }));
+                // 거래 탭으로 드릴스루: 동일 기간 필터 전달
+                window.dispatchEvent(new CustomEvent('app:navigate', { detail: { page: 'transactions', filter: { start: start.toISOString(), end: end.toISOString(), q: item.description } } }));
               }}
             >
               <div className="truncate pr-2 text-slate-700">{item.description}</div>

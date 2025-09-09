@@ -11,7 +11,7 @@ import { UISettingsProvider, useUISettings } from './ui/UISettingsProvider';
 
 function AppInner() {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
-  const [txFilter, setTxFilter] = useState<{ q?: string } | null>(null);
+  const [txFilter, setTxFilter] = useState<{ q?: string; start?: string; end?: string } | null>(null);
   const data = useData();
   const { t, lang, toggle } = useI18n();
   const { density, toggleDensity } = useUISettings();
@@ -21,7 +21,7 @@ function AppInner() {
       const ce = e as CustomEvent;
       const page = ce.detail?.page as Page | undefined;
       if (page) {
-        if (ce.detail?.filter) setTxFilter(ce.detail.filter as { q?: string });
+        if (ce.detail?.filter) setTxFilter(ce.detail.filter as { q?: string; start?: string; end?: string });
         setCurrentPage(page);
       }
     };

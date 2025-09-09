@@ -15,7 +15,7 @@ import { useUISettings } from '../ui/UISettingsProvider';
 import { TransactionItem } from '../components/transactions/TransactionItem';
 import { TransactionsList } from '../components/transactions/TransactionsList';
 
-export const TransactionsPage: React.FC<{ data: UseDataReturn; initialFilter?: { q?: string } }> = ({ data, initialFilter }) => {
+export const TransactionsPage: React.FC<{ data: UseDataReturn; initialFilter?: { q?: string; start?: string; end?: string } }> = ({ data, initialFilter }) => {
     const { transactions, accounts, categories, addTransaction, updateTransaction, deleteTransaction } = data;
     const { t } = useI18n();
     const { density } = useUISettings();
@@ -23,19 +23,26 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn; initialFilter?: {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
     const [q, setQ] = useState<string>(initialFilter?.q ?? '');
+    const [range, setRange] = useState<{ start?: string; end?: string }>({ start: initialFilter?.start, end: initialFilter?.end });
 
     useEffect(() => {
       if (initialFilter?.q !== undefined) setQ(initialFilter.q);
-    }, [initialFilter?.q]);
+      if (initialFilter?.start !== undefined || initialFilter?.end !== undefined) {
+        setRange({ start: initialFilter?.start, end: initialFilter?.end });
+      }
+    }, [initialFilter?.q, initialFilter?.start, initialFilter?.end]);
 
     const filtered = useMemo(() => {
       const query = q.trim().toLowerCase();
-      if (!query) return transactions;
-      return transactions.filter(t =>
-        (t.description || '').toLowerCase().includes(query) ||
-        (t.category || '').toLowerCase().includes(query)
-      );
-    }, [transactions, q]);
+      const startDate = range.start ? new Date(range.start) : null;
+      const endDate = range.end ? new Date(range.end) : null;
+      return transactions.filter(t => {
+        const matchesQuery = !query || (t.description || '').toLowerCase().includes(query) || (t.category || '').toLowerCase().includes(query);
+        const d = new Date(t.date);
+        const inRange = (!startDate || d >= startDate) && (!endDate || d <= endDate);
+        return matchesQuery && inRange;
+      });
+    }, [transactions, q, range.start, range.end]);
 
     const handleAdd = () => {
         setEditingTransaction(null);

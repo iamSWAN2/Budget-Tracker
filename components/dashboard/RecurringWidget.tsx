@@ -67,7 +67,7 @@ export const RecurringWidget: React.FC<Props> = ({ transactions, viewMode, curre
               key={item.id}
               className="w-full flex items-center justify-between text-left text-xs border rounded-md px-2 py-1.5 hover:bg-slate-50"
               onClick={() => {
-                window.dispatchEvent(new CustomEvent('app:navigate', { detail: { page: 'transactions' } }));
+                window.dispatchEvent(new CustomEvent('app:navigate', { detail: { page: 'transactions', filter: { q: item.description, start: start.toISOString(), end: end.toISOString() } } }));
               }}
             >
               <div className="truncate pr-2 text-slate-700">{item.description}</div>
@@ -86,4 +86,3 @@ export const RecurringWidget: React.FC<Props> = ({ transactions, viewMode, curre
 };
 
 export default RecurringWidget;
-
