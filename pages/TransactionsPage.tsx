@@ -1,5 +1,5 @@
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { UseDataReturn } from '../hooks/useData';
 import { Transaction, TransactionType } from '../types';
 import { PlusIcon } from '../components/icons/Icons';
@@ -23,14 +23,30 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn; initialFilter?: {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
     const [q, setQ] = useState<string>(initialFilter?.q ?? '');
+    const [qInput, setQInput] = useState<string>(initialFilter?.q ?? '');
     const [range, setRange] = useState<{ start?: string; end?: string }>({ start: initialFilter?.start, end: initialFilter?.end });
+    const debounceRef = useRef<number | null>(null);
 
     useEffect(() => {
-      if (initialFilter?.q !== undefined) setQ(initialFilter.q);
+      if (initialFilter?.q !== undefined) {
+        setQ(initialFilter.q);
+        setQInput(initialFilter.q);
+      }
       if (initialFilter?.start !== undefined || initialFilter?.end !== undefined) {
         setRange({ start: initialFilter?.start, end: initialFilter?.end });
       }
     }, [initialFilter?.q, initialFilter?.start, initialFilter?.end]);
+
+    // debounce qInput -> q
+    useEffect(() => {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+      debounceRef.current = window.setTimeout(() => {
+        setQ(qInput);
+      }, 250);
+      return () => {
+        if (debounceRef.current) window.clearTimeout(debounceRef.current);
+      };
+    }, [qInput]);
 
     const filtered = useMemo(() => {
       const query = q.trim().toLowerCase();
@@ -78,12 +94,12 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn; initialFilter?: {
     
     return (
         <div className="bg-white rounded-xl shadow-md p-6 h-full flex flex-col mx-auto w-full max-w-3xl lg:max-w-4xl">
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-center mb-2">
                 <h3 className="text-lg font-semibold text-slate-700">{t('nav.transactions')}</h3>
                 <div className="flex items-center space-x-2">
                   <input
-                    value={q}
-                    onChange={(e) => setQ(e.target.value)}
+                    value={qInput}
+                    onChange={(e) => setQInput(e.target.value)}
                     placeholder={t('placeholder.search')}
                     className="px-3 py-1.5 text-sm border border-slate-300 rounded-md w-40"
                   />
@@ -103,6 +119,29 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn; initialFilter?: {
                   </button>
                 </div>
             </div>
+            {/* Active Filters */}
+            {(q || range.start || range.end) && (
+              <div className="mb-3 flex items-center flex-wrap gap-2 text-xs">
+                {q && (
+                  <span className="inline-flex items-center gap-2 bg-slate-100 text-slate-700 px-2 py-1 rounded">
+                    검색: “{q}”
+                    <button className="text-slate-500 hover:text-slate-800" onClick={() => { setQ(''); setQInput(''); }}>×</button>
+                  </span>
+                )}
+                {(range.start || range.end) && (
+                  <span className="inline-flex items-center gap-2 bg-slate-100 text-slate-700 px-2 py-1 rounded">
+                    기간: {range.start ? new Date(range.start).toLocaleDateString('ko-KR') : '…'} ~ {range.end ? new Date(range.end).toLocaleDateString('ko-KR') : '…'}
+                    <button className="text-slate-500 hover:text-slate-800" onClick={() => setRange({ start: undefined, end: undefined })}>×</button>
+                  </span>
+                )}
+                <button
+                  className="ml-auto text-slate-500 hover:text-slate-800 underline"
+                  onClick={() => { setQ(''); setQInput(''); setRange({ start: undefined, end: undefined }); }}
+                >
+                  필터 초기화
+                </button>
+              </div>
+            )}
             
             {accounts.length === 0 && (
               <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
