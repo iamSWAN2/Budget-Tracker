@@ -429,8 +429,13 @@ const DataManager: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      const confirmReplace = window.confirm('백업 복원은 현재 데이터를 모두 삭제하고 업로드한 백업으로 교체합니다. 진행할까요?');
+      if (!confirmReplace) {
+        e.target.value = '';
+        return;
+      }
       importData(file);
-      e.target.value = ''; // Reset file input
+      e.target.value = '';
     }
   };
 
@@ -438,24 +443,26 @@ const DataManager: React.FC<{ data: UseDataReturn }> = ({ data }) => {
     <div className="bg-white rounded-xl shadow-md p-6">
       <h3 className="text-lg font-semibold text-slate-700 mb-4">데이터 관리</h3>
       
-      <div className="space-y-4">
-        <div className="flex items-center justify-between p-4 border rounded-lg">
+      <div className="grid grid-cols-1 gap-4">
+        {/* 백업 */}
+        <div className="flex items-center justify-between p-5 border rounded-lg bg-white min-h-28">
           <div>
-            <h4 className="font-medium text-slate-900">데이터 백업</h4>
-            <p className="text-sm text-slate-600">모든 데이터를 JSON 파일로 내보내기</p>
+            <h4 className="font-medium text-slate-900">백업</h4>
+            <p className="text-xs text-slate-500 mt-1">전체 데이터를 JSON으로 저장</p>
           </div>
           <button 
             onClick={exportData}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="w-28 justify-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
-            백업 다운로드
+            다운로드
           </button>
         </div>
 
-        <div className="flex items-center justify-between p-4 border rounded-lg">
+        {/* 복원 */}
+        <div className="flex items-center justify-between p-5 border rounded-lg bg-white min-h-28">
           <div>
-            <h4 className="font-medium text-slate-900">데이터 복원</h4>
-            <p className="text-sm text-slate-600">백업 파일에서 데이터 가져오기</p>
+            <h4 className="font-medium text-slate-900">복원</h4>
+            <p className="text-xs text-slate-500 mt-1">백업 파일로 전체 덮어쓰기</p>
           </div>
           <div>
             <input
@@ -467,24 +474,25 @@ const DataManager: React.FC<{ data: UseDataReturn }> = ({ data }) => {
             />
             <label 
               htmlFor="import-file"
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 cursor-pointer"
+              className="w-28 inline-flex justify-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 cursor-pointer"
             >
-              파일 선택
+              가져오기
             </label>
           </div>
         </div>
 
-        <div className="flex items-center justify-between p-4 border border-red-200 rounded-lg bg-red-50">
+        {/* 초기화 */}
+        <div className="flex items-center justify-between p-5 border rounded-lg bg-white min-h-28">
           <div>
-            <h4 className="font-medium text-red-900">데이터 초기화</h4>
-            <p className="text-sm text-red-600">모든 거래 내역과 계좌를 삭제합니다</p>
+            <h4 className="font-medium text-slate-900">초기화</h4>
+            <p className="text-xs text-slate-500 mt-1">계좌/거래/사용자 카테고리 삭제</p>
           </div>
           <button 
             onClick={handleClearData}
             disabled={isClearing}
-            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+            className="w-28 justify-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
           >
-            {isClearing ? '삭제 중...' : '모든 데이터 삭제'}
+            {isClearing ? '진행 중…' : '전체 삭제'}
           </button>
         </div>
       </div>
@@ -586,7 +594,7 @@ export const SettingsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-slate-200 h-full flex flex-col max-w-6xl mx-auto">
+    <div className="bg-white rounded-xl shadow-lg border border-slate-200 h-full flex flex-col mx-auto w-full max-w-3xl lg:max-w-4xl">
       {/* 헤더 - 제목과 탭 */}
       <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-t-xl border-b border-slate-200">
         <div className="px-6 pt-6 pb-2">

@@ -31,7 +31,7 @@ function AppInner() {
   }, [currentPage, data]);
 
   return (
-    <div className="h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-[100svh] bg-slate-50 flex flex-col">
       {/* Header */}
       <header className="bg-white border-b border-slate-200 flex-shrink-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -89,7 +89,7 @@ function AppInner() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 overflow-hidden">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 overflow-auto lg:overflow-hidden">
         {data.isLoading ? (
           <div className="flex justify-center items-center h-full">
             <div className="text-lg text-slate-600 text-center">

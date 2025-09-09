@@ -4,9 +4,11 @@ import { TransactionType, Transaction } from '../types';
 import AIAssist from '../components/AIAssist';
 import { Modal } from '../components/ui/Modal';
 import { TransactionForm } from '../components/forms/TransactionForm';
+import { AddTransactionFormInline } from '../components/forms/AddTransactionFormInline';
 import { formatCurrency, formatDateDisplay, formatMonthKo } from '../utils/format';
 import { useI18n } from '../i18n/I18nProvider';
-import { DropdownMenu, MenuIcons } from '../components/ui/DropdownMenu';
+import { TransactionItem } from '../components/transactions/TransactionItem';
+import { PlusIcon } from '../components/icons/Icons';
 
 export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   const { accounts, transactions, categories, addTransaction, updateTransaction, deleteTransaction } = data;
@@ -34,6 +36,27 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   // Edit modal state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  // Responsive: form collapsed on mobile, open on desktop
+  React.useEffect(() => {
+    const mql = window.matchMedia('(min-width: 1024px)');
+    const apply = (matches: boolean) => {
+      setIsDesktop(matches);
+      // 데스크톱은 인라인 폼, 모바일은 모달로 처리
+    };
+    apply(mql.matches);
+    const listener = (e: MediaQueryListEvent) => apply(e.matches);
+    if (mql.addEventListener) mql.addEventListener('change', listener);
+    // Fallback for older browsers
+    // @ts-ignore
+    else if (mql.addListener) mql.addListener(listener);
+    return () => {
+      if (mql.removeEventListener) mql.removeEventListener('change', listener);
+      // @ts-ignore
+      else if (mql.removeListener) mql.removeListener(listener);
+    };
+  }, []);
 
   const monthlyIncomeTotal = useMemo(() => (
     transactions
@@ -158,6 +181,12 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   };
 
   const getAccountName = (accountId: string) => accounts.find(a => a.id === accountId)?.name || 'N/A';
+  const getCategoryPath = (categoryName: string) => {
+    const cat = categories.find(c => c.name === categoryName);
+    if (!cat) return categoryName;
+    const parent = cat.parentId ? categories.find(c => c.id === cat.parentId) : null;
+    return parent ? `${parent.name} > ${cat.name}` : cat.name;
+  };
 
   const formatMonth = (month: number, year: number) => formatMonthKo(month, year);
 
@@ -200,37 +229,37 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
         </button>
       </div>
 
-      <div className="flex-1 flex flex-col space-y-6 min-h-0">
+      <div className="flex-1 flex flex-col space-y-4 md:space-y-6 min-h-0">
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 flex-shrink-0">
-          <div className="bg-white rounded-lg shadow-md p-4">
+        <div className="grid grid-cols-4 gap-2 md:gap-4 flex-shrink-0">
+          <div className="bg-white rounded-lg shadow-md p-2 md:p-4">
             <h3 className="text-xs font-medium text-slate-600 mb-1">{t('summary.income')}</h3>
-            <p className="text-lg font-bold text-green-600">{formatCurrency(monthlyIncomeTotal)}</p>
+            <p className="text-sm md:text-lg font-bold text-green-600 truncate">{formatCurrency(monthlyIncomeTotal)}</p>
           </div>
           
-          <div className="bg-white rounded-lg shadow-md p-4">
+          <div className="bg-white rounded-lg shadow-md p-2 md:p-4">
             <h3 className="text-xs font-medium text-slate-600 mb-1">{t('summary.expense')}</h3>
-            <p className="text-lg font-bold text-red-600">{formatCurrency(monthlyExpenseTotal)}</p>
+            <p className="text-sm md:text-lg font-bold text-red-600 truncate">{formatCurrency(monthlyExpenseTotal)}</p>
           </div>
           
-          <div className="bg-white rounded-lg shadow-md p-4">
+          <div className="bg-white rounded-lg shadow-md p-2 md:p-4">
             <h3 className="text-xs font-medium text-slate-600 mb-1">{t('summary.balance')}</h3>
-            <p className={`text-lg font-bold ${monthlyBalance >= 0 ? 'text-slate-800' : 'text-red-600'}`}>
+            <p className={`text-sm md:text-lg font-bold ${monthlyBalance >= 0 ? 'text-slate-800' : 'text-red-600'} truncate`}>
               {formatCurrency(monthlyBalance)}
             </p>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-4">
+          <div className="bg-white rounded-lg shadow-md p-2 md:p-4 col-span-4 md:col-span-1">
             <h3 className="text-xs font-medium text-slate-600 mb-1">{t('summary.breakdown')}</h3>
             <div className="space-y-1">
               {monthlyExpenseByCategory.length > 0 ? (
                 monthlyExpenseByCategory.slice(0, 3).map((item, index) => (
-                  <div key={index} className="text-xs text-slate-600">
+                  <div key={index} className="text-[11px] md:text-xs text-slate-600">
                     {item.category}: {formatCurrency(item.amount)}
                   </div>
                 ))
               ) : (
-                <p className="text-xs text-slate-400">No expenses to display.</p>
+                <p className="text-[11px] md:text-xs text-slate-400">No expenses to display.</p>
               )}
             </div>
           </div>
@@ -238,14 +267,13 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
 
         {/* Main Content Grid - Optimized Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 flex-1 min-h-0">
-          {/* Add New Transaction - Compact */}
-          <div className="bg-white rounded-lg shadow-md p-4 lg:col-span-2">
-            <div className="flex items-center justify-between mb-3">
+          {/* Add New Transaction - Desktop only (mobile uses FAB + modal) */}
+          <div className="hidden lg:block bg-white rounded-lg shadow-md p-4 lg:col-span-2">
+            <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-semibold text-slate-800">{t('form.addTransaction')}</h3>
-              <AIAssist data={data} />
+              <div className="flex items-center gap-2"><AIAssist data={data} /></div>
             </div>
-            
-            <form onSubmit={handleSubmit} className="space-y-2">
+            <AddTransactionFormInline accounts={accounts} categories={categories} onAdd={addTransaction} />
               {/* Row 1: Type (left) + Date (right) */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -441,11 +469,11 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                   {t('form.addTransaction')}
                 </button>
               </div>
-            </form>
+            
           </div>
 
           {/* Transaction History - Expanded */}
-          <div className="bg-white rounded-lg shadow-md p-4 lg:col-span-3 flex flex-col min-h-0">
+          <div className="bg-white rounded-lg shadow-md p-4 lg:col-span-3 flex flex-col min-h-0 lg:min-h-0">
             <div className="flex items-center justify-between mb-3 flex-shrink-0">
               <h3 className="text-sm font-semibold text-slate-800">{t('nav.transactions')}</h3>
               <input
@@ -455,94 +483,17 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
               />
             </div>
             
-            <div className="space-y-2 flex-1 overflow-y-auto min-h-0">
+            <div className="space-y-2 flex-1 min-h-0 overflow-visible lg:overflow-y-auto lg:max-h-[50vh] touch-pan-y">
               {recentTransactions.length > 0 ? (
                 recentTransactions.map((transaction) => (
-                  <div key={transaction.id} className="group relative bg-slate-50 hover:bg-slate-100 rounded-lg p-4 transition-colors">
-                    {/* 자연스러운 좌→우 흐름 레이아웃 */}
-                    <div className="flex items-center space-x-4">
-                      {/* Type Icon */}
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shadow-sm ${
-                        transaction.type === TransactionType.INCOME 
-                          ? 'bg-green-100 text-green-700 ring-2 ring-green-200' 
-                          : 'bg-red-100 text-red-700 ring-2 ring-red-200'
-                      }`}>
-                        {transaction.type === TransactionType.INCOME ? '+' : '-'}
-                      </div>
-                      
-                      {/* Main Transaction Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-3 mb-1">
-                          <h4 className="font-bold text-slate-900 text-base truncate">{transaction.description}</h4>
-                          {/* 할부 뱃지를 제목 옆으로 */}
-                          {transaction.installmentMonths && transaction.installmentMonths > 1 && (
-                            <div className="flex items-center space-x-1">
-                              <span className="inline-flex items-center px-2 py-1 rounded-full bg-violet-100 text-violet-700 text-xs font-semibold">
-                                {transaction.installmentMonths}개월
-                              </span>
-                              {transaction.isInterestFree && (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold">
-                                  무이자
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        {/* 부가 정보 뱃지들 - 더 컴팩트하게 */}
-                        <div className="flex items-center space-x-2">
-                          <span className="inline-flex items-center px-2 py-0.5 bg-slate-200 text-slate-700 rounded-md text-xs font-medium">
-                            📅 {formatDateDisplay(transaction.date)}
-                          </span>
-                          <span className="inline-flex items-center px-2 py-0.5 bg-blue-100 text-blue-700 rounded-md text-xs font-medium">
-                            🏷️ {transaction.category}
-                          </span>
-                          <span className="inline-flex items-center px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-md text-xs font-medium">
-                            🏦 {getAccountName(transaction.accountId)}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      {/* Amount - 더 강조된 스타일 */}
-                      <div className="text-right min-w-0">
-                        {transaction.installmentMonths && transaction.installmentMonths > 1 ? (
-                          <div className="space-y-1">
-                            <p className={`font-extrabold text-xl leading-none ${
-                              transaction.type === TransactionType.INCOME ? 'text-green-600' : 'text-red-600'
-                            }`}>
-                              {formatCurrency(transaction.amount / transaction.installmentMonths)}
-                              <span className="text-sm text-slate-500 font-medium ml-1">/월</span>
-                            </p>
-                            <p className="text-xs text-slate-500 font-medium">
-                              총액 {formatCurrency(transaction.amount)}
-                            </p>
-                          </div>
-                        ) : (
-                          <p className={`font-extrabold text-xl ${
-                            transaction.type === TransactionType.INCOME ? 'text-green-600' : 'text-red-600'
-                          }`}>
-                            {formatCurrency(transaction.amount)}
-                          </p>
-                        )}
-                      </div>
-                      
-                      {/* 컴팩트 액션 메뉴 */}
-                      <DropdownMenu
-                        items={[
-                          {
-                            label: '수정',
-                            icon: MenuIcons.Edit,
-                            onClick: () => handleEdit(transaction)
-                          },
-                          {
-                            label: '삭제',
-                            icon: MenuIcons.Delete,
-                            onClick: () => handleDelete(transaction.id),
-                            variant: 'danger'
-                          }
-                        ]}
-                      />
-                    </div>
-                  </div>
+                  <TransactionItem
+                    key={transaction.id}
+                    transaction={transaction}
+                    accountName={getAccountName(transaction.accountId)}
+                    categoryLabel={getCategoryPath(transaction.category)}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                  />
                 ))
               ) : (
                 <div className="text-center py-8">
@@ -560,6 +511,14 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
         </div>
       </div>
 
+      {/* Floating draggable toggle for form (mobile only) */}
+      {!isDesktop && !isEditModalOpen && (
+        <FloatingFormToggle onOpen={() => {
+          setEditingTransaction(null);
+          setIsEditModalOpen(true);
+        }} />
+      )}
+
       {/* Edit Transaction Modal */}
       <Modal 
         isOpen={isEditModalOpen} 
@@ -569,17 +528,97 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
         }} 
         title={editingTransaction ? '거래 수정' : '거래 추가'}
       >
-        <TransactionForm
-          transaction={editingTransaction}
-          accounts={accounts}
-          categories={categories}
-          onSave={handleEditSave}
-          onClose={() => {
-            setIsEditModalOpen(false);
-            setEditingTransaction(null);
-          }}
-        />
+        {editingTransaction ? (
+          <TransactionForm
+            transaction={editingTransaction}
+            accounts={accounts}
+            categories={categories}
+            onSave={handleEditSave}
+            onClose={() => {
+              setIsEditModalOpen(false);
+              setEditingTransaction(null);
+            }}
+          />
+        ) : (
+          <AddTransactionFormInline
+            accounts={accounts}
+            categories={categories}
+            onAdd={(tx) => { addTransaction(tx); setIsEditModalOpen(false); }}
+            onClose={() => setIsEditModalOpen(false)}
+          />
+        )}
       </Modal>
     </div>
+  );
+};
+
+// Floating draggable round toggle button (mobile only)
+const FloatingFormToggle: React.FC<{ onOpen: () => void }> = ({ onOpen }) => {
+  const [pos, setPos] = React.useState<{ x: number; y: number }>({ x: 16, y: 16 });
+  const dragging = React.useRef(false);
+  const moved = React.useRef(false);
+  const offset = React.useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const start = React.useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  React.useEffect(() => {
+    // initial position near bottom-right
+    const init = () => setPos({ x: (window.innerWidth - 72), y: (window.innerHeight - 140) });
+    init();
+    window.addEventListener('resize', init);
+    return () => window.removeEventListener('resize', init);
+  }, []);
+
+  React.useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      if (!dragging.current) return;
+      const nx = e.clientX - offset.current.x;
+      const ny = e.clientY - offset.current.y;
+      const maxX = window.innerWidth - 56 - 8;
+      const maxY = window.innerHeight - 56 - 8;
+      setPos({ x: Math.min(Math.max(8, nx), maxX), y: Math.min(Math.max(8, ny), maxY) });
+      // 이동 임계값 초과 시 클릭 무시 플래그
+      const dx = e.clientX - start.current.x;
+      const dy = e.clientY - start.current.y;
+      if (Math.abs(dx) + Math.abs(dy) > 6) moved.current = true;
+    };
+    const onUp = () => { dragging.current = false; };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, []);
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    dragging.current = true;
+    moved.current = false;
+    start.current = { x: e.clientX, y: e.clientY };
+    offset.current = { x: e.clientX - pos.x, y: e.clientY - pos.y };
+  };
+
+  return (
+    <button
+      aria-label={'거래 폼 열기'}
+      onClick={(ev) => {
+        // 드래그 직후 클릭 방지
+        if (dragging.current || moved.current) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          moved.current = false;
+          return;
+        }
+        onOpen();
+      }}
+      onPointerDown={onPointerDown}
+      className={
+        'fixed lg:hidden z-50 w-14 h-14 rounded-full shadow-lg border border-slate-200 flex items-center justify-center bg-indigo-600 text-white'
+      }
+      style={{ left: pos.x, top: pos.y, touchAction: 'none' }}
+    >
+      <svg className={'w-6 h-6'} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
+      </svg>
+    </button>
   );
 };

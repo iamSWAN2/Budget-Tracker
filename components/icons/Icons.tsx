@@ -67,3 +67,83 @@ export const SettingsIcon = () => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
   </svg>
 );
+
+// Stylized type symbols for transactions
+export const IncomeSymbol = ({ className = 'w-5 h-5' }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={className}>
+    <circle cx="12" cy="16.5" r="3.2" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M12 13.3v-2.6m0 0c0-2.2 1.8-4 4-4 .9 0 1.7.2 2.4.7-1.7 1.1-3.6 1.9-6.4 1.9" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M12 10.7c-2.8 0-4.7-.8-6.4-1.9.7-.5 1.5-.7 2.4-.7 2.2 0 4 1.8 4 4" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+export const ExpenseSymbol = ({ className = 'w-5 h-5' }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={className}>
+    <path d="M7 4.5h10a1.5 1.5 0 011.5 1.5v10.5l-2-1-2 1-2-1-2 1-2-1-2 1V6a1.5 1.5 0 011.5-1.5z" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M9 8.5h6M9 11h4" strokeLinecap="round" />
+  </svg>
+);
+
+export const TransferSymbol = ({ className = 'w-5 h-5' }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={className}>
+    <path d="M7 9c0-2.2 1.8-4 4-4 1.9 0 3.5 1.3 3.9 3" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M17 15c0 2.2-1.8 4-4 4-1.9 0-3.5-1.3-3.9-3" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M14 8h3V5M10 16H7v3" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+// More visual, illustrative sketches
+export const IncomeSketch = ({ className = 'w-8 h-8' }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" className={className}>
+    <defs>
+      <linearGradient id="ig" x1="0" x2="1" y1="0" y2="1">
+        <stop offset="0%" stopColor="#10b981" stopOpacity="0.15" />
+        <stop offset="100%" stopColor="#10b981" stopOpacity="0.35" />
+      </linearGradient>
+    </defs>
+    <rect x="2" y="6" width="60" height="40" rx="12" fill="url(#ig)" />
+    <g fill="none" stroke="#059669" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <ellipse cx="20" cy="44" rx="8" ry="5" fill="#ecfdf5" stroke="#34d399" />
+      <ellipse cx="34" cy="42" rx="9" ry="6" fill="#ecfdf5" stroke="#34d399" />
+      <path d="M44 40c0-8 6-14 14-14" />
+      <path d="M44 32c-6 0-12-2-18-6 2-1.5 4-2 6-2 6 0 12 4 12 10z" />
+      <path d="M44 28v-6" />
+    </g>
+  </svg>
+);
+
+export const ExpenseSketch = ({ className = 'w-8 h-8' }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" className={className}>
+    <defs>
+      <linearGradient id="eg" x1="0" x2="1" y1="0" y2="1">
+        <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.12" />
+        <stop offset="100%" stopColor="#f43f5e" stopOpacity="0.28" />
+      </linearGradient>
+    </defs>
+    <rect x="4" y="8" width="56" height="40" rx="10" fill="url(#eg)" />
+    <g fill="none" stroke="#e11d48" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="14" y="16" width="36" height="28" rx="3" fill="#fff1f2" />
+      <path d="M20 22h16M20 28h12M20 34h18" />
+      <path d="M40 16l4 4" />
+      <path d="M44 16l-4 4" />
+    </g>
+  </svg>
+);
+
+export const TransferSketch = ({ className = 'w-8 h-8' }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" className={className}>
+    <defs>
+      <linearGradient id="tg" x1="0" x2="1" y1="0" y2="1">
+        <stop offset="0%" stopColor="#64748b" stopOpacity="0.12" />
+        <stop offset="100%" stopColor="#64748b" stopOpacity="0.28" />
+      </linearGradient>
+    </defs>
+    <rect x="3" y="8" width="58" height="40" rx="12" fill="url(#tg)" />
+    <g fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="22" cy="28" r="9" fill="#f8fafc" />
+      <circle cx="42" cy="28" r="9" fill="#f8fafc" />
+      <path d="M27 24h10M37 32H27" />
+      <path d="M37 24l4-3M27 32l-4 3" />
+    </g>
+  </svg>
+);
