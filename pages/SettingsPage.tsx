@@ -6,13 +6,23 @@ import { EditIcon, DeleteIcon, PlusIcon } from '../components/icons/Icons';
 import { useUISettings } from '../ui/UISettingsProvider';
 import { useI18n } from '../i18n/I18nProvider';
 
+type CategoryFormState = {
+  name: string;
+  type: TransactionType;
+  icon: string;
+  color: string;
+  parentId: string;
+  isDefault: boolean;
+  isActive: boolean;
+};
+
 const CategoryForm: React.FC<{
   category: Partial<Category> | null;
   categories: Category[];
   onSave: (category: Omit<Category, 'id'> | Category) => void;
   onClose: () => void;
 }> = ({ category, categories, onSave, onClose }) => {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<CategoryFormState>({
     name: category?.name || '',
     type: category?.type || TransactionType.EXPENSE,
     icon: category?.icon || '',
@@ -23,11 +33,30 @@ const CategoryForm: React.FC<{
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: type === 'checkbox' ? checked : value 
-    }));
+    const target = e.target as HTMLInputElement | HTMLSelectElement;
+    const { name, value, type: inputType } = target as HTMLInputElement;
+    const checked = (target as HTMLInputElement).checked;
+
+    setFormData(prev => {
+      switch (name) {
+        case 'isActive':
+          return { ...prev, isActive: checked };
+        case 'isDefault':
+          return { ...prev, isDefault: checked };
+        case 'type':
+          return { ...prev, type: value as TransactionType };
+        case 'parentId':
+          return { ...prev, parentId: value };
+        case 'name':
+          return { ...prev, name: value };
+        case 'icon':
+          return { ...prev, icon: value };
+        case 'color':
+          return { ...prev, color: value };
+        default:
+          return prev;
+      }
+    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
