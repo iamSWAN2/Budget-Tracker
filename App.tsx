@@ -1,9 +1,10 @@
 
 import React, { useState, useMemo, Suspense } from 'react';
-const DashboardPage = React.lazy(() => import('./pages/DashboardPage'));
-const AccountsPage = React.lazy(() => import('./pages/AccountsPage'));
-const TransactionsPage = React.lazy(() => import('./pages/TransactionsPage'));
-const SettingsPage = React.lazy(() => import('./pages/SettingsPage'));
+// pages는 named export를 사용하므로 lazy 로드 시 default로 매핑
+const DashboardPage = React.lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
+const AccountsPage = React.lazy(() => import('./pages/AccountsPage').then(m => ({ default: m.AccountsPage })));
+const TransactionsPage = React.lazy(() => import('./pages/TransactionsPage').then(m => ({ default: m.TransactionsPage })));
+const SettingsPage = React.lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 import { useData } from './hooks/useData';
 import { Page } from './types';
 import { I18nProvider, useI18n } from './i18n/I18nProvider';
