@@ -14,6 +14,7 @@ import { PlusIcon } from '../components/icons/Icons';
 import { InstallmentsWidget } from '../components/dashboard/InstallmentsWidget';
 import { RecurringWidget } from '../components/dashboard/RecurringWidget';
 import { OutliersWidget } from '../components/dashboard/OutliersWidget';
+import { CreditCardBillWidget } from '../components/dashboard/CreditCardBillWidget';
 
 export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   const { accounts, transactions, categories, addTransaction, updateTransaction, deleteTransaction } = data;
@@ -88,29 +89,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
 
   const monthlyBalance = useMemo(() => monthlyIncomeTotal - monthlyExpenseTotal, [monthlyIncomeTotal, monthlyExpenseTotal]);
 
-  const monthlyExpenseByCategory = useMemo(() => {
-    try {
-      const expenses = transactions.filter(t =>
-        t.type === TransactionType.EXPENSE &&
-        isInSelectedPeriod(t.date)
-      );
-
-      const categoryTotals = expenses.reduce((acc, curr) => {
-        const key = curr.category || '기타';
-        const amount = Number(curr.amount) || 0;
-        acc[key] = (acc[key] || 0) + amount;
-        return acc;
-      }, {} as Record<string, number>);
-
-      const items: { category: string; amount: number }[] = Object.entries(categoryTotals)
-        .map(([category, amount]) => ({ category, amount: Number(amount) || 0 }));
-
-      items.sort((a, b) => (b?.amount ?? 0) - (a?.amount ?? 0));
-      return items.slice(0, 5);
-    } catch {
-      return [] as { category: string; amount: number }[];
-    }
-  }, [transactions, currentMonth, currentYear, viewMode]);
+  // 지출 분포 위젯은 카드 결제 예상 위젯으로 대체됨
 
   const recentTransactions = useMemo(() => {
     return transactions
@@ -301,20 +280,12 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
             </p>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-2 md:p-4 col-span-4 md:col-span-1">
-            <h3 className="text-xs font-medium text-slate-600 mb-1">{t('summary.breakdown')}</h3>
-            <div className="space-y-1">
-              {monthlyExpenseByCategory.length > 0 ? (
-                monthlyExpenseByCategory.slice(0, 3).map((item, index) => (
-                  <div key={index} className="text-[11px] md:text-xs text-slate-600">
-                    {item.category}: {formatCurrency(item.amount)}
-                  </div>
-                ))
-              ) : (
-                <p className="text-[11px] md:text-xs text-slate-400">No expenses to display.</p>
-              )}
-            </div>
-          </div>
+          <CreditCardBillWidget
+            transactions={transactions}
+            accounts={accounts}
+            currentMonth={currentMonth}
+            currentYear={currentYear}
+          />
 
           {/* Installments due in selected period */}
           <div className="col-span-4">
