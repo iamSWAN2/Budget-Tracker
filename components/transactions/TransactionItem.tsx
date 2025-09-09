@@ -8,6 +8,7 @@ interface TransactionItemProps {
   accountName: string;
   categoryLabel: string;
   onDelete: (id: string) => void;
+  onDeleteDirect?: (id: string) => void; // 확인 없이 즉시 삭제용(모바일 롱프레스)
   onUpdate: (t: Transaction) => void;
   accounts: Account[];
   categories: Category[];
@@ -25,7 +26,7 @@ const typeCircleClasses = (type: TransactionType) =>
     ? 'bg-red-100 text-red-700 ring-2 ring-red-200'
     : 'bg-slate-200 text-slate-700 ring-2 ring-slate-300';
 
-export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, accountName, categoryLabel, onDelete, onUpdate, accounts, categories }) => {
+export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, accountName, categoryLabel, onDelete, onDeleteDirect, onUpdate, accounts, categories }) => {
   const isInstallment = !!transaction.installmentMonths && transaction.installmentMonths > 1;
   const isIncome = transaction.type === TransactionType.INCOME;
   const [editing, setEditing] = useState<null |
@@ -53,7 +54,12 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, a
   const startPress = () => {
     if (pressTimer.current) window.clearTimeout(pressTimer.current);
     pressTimer.current = window.setTimeout(() => {
-      if (window.confirm('이 거래를 삭제하시겠습니까?')) onDelete(transaction.id);
+      // 모바일: 이 컴포넌트 내부에서 1회만 확인 후 즉시 삭제 (부모 확인 중복 방지)
+      if (window.confirm('이 거래를 삭제하시겠습니까?')) {
+        if (onDeleteDirect) onDeleteDirect(transaction.id);
+        else onDelete(transaction.id);
+      }
+      pressTimer.current = null;
     }, 600);
   };
   const cancelPress = () => {

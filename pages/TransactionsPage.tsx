@@ -92,6 +92,7 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn }> = ({ data }) =>
                       accountName={getAccountName(transaction.accountId)}
                       categoryLabel={getCategoryPath(transaction.category)}
                       onDelete={handleDelete}
+                      onDeleteDirect={deleteTransaction}
                       onUpdate={updateTransaction}
                       accounts={accounts}
                       categories={categories}
