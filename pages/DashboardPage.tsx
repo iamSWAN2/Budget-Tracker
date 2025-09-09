@@ -15,6 +15,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   const { accounts, transactions, categories, addTransaction, updateTransaction, deleteTransaction } = data;
   const { t } = useI18n();
   const [transactionType, setTransactionType] = useState<TransactionType>(TransactionType.EXPENSE);
+  const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
   
   // Debug transactionType changes
   React.useEffect(() => {
@@ -59,21 +60,34 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
     };
   }, []);
 
+  const isInSelectedPeriod = (iso: string) => {
+    const d = new Date(iso);
+    if (viewMode === 'month') {
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    }
+    // week: 현재 주(월요일 시작)
+    const now = new Date();
+    const day = (now.getDay() + 6) % 7; // 월(0)~일(6)
+    const start = new Date(now);
+    start.setDate(now.getDate() - day);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+    return d >= start && d <= end;
+  };
+
   const monthlyIncomeTotal = useMemo(() => (
     transactions
-      .filter(t => t.type === TransactionType.INCOME && 
-        new Date(t.date).getMonth() === currentMonth && 
-        new Date(t.date).getFullYear() === currentYear)
+      .filter(t => t.type === TransactionType.INCOME && isInSelectedPeriod(t.date))
       .reduce((sum, t) => sum + t.amount, 0)
-  ), [transactions, currentMonth, currentYear]);
+  ), [transactions, currentMonth, currentYear, viewMode]);
 
   const monthlyExpenseTotal = useMemo(() => (
     transactions
-      .filter(t => t.type === TransactionType.EXPENSE && 
-        new Date(t.date).getMonth() === currentMonth && 
-        new Date(t.date).getFullYear() === currentYear)
+      .filter(t => t.type === TransactionType.EXPENSE && isInSelectedPeriod(t.date))
       .reduce((sum, t) => sum + t.amount, 0)
-  ), [transactions, currentMonth, currentYear]);
+  ), [transactions, currentMonth, currentYear, viewMode]);
 
   const monthlyBalance = useMemo(() => monthlyIncomeTotal - monthlyExpenseTotal, [monthlyIncomeTotal, monthlyExpenseTotal]);
 
@@ -81,8 +95,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
     try {
       const expenses = transactions.filter(t =>
         t.type === TransactionType.EXPENSE &&
-        new Date(t.date).getMonth() === currentMonth &&
-        new Date(t.date).getFullYear() === currentYear
+        isInSelectedPeriod(t.date)
       );
 
       const categoryTotals = expenses.reduce((acc, curr) => {
@@ -100,17 +113,13 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
     } catch {
       return [] as { category: string; amount: number }[];
     }
-  }, [transactions, currentMonth, currentYear]);
+  }, [transactions, currentMonth, currentYear, viewMode]);
 
   const recentTransactions = useMemo(() => {
     return transactions
-      .filter(t => 
-        new Date(t.date).getMonth() === currentMonth && 
-        new Date(t.date).getFullYear() === currentYear
-      )
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      ;
-  }, [transactions, currentMonth, currentYear]);
+      .filter(t => isInSelectedPeriod(t.date))
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [transactions, currentMonth, currentYear, viewMode]);
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type, checked } = e.target as HTMLInputElement;
@@ -211,23 +220,41 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   
   return (
     <div className="h-full flex flex-col">
-      {/* Month Navigation */}
-      <div className="flex items-center justify-center mb-4 flex-shrink-0">
-        <button
-          onClick={() => navigateMonth('prev')}
-          className="p-2 rounded-md hover:bg-slate-200 text-slate-600"
-        >
-          ← {t('month.prev')}
-        </button>
-        <h2 className="mx-6 text-xl font-semibold text-slate-800">
-          {formatMonth(currentMonth, currentYear)}
-        </h2>
-        <button
-          onClick={() => navigateMonth('next')}
-          className="p-2 rounded-md hover:bg-slate-200 text-slate-600"
-        >
-          {t('month.next')} →
-        </button>
+      {/* Month Navigation + View Toggle */}
+      <div className="mb-2 flex flex-col items-center flex-shrink-0">
+        <div className="flex items-center justify-center">
+          <button
+            onClick={() => navigateMonth('prev')}
+            className="p-2 rounded-md hover:bg-slate-200 text-slate-600"
+          >
+            ← {t('month.prev')}
+          </button>
+          <h2 className="mx-6 text-xl font-semibold text-slate-800">
+            {formatMonth(currentMonth, currentYear)}
+          </h2>
+          <button
+            onClick={() => navigateMonth('next')}
+            className="p-2 rounded-md hover:bg-slate-200 text-slate-600"
+          >
+            {t('month.next')} →
+          </button>
+        </div>
+        <div className="mt-2 inline-flex rounded-md overflow-hidden border border-slate-300 text-xs">
+          <button
+            type="button"
+            className={`px-3 py-1.5 ${viewMode === 'month' ? 'bg-slate-800 text-white' : 'bg-white text-slate-700 hover:bg-slate-100'}`}
+            onClick={() => setViewMode('month')}
+          >
+            월 보기
+          </button>
+          <button
+            type="button"
+            className={`px-3 py-1.5 border-l ${viewMode === 'week' ? 'bg-slate-800 text-white' : 'bg-white text-slate-700 hover:bg-slate-100'}`}
+            onClick={() => setViewMode('week')}
+          >
+            주 보기
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 flex flex-col space-y-4 md:space-y-6 min-h-0">
@@ -280,7 +307,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
           {/* Transaction History - Expanded */}
           <div className="bg-white rounded-lg shadow-md p-4 lg:col-span-3 flex flex-col min-h-0 lg:min-h-0">
             <div className="flex items-center justify-between mb-3 flex-shrink-0">
-              <h3 className="text-sm font-semibold text-slate-800">{t('nav.transactions')}</h3>
+              <h3 className="text-sm font-semibold text-slate-800">{viewMode === 'week' ? '이번 주 거래' : t('nav.transactions')}</h3>
               <input
                 type="text"
                 placeholder={t('placeholder.search')}
