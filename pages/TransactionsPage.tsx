@@ -63,14 +63,15 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn }> = ({ data }) =>
                   <button 
                     onClick={handleAdd} 
                     disabled={accounts.length === 0}
-                    className={`flex items-center px-3 py-1.5 rounded-md ${
+                    className={`flex items-center justify-center px-2.5 py-1.5 rounded-md ${
                       accounts.length === 0 
                         ? 'bg-slate-300 text-slate-500 cursor-not-allowed' 
                         : 'bg-indigo-600 text-white hover:bg-indigo-700'
                     }`}
+                    aria-label={t('form.addTransaction')}
+                    title={t('form.addTransaction')}
                   >
                       <PlusIcon />
-                      <span className="ml-2">{t('form.addTransaction')}</span>
                   </button>
                 </div>
             </div>
