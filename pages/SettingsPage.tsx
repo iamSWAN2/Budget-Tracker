@@ -34,15 +34,15 @@ const CategoryForm: React.FC<{
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const target = e.target as HTMLInputElement | HTMLSelectElement;
-    const { name, value, type: inputType } = target as HTMLInputElement;
-    const checked = (target as HTMLInputElement).checked;
+    const name = (target as HTMLInputElement).name;
+    const value = (target as HTMLInputElement).value;
 
     setFormData(prev => {
       switch (name) {
         case 'isActive':
-          return { ...prev, isActive: checked };
+          return { ...prev, isActive: (target as HTMLInputElement).checked };
         case 'isDefault':
-          return { ...prev, isDefault: checked };
+          return { ...prev, isDefault: (target as HTMLInputElement).checked };
         case 'type':
           return { ...prev, type: value as TransactionType };
         case 'parentId':
