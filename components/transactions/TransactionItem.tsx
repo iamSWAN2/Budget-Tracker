@@ -267,14 +267,14 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, a
         </div>
 
         {/* Actions: 데스크톱에서만 삭제 버튼 상시 노출 */}
-        <div className="hidden lg:flex items-start">
+        <div className="hidden lg:flex items-center justify-center self-center">
           <button
-            className="ml-2 p-2 rounded-md border border-red-200 text-red-600 hover:bg-red-50"
+            className="group ml-2 p-1.5 rounded-md bg-slate-100 text-slate-600 hover:text-slate-800 hover:font-bold transition-colors"
             onClick={() => onDelete(transaction.id)}
             aria-label="삭제"
             title="삭제"
           >
-            <DeleteIcon />
+            <DeleteIcon className="w-4 h-4 transition-transform group-hover:scale-110" />
           </button>
         </div>
       </div>
