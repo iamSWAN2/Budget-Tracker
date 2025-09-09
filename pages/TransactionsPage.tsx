@@ -109,6 +109,28 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn; initialFilter?: {
                     placeholder={t('placeholder.search')}
                     className="px-3 py-1.5 text-sm border border-slate-300 rounded-md w-40"
                   />
+                  <select
+                    value={category ?? ''}
+                    onChange={(e) => setCategory(e.target.value || undefined)}
+                    className="px-2 py-1.5 text-sm border border-slate-300 rounded-md"
+                    title="카테고리 선택"
+                  >
+                    <option value="">전체 카테고리</option>
+                    {categories.map(c => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={accountId ?? ''}
+                    onChange={(e) => setAccountId(e.target.value || undefined)}
+                    className="px-2 py-1.5 text-sm border border-slate-300 rounded-md"
+                    title="계좌 선택"
+                  >
+                    <option value="">전체 계좌</option>
+                    {accounts.map(a => (
+                      <option key={a.id} value={a.id}>{a.name}</option>
+                    ))}
+                  </select>
                   <AIAssist data={data} />
                   <button 
                     onClick={handleAdd} 
@@ -130,14 +152,14 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn; initialFilter?: {
               <div className="mb-3 flex items-center flex-wrap gap-2 text-xs">
                 {q && (
                   <span className="inline-flex items-center gap-2 bg-slate-100 text-slate-700 px-2 py-1 rounded">
-                    검색: “{q}”
-                    <button className="text-slate-500 hover:text-slate-800" onClick={() => { setQ(''); setQInput(''); }}>×</button>
+                  검색: “{q}”
+                  <button className="text-slate-500 hover:text-slate-800" onClick={() => { setQ(''); setQInput(''); }}>×</button>
                   </span>
                 )}
                 {(range.start || range.end) && (
                   <span className="inline-flex items-center gap-2 bg-slate-100 text-slate-700 px-2 py-1 rounded">
-                    기간: {range.start ? new Date(range.start).toLocaleDateString('ko-KR') : '…'} ~ {range.end ? new Date(range.end).toLocaleDateString('ko-KR') : '…'}
-                    <button className="text-slate-500 hover:text-slate-800" onClick={() => setRange({ start: undefined, end: undefined })}>×</button>
+                  기간: {range.start ? new Date(range.start).toLocaleDateString('ko-KR') : '…'} ~ {range.end ? new Date(range.end).toLocaleDateString('ko-KR') : '…'}
+                  <button className="text-slate-500 hover:text-slate-800" onClick={() => setRange({ start: undefined, end: undefined })}>×</button>
                   </span>
                 )}
                 {category && (
@@ -160,6 +182,9 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn; initialFilter?: {
                 </button>
               </div>
             )}
+
+            {/* Result count */}
+            <div className="mb-3 text-xs text-slate-500">검색 결과: {filtered.length}건</div>
             
             {accounts.length === 0 && (
               <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
