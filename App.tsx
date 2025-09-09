@@ -1,13 +1,14 @@
 
-import React, { useState, useMemo } from 'react';
-import { DashboardPage } from './pages/DashboardPage';
-import { AccountsPage } from './pages/AccountsPage';
-import { TransactionsPage } from './pages/TransactionsPage';
-import { SettingsPage } from './pages/SettingsPage';
+import React, { useState, useMemo, Suspense } from 'react';
+const DashboardPage = React.lazy(() => import('./pages/DashboardPage'));
+const AccountsPage = React.lazy(() => import('./pages/AccountsPage'));
+const TransactionsPage = React.lazy(() => import('./pages/TransactionsPage'));
+const SettingsPage = React.lazy(() => import('./pages/SettingsPage'));
 import { useData } from './hooks/useData';
 import { Page } from './types';
 import { I18nProvider, useI18n } from './i18n/I18nProvider';
 import { UISettingsProvider, useUISettings } from './ui/UISettingsProvider';
+import { Spinner } from './components/ui/Spinner';
 
 function AppInner() {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
@@ -118,7 +119,9 @@ function AppInner() {
           </div>
         ) : (
           <div className="h-full">
-            {CurrentPageComponent}
+            <Suspense fallback={<div className="flex items-center justify-center h-full"><Spinner /></div>}>
+              {CurrentPageComponent}
+            </Suspense>
           </div>
         )}
       </main>

@@ -1,7 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, Suspense } from 'react';
 import { UseDataReturn } from '../hooks/useData';
 import { TransactionType, Transaction } from '../types';
-import AIAssist from '../components/AIAssist';
+const AIAssist = React.lazy(() => import('../components/AIAssist'));
 import { Modal } from '../components/ui/Modal';
 import { TransactionForm } from '../components/forms/TransactionForm';
 import { AddTransactionFormInline } from '../components/forms/AddTransactionFormInline';
@@ -356,7 +356,11 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
           <div className="hidden lg:block bg-white rounded-lg shadow-md p-4 lg:col-span-2">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-semibold text-slate-800">{t('form.addTransaction')}</h3>
-              <div className="flex items-center gap-2"><AIAssist data={data} /></div>
+              <div className="flex items-center gap-2">
+                <Suspense fallback={<span className="text-xs text-slate-400">AI…</span>}>
+                  <AIAssist data={data} />
+                </Suspense>
+              </div>
             </div>
             <AddTransactionFormInline accounts={accounts} categories={categories} onAdd={addTransaction} />
           </div>

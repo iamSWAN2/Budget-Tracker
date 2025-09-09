@@ -8,7 +8,7 @@ import { TransactionForm } from '../components/forms/TransactionForm';
 import { AddTransactionFormInline } from '../components/forms/AddTransactionFormInline';
 import { EditTransactionFormInline } from '../components/forms/EditTransactionFormInline';
 import { AddTransactionFormInline } from '../components/forms/AddTransactionFormInline';
-import AIAssist from '../components/AIAssist';
+const AIAssist = React.lazy(() => import('../components/AIAssist'));
 import { formatDateDisplay } from '../utils/format';
 import { useI18n } from '../i18n/I18nProvider';
 import { useUISettings } from '../ui/UISettingsProvider';
@@ -131,7 +131,9 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn; initialFilter?: {
                       <option key={a.id} value={a.id}>{a.name}</option>
                     ))}
                   </select>
-                  <AIAssist data={data} />
+                  <React.Suspense fallback={<span className="text-xs text-slate-400">AI…</span>}>
+                    <AIAssist data={data} />
+                  </React.Suspense>
                   <button 
                     onClick={handleAdd} 
                     disabled={accounts.length === 0}
