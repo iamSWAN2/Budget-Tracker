@@ -1,19 +1,19 @@
 
 import React, { useState, useMemo } from 'react';
-import { Sidebar } from './components/layout/Sidebar';
-import { Header } from './components/layout/Header';
 import { DashboardPage } from './pages/DashboardPage';
 import { AccountsPage } from './pages/AccountsPage';
 import { TransactionsPage } from './pages/TransactionsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { useData } from './hooks/useData';
 import { Page } from './types';
-import { InstallmentsPage } from './pages/InstallmentsPage';
+import { I18nProvider, useI18n } from './i18n/I18nProvider';
+import { UISettingsProvider, useUISettings } from './ui/UISettingsProvider';
 
-export default function App() {
+function AppInner() {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const data = useData();
+  const { t, lang, toggle } = useI18n();
+  const { density, toggleDensity } = useUISettings();
 
   const CurrentPageComponent = useMemo(() => {
     switch (currentPage) {
@@ -23,8 +23,6 @@ export default function App() {
         return <AccountsPage data={data} />;
       case 'transactions':
         return <TransactionsPage data={data} />;
-      case 'installments':
-        return <InstallmentsPage data={data} />;
       case 'settings':
         return <SettingsPage data={data} />;
       default:
@@ -33,49 +31,93 @@ export default function App() {
   }, [currentPage, data]);
 
   return (
-    <div className="min-h-screen bg-slate-100 font-sans">
-      {/* Mobile backdrop */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-      
-      {/* Desktop: flex layout, Mobile: stacked */}
-      <div className="lg:flex">
-        <Sidebar 
-          currentPage={currentPage} 
-          setCurrentPage={setCurrentPage}
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-        />
-        
-        <div className="flex-1 lg:flex lg:flex-col min-h-screen">
-          <Header 
-            currentPage={currentPage} 
-            onMenuClick={() => setSidebarOpen(!sidebarOpen)}
-          />
+    <div className="h-screen bg-slate-50 flex flex-col">
+      {/* Header */}
+      <header className="bg-white border-b border-slate-200 flex-shrink-0">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-indigo-600 mb-2">Household Ledger</h1>
+            <p className="text-slate-600">{t('app.subtitle')}</p>
+          </div>
           
-          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-100 p-2 sm:p-4 lg:p-6">
-            {data.isLoading ? (
-              <div className="flex justify-center items-center h-64 lg:h-full">
-                <div className="text-lg lg:text-xl text-slate-600 text-center px-4">
-                  Loading your financial data...
-                </div>
-              </div>
-            ) : data.error ? (
-              <div className="flex justify-center items-center h-64 lg:h-full">
-                <div className="text-sm lg:text-xl text-red-500 bg-red-100 p-3 lg:p-4 rounded-lg mx-4 max-w-md">
-                  {data.error}
-                </div>
-              </div>
-            ) : (
-              CurrentPageComponent
-            )}
-          </main>
+          {/* Navigation */}
+          <nav className="mt-6 flex justify-center items-center space-x-3">
+            <div className="inline-flex rounded-lg bg-slate-100 p-1">
+              <button
+                onClick={() => setCurrentPage('dashboard')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  currentPage === 'dashboard'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-slate-700 hover:text-slate-900'
+                }`}
+              >
+                {t('nav.dashboard')}
+              </button>
+              <button
+                onClick={() => setCurrentPage('accounts')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  currentPage === 'accounts'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-slate-700 hover:text-slate-900'
+                }`}
+              >
+                자산
+              </button>
+              <button
+                onClick={() => setCurrentPage('transactions')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  currentPage === 'transactions'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-slate-700 hover:text-slate-900'
+                }`}
+              >
+                {t('nav.transactions')}
+              </button>
+              <button
+                onClick={() => setCurrentPage('settings')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  currentPage === 'settings'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-slate-700 hover:text-slate-900'
+                }`}
+              >
+                {t('nav.settings')}
+              </button>
+            </div>
+          </nav>
         </div>
-      </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 overflow-hidden">
+        {data.isLoading ? (
+          <div className="flex justify-center items-center h-full">
+            <div className="text-lg text-slate-600 text-center">
+              {t('loading')}
+            </div>
+          </div>
+        ) : data.error ? (
+          <div className="flex justify-center items-center h-full">
+            <div className="text-lg text-red-500 bg-red-100 p-4 rounded-lg max-w-md">
+              {t('error')}
+            </div>
+          </div>
+        ) : (
+          <div className="h-full">
+            {CurrentPageComponent}
+          </div>
+        )}
+      </main>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <I18nProvider>
+      <UISettingsProvider>
+        <AppInner />
+      </UISettingsProvider>
+    </I18nProvider>
   );
 }

@@ -3,8 +3,7 @@ import React from 'react';
 import { UseDataReturn } from '../hooks/useData';
 import { Card } from '../components/ui/Card';
 import { Installment } from '../types';
-
-const formatCurrency = (value: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+import { formatCurrency } from '../utils/format';
 
 export const InstallmentsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   const { installments, accounts } = data;
@@ -30,7 +29,7 @@ export const InstallmentsPage: React.FC<{ data: UseDataReturn }> = ({ data }) =>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-slate-500">월 납부액:</span>
-                  <span className="font-semibold text-primary-600">{formatCurrency(inst.monthlyPayment)}</span>
+                  <span className="font-semibold text-indigo-600">{formatCurrency(inst.monthlyPayment)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">남은 납부 횟수:</span>
@@ -48,7 +47,7 @@ export const InstallmentsPage: React.FC<{ data: UseDataReturn }> = ({ data }) =>
                 <div className="pt-2">
                     <div className="w-full bg-slate-200 rounded-full h-2.5">
                         <div 
-                            className="bg-primary-600 h-2.5 rounded-full" 
+                            className="bg-indigo-600 h-2.5 rounded-full" 
                             style={{ width: `${((inst.totalMonths - inst.remainingMonths) / inst.totalMonths) * 100}%` }}>
                         </div>
                     </div>

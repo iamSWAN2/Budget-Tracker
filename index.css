@@ -1,0 +1,4 @@
+@import "tailwindcss";
+
+/* 숫자 정렬 품질 향상 */
+.tabular-nums { font-variant-numeric: tabular-nums; }

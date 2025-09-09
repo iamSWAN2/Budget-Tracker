@@ -164,8 +164,19 @@ export const useData = () => {
           setAccounts(prev => prev.filter(a => a.id !== id));
           await fetchData();
       } catch (err) {
-          setError('Failed to delete account.');
-          console.error(err);
+          // 예상되는 비즈니스 로직 에러는 정보 레벨로 처리
+          if (err instanceof Error && (
+              err.message.includes('거래 내역이 있는 계좌') || 
+              err.message.includes('기본 계좌는 삭제할 수 없습니다')
+          )) {
+              console.info('Account deletion prevented:', err.message);
+          } else {
+              // 예상치 못한 에러만 에러 레벨로 처리
+              setError('Failed to delete account.');
+              console.error('Unexpected error during account deletion:', err);
+          }
+          // 에러를 다시 throw해서 UI에서 처리할 수 있도록 함
+          throw err;
       }
   };
 

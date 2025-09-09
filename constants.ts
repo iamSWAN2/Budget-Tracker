@@ -3,6 +3,15 @@ import { Account, Transaction, Category, AccountPropensity, TransactionType } fr
 
 export const MOCK_ACCOUNTS: Account[] = [];
 
+export const DEFAULT_ACCOUNTS: Account[] = [
+  { 
+    id: '00000000-0000-0000-0000-000000000001', // UUID 형식의 기본 현금 계좌 ID
+    name: '현금', 
+    balance: 100000, // 초기 현금 10만원
+    propensity: AccountPropensity.CASH 
+  }
+];
+
 export const MOCK_TRANSACTIONS: Transaction[] = [];
 
 export const CATEGORY_COLORS = ['#3b82f6', '#ef4444', '#adf7deff', '#f97316', '#8b5cf6', '#ec4899', '#f59e0b', '#6366f1'];
@@ -38,22 +47,20 @@ export const DEFAULT_CATEGORIES: Category[] = [
 
   // 금융/투자
   { id: 'cat-finance', name: '금융/투자', type: TransactionType.EXPENSE, color: '#6366f1', isDefault: true, isActive: true },
-  { id: 'cat-savings', name: '급여', type: TransactionType.EXPENSE, color: '#10b981', parentId: 'cat-finance', isDefault: true, isActive: true },
-  { id: 'cat-monthly', name: '월세', type: TransactionType.EXPENSE, color: '#3b82f6', parentId: 'cat-finance', isDefault: true, isActive: true },
   { id: 'cat-deposit', name: '적금', type: TransactionType.EXPENSE, color: '#06b6d4', parentId: 'cat-finance', isDefault: true, isActive: true },
   { id: 'cat-bank-deposit', name: '예금', type: TransactionType.EXPENSE, color: '#64748b', parentId: 'cat-finance', isDefault: true, isActive: true },
   { id: 'cat-investment', name: '투자금', type: TransactionType.EXPENSE, color: '#ef4444', parentId: 'cat-finance', isDefault: true, isActive: true },
   { id: 'cat-pension', name: '연금', type: TransactionType.EXPENSE, color: '#8b5cf6', parentId: 'cat-finance', isDefault: true, isActive: true },
   { id: 'cat-interest', name: '이자', type: TransactionType.EXPENSE, color: '#f59e0b', parentId: 'cat-finance', isDefault: true, isActive: true },
 
-  // 기타
-  { id: 'cat-others', name: '기타', type: TransactionType.EXPENSE, color: '#64748b', isDefault: true, isActive: true },
-  { id: 'cat-previous', name: '이체 입금', type: TransactionType.EXPENSE, color: '#10b981', parentId: 'cat-others', isDefault: true, isActive: true },
-  { id: 'cat-withdraw', name: '이체 출금', type: TransactionType.EXPENSE, color: '#ef4444', parentId: 'cat-others', isDefault: true, isActive: true },
-  { id: 'cat-present', name: '현금', type: TransactionType.EXPENSE, color: '#f59e0b', parentId: 'cat-others', isDefault: true, isActive: true },
-  { id: 'cat-card-fee', name: '카드 취소', type: TransactionType.EXPENSE, color: '#6366f1', parentId: 'cat-others', isDefault: true, isActive: true },
-  { id: 'cat-card-loan', name: '카드 대금', type: TransactionType.EXPENSE, color: '#8b5cf6', parentId: 'cat-others', isDefault: true, isActive: true },
-  { id: 'cat-special', name: '특수 지출', type: TransactionType.EXPENSE, color: '#ec4899', parentId: 'cat-others', isDefault: true, isActive: true },
+  // 기타 카테고리 (TRANSFER 타입으로 기타 카테고리 섹션에 표시)
+  { id: 'cat-others', name: '기타', type: TransactionType.TRANSFER, color: '#64748b', isDefault: true, isActive: true },
+  { id: 'cat-previous', name: '기타 입금', type: TransactionType.TRANSFER, color: '#10b981', parentId: 'cat-others', isDefault: true, isActive: true },
+  { id: 'cat-withdraw', name: '기타 출금', type: TransactionType.TRANSFER, color: '#ef4444', parentId: 'cat-others', isDefault: true, isActive: true },
+  { id: 'cat-present', name: '현금', type: TransactionType.TRANSFER, color: '#f59e0b', parentId: 'cat-others', isDefault: true, isActive: true },
+  { id: 'cat-card-fee', name: '카드 취소', type: TransactionType.TRANSFER, color: '#6366f1', parentId: 'cat-others', isDefault: true, isActive: true },
+  { id: 'cat-card-loan', name: '카드 대금', type: TransactionType.TRANSFER, color: '#8b5cf6', parentId: 'cat-others', isDefault: true, isActive: true },
+  { id: 'cat-special', name: '특수 지출', type: TransactionType.TRANSFER, color: '#ec4899', parentId: 'cat-others', isDefault: true, isActive: true },
 
   // 수입 카테고리
   { id: 'cat-income', name: '수입', type: TransactionType.INCOME, color: '#10b981', isDefault: true, isActive: true },

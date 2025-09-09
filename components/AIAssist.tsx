@@ -7,8 +7,7 @@ import { analyzeTransactionsFromFile } from '../services/geminiService';
 import { LocalCsvParser, ParsedColumn, ColumnMapping } from '../services/localCsvParser';
 import { AITransaction, Account, AccountPropensity } from '../types';
 import { UseDataReturn } from '../hooks/useData';
-
-const formatCurrency = (value: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+import { formatCurrency } from '../utils/format';
 
 const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
   const { accounts, addMultipleTransactions, addAccount } = data;
@@ -50,9 +49,10 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
         setCsvData({ headers, rows });
         setParsedColumns(columns);
         
-        // 자동 매핑 시도
+        // 자동 매핑 시도 (신뢰도 기반)
         const autoMapping: ColumnMapping = {};
         columns.forEach((col, index) => {
+          // 높은 신뢰도(0.7+) 필드들은 자동 매핑
           if (col.confidence > 0.7) {
             switch (col.detectedType) {
               case 'date':
@@ -66,6 +66,29 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                 break;
               case 'type':
                 if (!autoMapping.type) autoMapping.type = index;
+                break;
+              case 'reference':
+                if (!autoMapping.reference) autoMapping.reference = index;
+                break;
+              case 'category':
+                if (!autoMapping.category) autoMapping.category = index;
+                break;
+              case 'balance':
+                if (!autoMapping.balance) autoMapping.balance = index;
+                break;
+            }
+          }
+          // 중간 신뢰도(0.5+) 필드들도 참고용으로 매핑
+          else if (col.confidence > 0.5) {
+            switch (col.detectedType) {
+              case 'reference':
+                if (!autoMapping.reference) autoMapping.reference = index;
+                break;
+              case 'category':
+                if (!autoMapping.category) autoMapping.category = index;
+                break;
+              case 'balance':
+                if (!autoMapping.balance) autoMapping.balance = index;
                 break;
             }
           }
@@ -159,10 +182,11 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
     <>
       <button
         onClick={() => setIsModalOpen(true)}
-        className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 shadow"
+        className="flex items-center px-2.5 py-1.5 text-xs bg-purple-600 text-white rounded-md hover:bg-purple-700"
+        title="AI 가져오기"
       >
         <AIIcon />
-        <span className="ml-2">AI 가져오기</span>
+        <span className="ml-1.5">AI 가져오기</span>
       </button>
 
       <Modal isOpen={isModalOpen} onClose={handleClose} title="AI Transaction Import">
@@ -181,7 +205,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
             <p className="mt-2 text-slate-600">{errorMessage}</p>
             <button
                 onClick={() => setStep('account')}
-                className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+                className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
             >
                 다시 시도
             </button>
@@ -209,7 +233,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                       <div className="flex-1">
                         <div className="font-medium">{account.name}</div>
                         <div className="text-sm text-slate-500">
-                          잔액: {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(account.balance)} | {account.propensity}
+                          잔액: {formatCurrency(account.balance)} | {account.propensity}
                         </div>
                       </div>
                     </label>
@@ -226,7 +250,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
               <button
                 type="button"
                 onClick={() => setStep('new-account')}
-                className="w-full p-3 border-2 border-dashed border-slate-300 rounded-md text-slate-600 hover:border-primary-500 hover:text-primary-600 transition-colors"
+                className="w-full p-3 border-2 border-dashed border-slate-300 rounded-md text-slate-600 hover:border-indigo-500 hover:text-indigo-600 transition-colors"
               >
                 + 새 계좌 생성
               </button>
@@ -237,7 +261,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                 type="button"
                 onClick={() => setStep('upload')}
                 disabled={!selectedAccountId}
-                className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
               >
                 다음
               </button>
@@ -281,7 +305,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
             </p>
             
             <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center">
-              <label htmlFor="file-upload" className="cursor-pointer text-primary-600 font-semibold">
+              <label htmlFor="file-upload" className="cursor-pointer text-indigo-600 font-semibold">
 파일 선택
               </label>
               <input 
@@ -307,32 +331,55 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
             <h3 className="text-lg font-medium text-slate-900 mb-4">열 매핑 설정</h3>
             <p className="text-slate-600 mb-4">각 CSV 열이 무엇을 나타내는지 확인하거나 수정해주세요.</p>
             
-            <div className="space-y-4 mb-6">
+            <div className="space-y-3 mb-6">
               {[
-                { key: 'date', label: '날짜', required: true },
-                { key: 'description', label: '설명', required: true },
-                { key: 'amount', label: '금액', required: true },
-                { key: 'type', label: '거래 유형', required: false }
-              ].map(({ key, label, required }) => (
-                <div key={key} className="flex items-center space-x-4">
-                  <label className="w-20 text-sm font-medium text-slate-700">
-                    {label} {required && <span className="text-red-500">*</span>}
-                  </label>
-                  <select
-                    value={columnMapping[key as keyof ColumnMapping] ?? ''}
-                    onChange={(e) => setColumnMapping(prev => ({
-                      ...prev,
-                      [key]: e.target.value ? parseInt(e.target.value) : undefined
-                    }))}
-                    className="flex-1 rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                  >
-                    <option value="">선택되지 않음</option>
-                    {parsedColumns.map((col, index) => (
-                      <option key={index} value={index}>
-                        {col.name} ({col.detectedType}, confidence: {(col.confidence * 100).toFixed(0)}%)
-                      </option>
-                    ))}
-                  </select>
+                { key: 'date', label: '날짜', required: true, description: '거래 발생 일자' },
+                { key: 'description', label: '설명', required: true, description: '거래 내역 또는 가맹점명' },
+                { key: 'amount', label: '금액', required: true, description: '거래 금액 (양수/음수 구분)' },
+                { key: 'type', label: '거래 유형', required: false, description: '입금/출금/이체 구분' },
+                { key: 'reference', label: '참조번호', required: false, description: '거래 고유번호 또는 승인번호' },
+                { key: 'category', label: '카테고리', required: false, description: '거래 카테고리 (자동 분류용)' },
+                { key: 'balance', label: '잔액', required: false, description: '거래 후 계좌 잔액' }
+              ].map(({ key, label, required, description }) => (
+                <div key={key} className={`rounded-lg border p-4 ${
+                  required 
+                    ? 'border-red-200 bg-red-50/30' 
+                    : 'border-slate-200 bg-slate-50/30'
+                }`}>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
+                    <div className="space-y-1">
+                      <label className="block text-sm font-semibold text-slate-700">
+                        {required ? '🔴' : '🔵'} {label}
+                        {required && <span className="text-red-500 ml-1">*</span>}
+                      </label>
+                      <p className="text-xs text-slate-500 leading-tight">{description}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <select
+                        value={columnMapping[key as keyof ColumnMapping] ?? ''}
+                        onChange={(e) => setColumnMapping(prev => ({
+                          ...prev,
+                          [key]: e.target.value ? parseInt(e.target.value) : undefined
+                        }))}
+                        className="w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                      >
+                        <option value="">{required ? '⚠️ 필수 선택' : '📋 선택 안함'}</option>
+                        {parsedColumns.map((col, index) => (
+                          <option key={index} value={index}>
+                            📊 {col.name} ({col.detectedType}, 신뢰도: {(col.confidence * 100).toFixed(0)}%)
+                          </option>
+                        ))}
+                      </select>
+                      {columnMapping[key as keyof ColumnMapping] !== undefined && (
+                        <div className="mt-2 p-2 bg-white rounded border text-xs">
+                          <span className="font-semibold text-green-700">✅ 매핑된 값:</span>
+                          <span className="ml-2 text-slate-700 font-mono">
+                            "{csvData?.rows[0]?.[columnMapping[key as keyof ColumnMapping]!] || 'N/A'}"
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -388,7 +435,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                   handleMappingConfirm();
                 }}
                 disabled={columnMapping.date === undefined || columnMapping.description === undefined || columnMapping.amount === undefined}
-                className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
               >
                 다음
               </button>
@@ -430,7 +477,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
             </div>
             <div className="flex justify-end pt-4 space-x-2">
                 <button type="button" onClick={() => setStep(parseMode === 'local' ? 'mapping' : 'upload')} className="px-4 py-2 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300">이전</button>
-                <button type="button" onClick={handleConfirm} className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">확인 및 추가</button>
+                <button type="button" onClick={handleConfirm} className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">확인 및 추가</button>
             </div>
           </div>
         )}
@@ -447,7 +494,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                   value={newAccountForm.name} 
                   onChange={(e) => setNewAccountForm(prev => ({ ...prev, name: e.target.value }))}
                   required 
-                  className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" 
+                  className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" 
                 />
               </div>
               <div>
@@ -456,7 +503,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                   id="ai-account-type"
                   value={newAccountForm.propensity} 
                   onChange={(e) => setNewAccountForm(prev => ({ ...prev, propensity: e.target.value as AccountPropensity }))}
-                  className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                 >
                   {Object.values(AccountPropensity).map(type => 
                     <option key={type} value={type}>{type}</option>
@@ -472,7 +519,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                   onChange={(e) => setNewAccountForm(prev => ({ ...prev, balance: parseFloat(e.target.value) || 0 }))}
                   step="0.01" 
                   placeholder="0.00" 
-                  className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" 
+                  className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" 
                 />
               </div>
             </div>
@@ -487,7 +534,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
               <button 
                 type="button" 
                 onClick={handleCreateAccount}
-                className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
               >
                 계좌 생성
               </button>
