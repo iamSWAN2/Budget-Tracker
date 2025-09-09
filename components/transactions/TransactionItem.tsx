@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Account, Category, Transaction, TransactionType } from '../../types';
 import { formatCurrency, formatDateDisplay } from '../../utils/format';
-import { IncomeSketch, ExpenseSketch, TransferSketch } from '../icons/Icons';
+import { IncomeSketch, ExpenseSketch, TransferSketch, DeleteIcon } from '../icons/Icons';
 
 interface TransactionItemProps {
   transaction: Transaction;
@@ -269,12 +269,12 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, a
         {/* Actions: 데스크톱에서만 삭제 버튼 상시 노출 */}
         <div className="hidden lg:flex items-start">
           <button
-            className="ml-2 px-3 py-2 text-sm rounded-md border border-red-200 text-red-600 hover:bg-red-50"
+            className="ml-2 p-2 rounded-md border border-red-200 text-red-600 hover:bg-red-50"
             onClick={() => onDelete(transaction.id)}
             aria-label="삭제"
             title="삭제"
           >
-            삭제
+            <DeleteIcon />
           </button>
         </div>
       </div>
