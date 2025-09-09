@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { UseDataReturn } from '../hooks/useData';
 import { Transaction, TransactionType } from '../types';
 import { PlusIcon } from '../components/icons/Icons';
@@ -15,13 +15,27 @@ import { useUISettings } from '../ui/UISettingsProvider';
 import { TransactionItem } from '../components/transactions/TransactionItem';
 import { TransactionsList } from '../components/transactions/TransactionsList';
 
-export const TransactionsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
+export const TransactionsPage: React.FC<{ data: UseDataReturn; initialFilter?: { q?: string } }> = ({ data, initialFilter }) => {
     const { transactions, accounts, categories, addTransaction, updateTransaction, deleteTransaction } = data;
     const { t } = useI18n();
     const { density } = useUISettings();
     const rowY = density === 'compact' ? 'py-1.5' : 'py-2.5';
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+    const [q, setQ] = useState<string>(initialFilter?.q ?? '');
+
+    useEffect(() => {
+      if (initialFilter?.q !== undefined) setQ(initialFilter.q);
+    }, [initialFilter?.q]);
+
+    const filtered = useMemo(() => {
+      const query = q.trim().toLowerCase();
+      if (!query) return transactions;
+      return transactions.filter(t =>
+        (t.description || '').toLowerCase().includes(query) ||
+        (t.category || '').toLowerCase().includes(query)
+      );
+    }, [transactions, q]);
 
     const handleAdd = () => {
         setEditingTransaction(null);
@@ -60,6 +74,12 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn }> = ({ data }) =>
             <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-slate-700">{t('nav.transactions')}</h3>
                 <div className="flex items-center space-x-2">
+                  <input
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    placeholder={t('placeholder.search')}
+                    className="px-3 py-1.5 text-sm border border-slate-300 rounded-md w-40"
+                  />
                   <AIAssist data={data} />
                   <button 
                     onClick={handleAdd} 
@@ -85,9 +105,9 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn }> = ({ data }) =>
             
             <div className="flex-1 overflow-y-auto min-h-0">
               <div className="space-y-2">
-                {transactions.length > 0 ? (
+                {filtered.length > 0 ? (
                   <TransactionsList
-                    transactions={transactions}
+                    transactions={filtered}
                     accounts={accounts}
                     categories={categories}
                     onUpdate={updateTransaction}

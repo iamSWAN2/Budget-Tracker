@@ -11,6 +11,7 @@ import { UISettingsProvider, useUISettings } from './ui/UISettingsProvider';
 
 function AppInner() {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
+  const [txFilter, setTxFilter] = useState<{ q?: string } | null>(null);
   const data = useData();
   const { t, lang, toggle } = useI18n();
   const { density, toggleDensity } = useUISettings();
@@ -19,7 +20,10 @@ function AppInner() {
     const handler = (e: Event) => {
       const ce = e as CustomEvent;
       const page = ce.detail?.page as Page | undefined;
-      if (page) setCurrentPage(page);
+      if (page) {
+        if (ce.detail?.filter) setTxFilter(ce.detail.filter as { q?: string });
+        setCurrentPage(page);
+      }
     };
     window.addEventListener('app:navigate', handler as EventListener);
     return () => window.removeEventListener('app:navigate', handler as EventListener);
@@ -32,7 +36,7 @@ function AppInner() {
       case 'accounts':
         return <AccountsPage data={data} />;
       case 'transactions':
-        return <TransactionsPage data={data} />;
+        return <TransactionsPage data={data} initialFilter={txFilter ?? undefined} />;
       case 'settings':
         return <SettingsPage data={data} />;
       default:

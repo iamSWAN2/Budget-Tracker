@@ -12,6 +12,7 @@ import { TransactionsList } from '../components/transactions/TransactionsList';
 import { PlusIcon } from '../components/icons/Icons';
 import { InstallmentsWidget } from '../components/dashboard/InstallmentsWidget';
 import { RecurringWidget } from '../components/dashboard/RecurringWidget';
+import { OutliersWidget } from '../components/dashboard/OutliersWidget';
 
 export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   const { accounts, transactions, categories, addTransaction, updateTransaction, deleteTransaction } = data;
@@ -307,6 +308,16 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
           {/* Recurring payments in selected period */}
           <div className="col-span-4">
             <RecurringWidget
+              transactions={transactions}
+              viewMode={viewMode}
+              currentMonth={currentMonth}
+              currentYear={currentYear}
+            />
+          </div>
+
+          {/* Outliers in selected period */}
+          <div className="col-span-4">
+            <OutliersWidget
               transactions={transactions}
               viewMode={viewMode}
               currentMonth={currentMonth}
