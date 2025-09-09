@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Installment } from '../../types';
-import { getPeriodRange, ViewMode, isWithinRange } from '../../utils/dateRange';
+import { getPeriodRange, ViewMode, isWithinRange, WeekStart } from '../../utils/dateRange';
 import { formatCurrency } from '../../utils/format';
 
 type Props = {
@@ -8,6 +8,7 @@ type Props = {
   viewMode: ViewMode;
   currentMonth: number;
   currentYear: number;
+  weekStart?: WeekStart;
 };
 
 const addMonths = (date: Date, months: number) => {
@@ -19,12 +20,11 @@ const addMonths = (date: Date, months: number) => {
   return d;
 };
 
-export const InstallmentsWidget: React.FC<Props> = ({ installments, viewMode, currentMonth, currentYear }) => {
-  const { start, end } = getPeriodRange(viewMode, currentMonth, currentYear);
+export const InstallmentsWidget: React.FC<Props> = ({ installments, viewMode, currentMonth, currentYear, weekStart = 'mon' }) => {
+  const { start, end } = getPeriodRange(viewMode, currentMonth, currentYear, weekStart);
 
   const due = useMemo(() => {
-    const items: Array<{ id: string; description: string; paymentDate: Date; monthlyPayment: number; remainingMonths: number }>[] = [] as any;
-    const result: { id: string; description: string; paymentDate: Date; monthlyPayment: number; remainingMonths: number }[] = [];
+    const result: { id: string; description: string; paymentDate: Date; monthlyPayment: number; remainingMonths: number; accountId: string }[] = [];
 
     for (const inst of installments) {
       const s = new Date(inst.startDate);
@@ -37,6 +37,7 @@ export const InstallmentsWidget: React.FC<Props> = ({ installments, viewMode, cu
             paymentDate: payDate,
             monthlyPayment: inst.monthlyPayment,
             remainingMonths: inst.remainingMonths,
+            accountId: inst.accountId,
           });
           break; // 해당 기간엔 한 번만 포함
         }
@@ -80,7 +81,7 @@ export const InstallmentsWidget: React.FC<Props> = ({ installments, viewMode, cu
               className="w-full flex items-center justify-between text-left text-xs border rounded-md px-2 py-1.5 hover:bg-slate-50"
               onClick={() => {
                 // 거래 탭으로 드릴스루: 동일 기간 필터 전달
-                window.dispatchEvent(new CustomEvent('app:navigate', { detail: { page: 'transactions', filter: { start: start.toISOString(), end: end.toISOString(), q: item.description } } }));
+                window.dispatchEvent(new CustomEvent('app:navigate', { detail: { page: 'transactions', filter: { start: start.toISOString(), end: end.toISOString(), q: item.description, accountId: item.accountId } } }));
               }}
             >
               <div className="truncate pr-2 text-slate-700">{item.description}</div>

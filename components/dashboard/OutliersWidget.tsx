@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Transaction, TransactionType } from '../../types';
-import { getPeriodRange, ViewMode, isWithinRange } from '../../utils/dateRange';
+import { getPeriodRange, ViewMode, isWithinRange, WeekStart } from '../../utils/dateRange';
 import { formatCurrency } from '../../utils/format';
 
 type Props = {
@@ -9,10 +9,11 @@ type Props = {
   currentMonth: number;
   currentYear: number;
   factor?: number; // threshold multiplier, default 2x
+  weekStart?: WeekStart;
 };
 
-export const OutliersWidget: React.FC<Props> = ({ transactions, viewMode, currentMonth, currentYear, factor = 2 }) => {
-  const { start, end } = getPeriodRange(viewMode, currentMonth, currentYear);
+export const OutliersWidget: React.FC<Props> = ({ transactions, viewMode, currentMonth, currentYear, factor = 2, weekStart = 'mon' }) => {
+  const { start, end } = getPeriodRange(viewMode, currentMonth, currentYear, weekStart);
 
   const { outliers, total } = useMemo(() => {
     // Baseline: last 90 days average by category (expenses only)
@@ -63,7 +64,7 @@ export const OutliersWidget: React.FC<Props> = ({ transactions, viewMode, curren
               className="w-full flex items-center justify-between text-left text-xs border rounded-md px-2 py-1.5 hover:bg-rose-50/50"
               title={tx.category}
               onClick={() => {
-                window.dispatchEvent(new CustomEvent('app:navigate', { detail: { page: 'transactions', filter: { q: tx.description, start: start.toISOString(), end: end.toISOString() } } }));
+                window.dispatchEvent(new CustomEvent('app:navigate', { detail: { page: 'transactions', filter: { q: tx.description, start: start.toISOString(), end: end.toISOString(), category: tx.category, accountId: tx.accountId } } }));
               }}
             >
               <div className="truncate pr-2 text-slate-700">{tx.description}</div>

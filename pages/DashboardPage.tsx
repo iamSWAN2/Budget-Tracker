@@ -6,7 +6,7 @@ import { Modal } from '../components/ui/Modal';
 import { TransactionForm } from '../components/forms/TransactionForm';
 import { AddTransactionFormInline } from '../components/forms/AddTransactionFormInline';
 import { formatCurrency, formatDateDisplay, formatMonthKo } from '../utils/format';
-import { getPeriodRange } from '../utils/dateRange';
+import { getPeriodRange, WeekStart } from '../utils/dateRange';
 import { useI18n } from '../i18n/I18nProvider';
 import { TransactionItem } from '../components/transactions/TransactionItem';
 import { TransactionsList } from '../components/transactions/TransactionsList';
@@ -20,6 +20,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   const { t } = useI18n();
   const [transactionType, setTransactionType] = useState<TransactionType>(TransactionType.EXPENSE);
   const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
+  const [weekStart, setWeekStart] = useState<WeekStart>('mon');
   
   // Debug transactionType changes
   React.useEffect(() => {
@@ -69,15 +70,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
     if (viewMode === 'month') {
       return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
     }
-    // week: 현재 주(월요일 시작)
-    const now = new Date();
-    const day = (now.getDay() + 6) % 7; // 월(0)~일(6)
-    const start = new Date(now);
-    start.setDate(now.getDate() - day);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(start);
-    end.setDate(start.getDate() + 6);
-    end.setHours(23, 59, 59, 999);
+    const { start, end } = getPeriodRange('week', currentMonth, currentYear, weekStart);
     return d >= start && d <= end;
   };
 
@@ -244,7 +237,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
           </button>
         </div>
         {(() => {
-          const { start, end } = getPeriodRange(viewMode, currentMonth, currentYear);
+          const { start, end } = getPeriodRange(viewMode, currentMonth, currentYear, weekStart);
           const label = viewMode === 'month'
             ? `${currentYear}년 ${currentMonth + 1}월`
             : `${start.getMonth() + 1}월 ${start.getDate()}–${end.getDate()}일`;
@@ -268,6 +261,24 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
             주 보기
           </button>
         </div>
+        {viewMode === 'week' && (
+          <div className="mt-2 inline-flex rounded-md overflow-hidden border border-slate-300 text-xs">
+            <button
+              type="button"
+              className={`px-3 py-1.5 ${weekStart === 'mon' ? 'bg-slate-800 text-white' : 'bg-white text-slate-700 hover:bg-slate-100'}`}
+              onClick={() => setWeekStart('mon')}
+            >
+              주 시작: 월
+            </button>
+            <button
+              type="button"
+              className={`px-3 py-1.5 border-l ${weekStart === 'sun' ? 'bg-slate-800 text-white' : 'bg-white text-slate-700 hover:bg-slate-100'}`}
+              onClick={() => setWeekStart('sun')}
+            >
+              주 시작: 일
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="flex-1 flex flex-col space-y-4 md:space-y-6 min-h-0">
@@ -312,6 +323,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
               viewMode={viewMode}
               currentMonth={currentMonth}
               currentYear={currentYear}
+              weekStart={weekStart}
             />
           </div>
 
@@ -322,6 +334,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
               viewMode={viewMode}
               currentMonth={currentMonth}
               currentYear={currentYear}
+              weekStart={weekStart}
             />
           </div>
 
@@ -332,6 +345,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
               viewMode={viewMode}
               currentMonth={currentMonth}
               currentYear={currentYear}
+              weekStart={weekStart}
             />
           </div>
         </div>

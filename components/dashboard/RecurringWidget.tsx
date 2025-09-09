@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Transaction, TransactionType } from '../../types';
-import { getPeriodRange, ViewMode, isWithinRange } from '../../utils/dateRange';
+import { getPeriodRange, ViewMode, isWithinRange, WeekStart } from '../../utils/dateRange';
 import { formatCurrency } from '../../utils/format';
 
 type Props = {
@@ -8,6 +8,7 @@ type Props = {
   viewMode: ViewMode;
   currentMonth: number;
   currentYear: number;
+  weekStart?: WeekStart;
 };
 
 // 간단 휴리스틱: 최근 90일 내 같은 설명으로 2회 이상 발생하면 반복 결제로 간주
@@ -19,8 +20,8 @@ const isRecent = (d: Date, days: number) => {
   return d >= from && d <= now;
 };
 
-export const RecurringWidget: React.FC<Props> = ({ transactions, viewMode, currentMonth, currentYear }) => {
-  const { start, end } = getPeriodRange(viewMode, currentMonth, currentYear);
+export const RecurringWidget: React.FC<Props> = ({ transactions, viewMode, currentMonth, currentYear, weekStart = 'mon' }) => {
+  const { start, end } = getPeriodRange(viewMode, currentMonth, currentYear, weekStart);
 
   const { recurringInPeriod, total } = useMemo(() => {
     const recentGroups = new Map<string, Transaction[]>();
@@ -67,7 +68,7 @@ export const RecurringWidget: React.FC<Props> = ({ transactions, viewMode, curre
               key={item.id}
               className="w-full flex items-center justify-between text-left text-xs border rounded-md px-2 py-1.5 hover:bg-slate-50"
               onClick={() => {
-                window.dispatchEvent(new CustomEvent('app:navigate', { detail: { page: 'transactions', filter: { q: item.description, start: start.toISOString(), end: end.toISOString() } } }));
+                window.dispatchEvent(new CustomEvent('app:navigate', { detail: { page: 'transactions', filter: { q: item.description, start: start.toISOString(), end: end.toISOString(), category: item.category, accountId: item.accountId } } }));
               }}
             >
               <div className="truncate pr-2 text-slate-700">{item.description}</div>

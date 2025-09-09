@@ -15,7 +15,7 @@ import { useUISettings } from '../ui/UISettingsProvider';
 import { TransactionItem } from '../components/transactions/TransactionItem';
 import { TransactionsList } from '../components/transactions/TransactionsList';
 
-export const TransactionsPage: React.FC<{ data: UseDataReturn; initialFilter?: { q?: string; start?: string; end?: string } }> = ({ data, initialFilter }) => {
+export const TransactionsPage: React.FC<{ data: UseDataReturn; initialFilter?: { q?: string; start?: string; end?: string; category?: string; accountId?: string } }> = ({ data, initialFilter }) => {
     const { transactions, accounts, categories, addTransaction, updateTransaction, deleteTransaction } = data;
     const { t } = useI18n();
     const { density } = useUISettings();
@@ -25,6 +25,8 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn; initialFilter?: {
     const [q, setQ] = useState<string>(initialFilter?.q ?? '');
     const [qInput, setQInput] = useState<string>(initialFilter?.q ?? '');
     const [range, setRange] = useState<{ start?: string; end?: string }>({ start: initialFilter?.start, end: initialFilter?.end });
+    const [category, setCategory] = useState<string | undefined>(initialFilter?.category);
+    const [accountId, setAccountId] = useState<string | undefined>(initialFilter?.accountId);
     const debounceRef = useRef<number | null>(null);
 
     useEffect(() => {
@@ -35,6 +37,8 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn; initialFilter?: {
       if (initialFilter?.start !== undefined || initialFilter?.end !== undefined) {
         setRange({ start: initialFilter?.start, end: initialFilter?.end });
       }
+      if (initialFilter?.category !== undefined) setCategory(initialFilter.category);
+      if (initialFilter?.accountId !== undefined) setAccountId(initialFilter.accountId);
     }, [initialFilter?.q, initialFilter?.start, initialFilter?.end]);
 
     // debounce qInput -> q
@@ -54,11 +58,13 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn; initialFilter?: {
       const endDate = range.end ? new Date(range.end) : null;
       return transactions.filter(t => {
         const matchesQuery = !query || (t.description || '').toLowerCase().includes(query) || (t.category || '').toLowerCase().includes(query);
+        const matchesCategory = !category || t.category === category;
+        const matchesAccount = !accountId || t.accountId === accountId;
         const d = new Date(t.date);
         const inRange = (!startDate || d >= startDate) && (!endDate || d <= endDate);
-        return matchesQuery && inRange;
+        return matchesQuery && matchesCategory && matchesAccount && inRange;
       });
-    }, [transactions, q, range.start, range.end]);
+    }, [transactions, q, range.start, range.end, category, accountId]);
 
     const handleAdd = () => {
         setEditingTransaction(null);
@@ -120,7 +126,7 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn; initialFilter?: {
                 </div>
             </div>
             {/* Active Filters */}
-            {(q || range.start || range.end) && (
+            {(q || range.start || range.end || category || accountId) && (
               <div className="mb-3 flex items-center flex-wrap gap-2 text-xs">
                 {q && (
                   <span className="inline-flex items-center gap-2 bg-slate-100 text-slate-700 px-2 py-1 rounded">
@@ -134,9 +140,21 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn; initialFilter?: {
                     <button className="text-slate-500 hover:text-slate-800" onClick={() => setRange({ start: undefined, end: undefined })}>×</button>
                   </span>
                 )}
+                {category && (
+                  <span className="inline-flex items-center gap-2 bg-slate-100 text-slate-700 px-2 py-1 rounded">
+                    카테고리: {category}
+                    <button className="text-slate-500 hover:text-slate-800" onClick={() => setCategory(undefined)}>×</button>
+                  </span>
+                )}
+                {accountId && (
+                  <span className="inline-flex items-center gap-2 bg-slate-100 text-slate-700 px-2 py-1 rounded">
+                    계좌: {(() => accounts.find(a => a.id === accountId)?.name || accountId)()}
+                    <button className="text-slate-500 hover:text-slate-800" onClick={() => setAccountId(undefined)}>×</button>
+                  </span>
+                )}
                 <button
                   className="ml-auto text-slate-500 hover:text-slate-800 underline"
-                  onClick={() => { setQ(''); setQInput(''); setRange({ start: undefined, end: undefined }); }}
+                  onClick={() => { setQ(''); setQInput(''); setRange({ start: undefined, end: undefined }); setCategory(undefined); setAccountId(undefined); }}
                 >
                   필터 초기화
                 </button>
