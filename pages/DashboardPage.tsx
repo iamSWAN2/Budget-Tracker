@@ -108,7 +108,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
         new Date(t.date).getFullYear() === currentYear
       )
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 10);
+      ;
   }, [transactions, currentMonth, currentYear]);
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
