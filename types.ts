@@ -19,6 +19,7 @@ export interface Account {
   name: string;
   balance: number;
   propensity: AccountPropensity;
+  paymentDay?: number; // 신용카드 결제일 (1-31, Credit Card일 때만 사용)
 }
 
 export interface Transaction {

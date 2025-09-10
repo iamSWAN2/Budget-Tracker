@@ -23,22 +23,99 @@ const getAccountCategory = (propensity: AccountPropensity): string => {
     }
 };
 
+// CSV 파싱 유틸리티 함수
+const parseCSV = (csvText: string): Partial<Account>[] => {
+    const lines = csvText.trim().split('\n');
+    const accounts: Partial<Account>[] = [];
+    
+    // 헤더 라인 건너뛰기 (첫 번째 라인이 헤더인지 확인)
+    const startIndex = lines[0]?.toLowerCase().includes('계좌명') || lines[0]?.toLowerCase().includes('name') ? 1 : 0;
+    
+    for (let i = startIndex; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        
+        // CSV 파싱 (따옴표 고려)
+        const values = line.split(',').map(v => v.replace(/^["']|["']$/g, '').trim());
+        
+        if (values.length >= 3) {
+            const [name, propensity, balance, paymentDay] = values;
+            
+            accounts.push({
+                name: name || `계좌 ${i}`,
+                propensity: (propensity as AccountPropensity) || AccountPropensity.CHECKING,
+                balance: parseFloat(balance) || 0,
+                paymentDay: paymentDay ? parseInt(paymentDay) || undefined : undefined
+            });
+        }
+    }
+    
+    return accounts;
+};
+
+// 일괄 입력 텍스트 파싱 함수
+const parseBulkText = (text: string): Partial<Account>[] => {
+    const lines = text.trim().split('\n');
+    const accounts: Partial<Account>[] = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        
+        // 탭, 쉼표, 또는 공백으로 구분
+        const parts = line.split(/[\t,\s]+/).filter(part => part.length > 0);
+        
+        if (parts.length >= 1) {
+            accounts.push({
+                name: parts[0] || `계좌 ${i + 1}`,
+                propensity: (parts[1] as AccountPropensity) || AccountPropensity.CHECKING,
+                balance: parts[2] ? parseFloat(parts[2]) || 0 : 0,
+                paymentDay: parts[3] ? parseInt(parts[3]) || undefined : undefined
+            });
+        }
+    }
+    
+    return accounts;
+};
+
 const AccountForm: React.FC<{
     account: Partial<Account> | null;
     onSave: (account: Omit<Account, 'id'> | Account) => void;
+    onBulkSave: (accounts: Omit<Account, 'id'>[]) => void;
     onClose: () => void;
-}> = ({ account, onSave, onClose }) => {
+}> = ({ account, onSave, onBulkSave, onClose }) => {
+    const [activeTab, setActiveTab] = useState<'single' | 'bulk' | 'csv'>('single');
+    const [bulkText, setBulkText] = useState('');
+    const [csvFile, setCsvFile] = useState<File | null>(null);
+    const [csvData, setCsvData] = useState<string[][]>([]);
+    const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+    const [columnMapping, setColumnMapping] = useState<{
+        name: number | null;
+        propensity: number | null;
+        balance: number | null;
+        paymentDay: number | null;
+    }>({
+        name: null,
+        propensity: null,
+        balance: null,
+        paymentDay: null
+    });
+    const [previewAccounts, setPreviewAccounts] = useState<Partial<Account>[]>([]);
+    const [removeDuplicates, setRemoveDuplicates] = useState(true);
+    const [duplicateInfo, setDuplicateInfo] = useState<{total: number, unique: number}>({total: 0, unique: 0});
     const [formData, setFormData] = useState({
         name: account?.name || '',
         propensity: account?.propensity || AccountPropensity.CHECKING,
         balance: account?.balance || 0,
+        paymentDay: account?.paymentDay || 14,
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ 
             ...prev, 
-            [name]: name === 'balance' ? parseFloat(value) || 0 : value 
+            [name]: name === 'balance' ? parseFloat(value) || 0 : 
+                   name === 'paymentDay' ? parseInt(value) || 1 : value 
         }));
     };
 
@@ -52,45 +129,524 @@ const AccountForm: React.FC<{
         onClose();
     };
 
+    // 일괄 텍스트 처리
+    const handleBulkTextChange = (text: string) => {
+        setBulkText(text);
+        if (text.trim()) {
+            const allAccounts = parseBulkText(text);
+            const uniqueAccounts = removeDuplicateAccounts(allAccounts);
+            setDuplicateInfo({total: allAccounts.length, unique: uniqueAccounts.length});
+            setPreviewAccounts(removeDuplicates ? uniqueAccounts : allAccounts);
+        } else {
+            setPreviewAccounts([]);
+            setDuplicateInfo({total: 0, unique: 0});
+        }
+    };
+
+    // CSV 파일 처리
+    const handleCSVFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            setCsvFile(file);
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const text = e.target?.result as string;
+                if (text) {
+                    const lines = text.trim().split('\n');
+                    const data = lines.map(line => 
+                        line.split(',').map(v => v.replace(/^["']|["']$/g, '').trim())
+                    );
+                    
+                    setCsvData(data);
+                    if (data.length > 0) {
+                        setCsvHeaders(data[0]);
+                        // 자동 매핑 시도
+                        autoMapColumns(data[0]);
+                    }
+                }
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+    };
+
+    // 자동 컬럼 매핑
+    const autoMapColumns = (headers: string[]) => {
+        const mapping = {
+            name: null as number | null,
+            propensity: null as number | null,
+            balance: null as number | null,
+            paymentDay: null as number | null
+        };
+
+        headers.forEach((header, index) => {
+            const lower = header.toLowerCase();
+            if (lower.includes('계좌명') || lower.includes('name') || lower.includes('계좌')) {
+                mapping.name = index;
+            } else if (lower.includes('유형') || lower.includes('type') || lower.includes('propensity')) {
+                mapping.propensity = index;
+            } else if (lower.includes('잔액') || lower.includes('balance') || lower.includes('금액')) {
+                mapping.balance = index;
+            } else if (lower.includes('결제일') || lower.includes('payment') || lower.includes('일')) {
+                mapping.paymentDay = index;
+            }
+        });
+
+        setColumnMapping(mapping);
+        updatePreviewFromMapping(mapping);
+    };
+
+    // 컬럼 매핑 변경 처리
+    const handleColumnMappingChange = (field: keyof typeof columnMapping, columnIndex: number | null) => {
+        const newMapping = { ...columnMapping, [field]: columnIndex };
+        setColumnMapping(newMapping);
+        updatePreviewFromMapping(newMapping);
+    };
+
+    // 중복 제거 함수
+    const removeDuplicateAccounts = (accounts: Partial<Account>[]): Partial<Account>[] => {
+        const accountMap = new Map<string, Partial<Account>>();
+        
+        accounts.forEach(account => {
+            if (!account.name) return;
+            
+            const key = account.name.toLowerCase().trim();
+            if (accountMap.has(key)) {
+                // 중복된 경우 기존 것과 병합 (더 완전한 데이터 우선)
+                const existing = accountMap.get(key)!;
+                accountMap.set(key, {
+                    name: existing.name || account.name,
+                    propensity: existing.propensity || account.propensity,
+                    balance: existing.balance !== undefined ? existing.balance : account.balance,
+                    paymentDay: existing.paymentDay || account.paymentDay
+                });
+            } else {
+                accountMap.set(key, account);
+            }
+        });
+        
+        return Array.from(accountMap.values());
+    };
+
+    // 매핑을 기반으로 미리보기 업데이트
+    const updatePreviewFromMapping = (mapping: typeof columnMapping) => {
+        if (csvData.length <= 1) return;
+
+        const allAccounts: Partial<Account>[] = [];
+        
+        // 헤더 행 제외하고 데이터 처리
+        for (let i = 1; i < csvData.length; i++) {
+            const row = csvData[i];
+            if (row.length === 0 || row.every(cell => !cell.trim())) continue;
+
+            const account: Partial<Account> = {};
+
+            if (mapping.name !== null && row[mapping.name]) {
+                account.name = row[mapping.name].trim();
+            }
+            if (mapping.propensity !== null && row[mapping.propensity]) {
+                account.propensity = row[mapping.propensity].trim() as AccountPropensity;
+            }
+            if (mapping.balance !== null && row[mapping.balance]) {
+                account.balance = parseFloat(row[mapping.balance]) || 0;
+            }
+            if (mapping.paymentDay !== null && row[mapping.paymentDay]) {
+                const day = parseInt(row[mapping.paymentDay]);
+                if (day >= 1 && day <= 31) {
+                    account.paymentDay = day;
+                }
+            }
+
+            // 최소한 이름이 있는 경우만 추가
+            if (account.name) {
+                allAccounts.push(account);
+            }
+        }
+
+        // 중복 정보 업데이트
+        const uniqueAccounts = removeDuplicateAccounts(allAccounts);
+        setDuplicateInfo({total: allAccounts.length, unique: uniqueAccounts.length});
+        
+        // 중복 제거 옵션에 따라 결과 설정
+        setPreviewAccounts(removeDuplicates ? uniqueAccounts : allAccounts);
+    };
+
+    // 중복 제거 옵션 변경 처리
+    const handleDuplicateToggle = (shouldRemove: boolean) => {
+        setRemoveDuplicates(shouldRemove);
+        
+        // CSV 데이터가 있으면 CSV 미리보기 업데이트
+        if (csvData.length > 1) {
+            updatePreviewFromMapping(columnMapping);
+        }
+        
+        // 일괄 입력 데이터가 있으면 일괄 입력 미리보기 업데이트
+        if (bulkText.trim()) {
+            const allAccounts = parseBulkText(bulkText);
+            const uniqueAccounts = removeDuplicateAccounts(allAccounts);
+            setDuplicateInfo({total: allAccounts.length, unique: uniqueAccounts.length});
+            setPreviewAccounts(shouldRemove ? uniqueAccounts : allAccounts);
+        }
+    };
+
+    // 일괄 저장 처리
+    const handleBulkSubmit = () => {
+        if (previewAccounts.length > 0) {
+            onBulkSave(previewAccounts as Omit<Account, 'id'>[]);
+            onClose();
+        }
+    };
+
     return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-                <label htmlFor="account-name" className="block text-sm font-medium text-slate-700">계좌명</label>
-                <input id="account-name" type="text" name="name" value={formData.name} onChange={handleChange} required className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+        <div className="space-y-4">
+            {/* 탭 헤더 */}
+            <div className="flex space-x-1 border-b border-slate-200">
+                <button
+                    type="button"
+                    onClick={() => setActiveTab('single')}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 ${
+                        activeTab === 'single' 
+                            ? 'border-indigo-500 text-indigo-600' 
+                            : 'border-transparent text-slate-500 hover:text-slate-700'
+                    }`}
+                >
+                    단일 입력
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setActiveTab('bulk')}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 ${
+                        activeTab === 'bulk' 
+                            ? 'border-indigo-500 text-indigo-600' 
+                            : 'border-transparent text-slate-500 hover:text-slate-700'
+                    }`}
+                >
+                    일괄 입력
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setActiveTab('csv')}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 ${
+                        activeTab === 'csv' 
+                            ? 'border-indigo-500 text-indigo-600' 
+                            : 'border-transparent text-slate-500 hover:text-slate-700'
+                    }`}
+                >
+                    CSV 가져오기
+                </button>
             </div>
-            <div>
-                <label htmlFor="account-propensity" className="block text-sm font-medium text-slate-700">계좌 유형</label>
-                <select id="account-propensity" name="propensity" value={formData.propensity} onChange={handleChange} className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                    <optgroup label="계좌">
-                        <option value={AccountPropensity.CHECKING}>{AccountPropensity.CHECKING}</option>
-                        <option value={AccountPropensity.SAVINGS}>{AccountPropensity.SAVINGS}</option>
-                        <option value={AccountPropensity.INVESTMENT}>{AccountPropensity.INVESTMENT}</option>
-                        <option value={AccountPropensity.LOAN}>{AccountPropensity.LOAN}</option>
-                    </optgroup>
-                    <optgroup label="결제수단">
-                        <option value={AccountPropensity.CASH}>{AccountPropensity.CASH}</option>
-                        <option value={AccountPropensity.CREDIT_CARD}>{AccountPropensity.CREDIT_CARD}</option>
-                    </optgroup>
-                </select>
-            </div>
-            <div>
-                <label htmlFor="account-balance" className="block text-sm font-medium text-slate-700">초기 잔액</label>
-                <input 
-                    id="account-balance"
-                    type="number" 
-                    name="balance" 
-                    value={formData.balance} 
-                    onChange={handleChange} 
-                    step="0.01" 
-                    placeholder="0.00" 
-                    className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" 
-                />
-            </div>
-            <div className="flex justify-end pt-4 space-x-2">
-                <Button type="button" onClick={onClose} variant="secondary" size="sm">취소</Button>
-                <Button type="submit" variant="primary" size="sm">계좌 저장</Button>
-            </div>
-        </form>
+
+            {/* 탭 컨텐츠 */}
+            {activeTab === 'single' && (
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label htmlFor="account-name" className="block text-sm font-medium text-slate-700">계좌명</label>
+                        <input id="account-name" type="text" name="name" value={formData.name} onChange={handleChange} required className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                    </div>
+                    <div>
+                        <label htmlFor="account-propensity" className="block text-sm font-medium text-slate-700">계좌 유형</label>
+                        <select id="account-propensity" name="propensity" value={formData.propensity} onChange={handleChange} className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                            <optgroup label="계좌">
+                                <option value={AccountPropensity.CHECKING}>{AccountPropensity.CHECKING}</option>
+                                <option value={AccountPropensity.SAVINGS}>{AccountPropensity.SAVINGS}</option>
+                                <option value={AccountPropensity.INVESTMENT}>{AccountPropensity.INVESTMENT}</option>
+                                <option value={AccountPropensity.LOAN}>{AccountPropensity.LOAN}</option>
+                            </optgroup>
+                            <optgroup label="결제수단">
+                                <option value={AccountPropensity.CASH}>{AccountPropensity.CASH}</option>
+                                <option value={AccountPropensity.CREDIT_CARD}>{AccountPropensity.CREDIT_CARD}</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div>
+                        <label htmlFor="account-balance" className="block text-sm font-medium text-slate-700">초기 잔액</label>
+                        <input 
+                            id="account-balance"
+                            type="number" 
+                            name="balance" 
+                            value={formData.balance} 
+                            onChange={handleChange} 
+                            step="0.01" 
+                            placeholder="0.00" 
+                            className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" 
+                        />
+                    </div>
+                    {formData.propensity === AccountPropensity.CREDIT_CARD && (
+                        <div>
+                            <label htmlFor="account-paymentDay" className="block text-sm font-medium text-slate-700">결제일</label>
+                            <select
+                                id="account-paymentDay"
+                                name="paymentDay"
+                                value={formData.paymentDay}
+                                onChange={handleChange}
+                                className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                            >
+                                {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                                    <option key={day} value={day}>{day}일</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                    <div className="flex justify-end pt-4 space-x-2">
+                        <Button type="button" onClick={onClose} variant="secondary" size="sm">취소</Button>
+                        <Button type="submit" variant="primary" size="sm">계좌 저장</Button>
+                    </div>
+                </form>
+            )}
+
+            {activeTab === 'bulk' && (
+                <div className="space-y-4">
+                    <div>
+                        <label htmlFor="bulk-text" className="block text-sm font-medium text-slate-700">
+                            일괄 입력
+                        </label>
+                        <div className="text-xs text-slate-500 mb-2">
+                            한 줄에 하나씩: 계좌명 계좌유형 초기잔액 결제일(선택)
+                        </div>
+                        <textarea
+                            id="bulk-text"
+                            value={bulkText}
+                            onChange={(e) => handleBulkTextChange(e.target.value)}
+                            rows={8}
+                            placeholder="신한은행 주계좌 Checking 1500000&#10;삼성카드 Credit Card -200000 14&#10;적금계좌 Savings 5000000"
+                            className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        />
+                    </div>
+
+                    {duplicateInfo.total > 0 && (
+                        <div className="bg-slate-50 p-3 rounded-md">
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="text-sm text-slate-700">
+                                    전체 {duplicateInfo.total}개 → 고유 {duplicateInfo.unique}개 
+                                    {duplicateInfo.total > duplicateInfo.unique && (
+                                        <span className="text-amber-600 ml-1">
+                                            ({duplicateInfo.total - duplicateInfo.unique}개 중복)
+                                        </span>
+                                    )}
+                                </div>
+                                <label className="flex items-center text-sm">
+                                    <input
+                                        type="checkbox"
+                                        checked={removeDuplicates}
+                                        onChange={(e) => handleDuplicateToggle(e.target.checked)}
+                                        className="mr-2 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded"
+                                    />
+                                    중복 제거
+                                </label>
+                            </div>
+                            {!removeDuplicates && duplicateInfo.total > duplicateInfo.unique && (
+                                <div className="text-xs text-amber-600">
+                                    ⚠️ 중복된 계좌명이 여러 개 생성될 수 있습니다
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    
+                    {previewAccounts.length > 0 && (
+                        <div>
+                            <h4 className="text-sm font-medium text-slate-700 mb-2">미리보기 ({previewAccounts.length}개)</h4>
+                            <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-md">
+                                <table className="w-full text-xs">
+                                    <thead className="bg-slate-50">
+                                        <tr>
+                                            <th className="px-2 py-1 text-left">계좌명</th>
+                                            <th className="px-2 py-1 text-left">유형</th>
+                                            <th className="px-2 py-1 text-right">잔액</th>
+                                            <th className="px-2 py-1 text-center">결제일</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {previewAccounts.map((acc, idx) => (
+                                            <tr key={idx} className="border-t border-slate-100">
+                                                <td className="px-2 py-1">{acc.name || '미지정'}</td>
+                                                <td className="px-2 py-1">{acc.propensity || 'Checking'}</td>
+                                                <td className="px-2 py-1 text-right">{formatCurrency(acc.balance || 0)}</td>
+                                                <td className="px-2 py-1 text-center">{acc.paymentDay ? `${acc.paymentDay}일` : '-'}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex justify-end pt-4 space-x-2">
+                        <Button type="button" onClick={onClose} variant="secondary" size="sm">취소</Button>
+                        <Button 
+                            type="button" 
+                            onClick={handleBulkSubmit} 
+                            variant="primary" 
+                            size="sm"
+                            disabled={previewAccounts.length === 0}
+                        >
+                            {previewAccounts.length > 0 ? `${previewAccounts.length}개 저장` : '저장'}
+                        </Button>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'csv' && (
+                <div className="space-y-4">
+                    <div>
+                        <label htmlFor="csv-file" className="block text-sm font-medium text-slate-700">CSV 파일 선택</label>
+                        <div className="text-xs text-slate-500 mb-2">
+                            어떤 형식의 CSV 파일이든 업로드 후 컬럼을 매핑할 수 있습니다.<br/>
+                            예시 파일을 <button type="button" className="text-indigo-600 underline" onClick={() => {
+                                const csv = '계좌명,계좌유형,초기잔액,결제일\n신한은행 주계좌,Checking,1500000,\n삼성카드,Credit Card,-200000,14\n적금계좌,Savings,5000000,';
+                                const blob = new Blob([csv], { type: 'text/csv' });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = 'accounts_template.csv';
+                                a.click();
+                            }}>다운로드</button>하여 참고하세요.
+                        </div>
+                        <input
+                            id="csv-file"
+                            type="file"
+                            accept=".csv"
+                            onChange={handleCSVFileChange}
+                            className="mt-1 block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                        />
+                    </div>
+
+                    {csvFile && (
+                        <div className="text-sm text-slate-600">
+                            선택된 파일: {csvFile.name} ({csvData.length > 0 ? `${csvData.length - 1}개 행` : ''})
+                        </div>
+                    )}
+
+                    {csvHeaders.length > 0 && (
+                        <div>
+                            <h4 className="text-sm font-medium text-slate-700 mb-3">컬럼 매핑 선택</h4>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-600 mb-1">계좌명</label>
+                                    <select
+                                        value={columnMapping.name ?? ''}
+                                        onChange={(e) => handleColumnMappingChange('name', e.target.value ? parseInt(e.target.value) : null)}
+                                        className="w-full text-xs border border-slate-300 rounded px-2 py-1"
+                                    >
+                                        <option value="">선택 안함</option>
+                                        {csvHeaders.map((header, index) => (
+                                            <option key={index} value={index}>{header || `컬럼 ${index + 1}`}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-600 mb-1">계좌 유형</label>
+                                    <select
+                                        value={columnMapping.propensity ?? ''}
+                                        onChange={(e) => handleColumnMappingChange('propensity', e.target.value ? parseInt(e.target.value) : null)}
+                                        className="w-full text-xs border border-slate-300 rounded px-2 py-1"
+                                    >
+                                        <option value="">선택 안함</option>
+                                        {csvHeaders.map((header, index) => (
+                                            <option key={index} value={index}>{header || `컬럼 ${index + 1}`}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-600 mb-1">초기 잔액</label>
+                                    <select
+                                        value={columnMapping.balance ?? ''}
+                                        onChange={(e) => handleColumnMappingChange('balance', e.target.value ? parseInt(e.target.value) : null)}
+                                        className="w-full text-xs border border-slate-300 rounded px-2 py-1"
+                                    >
+                                        <option value="">선택 안함</option>
+                                        {csvHeaders.map((header, index) => (
+                                            <option key={index} value={index}>{header || `컬럼 ${index + 1}`}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-600 mb-1">결제일 (선택)</label>
+                                    <select
+                                        value={columnMapping.paymentDay ?? ''}
+                                        onChange={(e) => handleColumnMappingChange('paymentDay', e.target.value ? parseInt(e.target.value) : null)}
+                                        className="w-full text-xs border border-slate-300 rounded px-2 py-1"
+                                    >
+                                        <option value="">선택 안함</option>
+                                        {csvHeaders.map((header, index) => (
+                                            <option key={index} value={index}>{header || `컬럼 ${index + 1}`}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {duplicateInfo.total > 0 && (
+                        <div className="bg-slate-50 p-3 rounded-md">
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="text-sm text-slate-700">
+                                    전체 {duplicateInfo.total}개 → 고유 {duplicateInfo.unique}개 
+                                    {duplicateInfo.total > duplicateInfo.unique && (
+                                        <span className="text-amber-600 ml-1">
+                                            ({duplicateInfo.total - duplicateInfo.unique}개 중복)
+                                        </span>
+                                    )}
+                                </div>
+                                <label className="flex items-center text-sm">
+                                    <input
+                                        type="checkbox"
+                                        checked={removeDuplicates}
+                                        onChange={(e) => handleDuplicateToggle(e.target.checked)}
+                                        className="mr-2 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded"
+                                    />
+                                    중복 제거
+                                </label>
+                            </div>
+                            {!removeDuplicates && duplicateInfo.total > duplicateInfo.unique && (
+                                <div className="text-xs text-amber-600">
+                                    ⚠️ 중복된 계좌명이 여러 개 생성될 수 있습니다
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {previewAccounts.length > 0 && (
+                        <div>
+                            <h4 className="text-sm font-medium text-slate-700 mb-2">미리보기 ({previewAccounts.length}개)</h4>
+                            <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-md">
+                                <table className="w-full text-xs">
+                                    <thead className="bg-slate-50">
+                                        <tr>
+                                            <th className="px-2 py-1 text-left">계좌명</th>
+                                            <th className="px-2 py-1 text-left">유형</th>
+                                            <th className="px-2 py-1 text-right">잔액</th>
+                                            <th className="px-2 py-1 text-center">결제일</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {previewAccounts.map((acc, idx) => (
+                                            <tr key={idx} className="border-t border-slate-100">
+                                                <td className="px-2 py-1">{acc.name || '미지정'}</td>
+                                                <td className="px-2 py-1">{acc.propensity || 'Checking'}</td>
+                                                <td className="px-2 py-1 text-right">{formatCurrency(acc.balance || 0)}</td>
+                                                <td className="px-2 py-1 text-center">{acc.paymentDay ? `${acc.paymentDay}일` : '-'}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex justify-end pt-4 space-x-2">
+                        <Button type="button" onClick={onClose} variant="secondary" size="sm">취소</Button>
+                        <Button 
+                            type="button" 
+                            onClick={handleBulkSubmit} 
+                            variant="primary" 
+                            size="sm"
+                            disabled={previewAccounts.length === 0}
+                        >
+                            {previewAccounts.length > 0 ? `${previewAccounts.length}개 저장` : '저장'}
+                        </Button>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 };
 
@@ -263,6 +819,15 @@ export const AccountsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                 <AccountForm
                     account={editingAccount}
                     onSave={handleSave}
+                    onBulkSave={async (accounts) => {
+                        try {
+                            for (const accountData of accounts) {
+                                await addAccount(accountData);
+                            }
+                        } catch (error) {
+                            console.error('일괄 계좌 추가 오류:', error);
+                        }
+                    }}
                     onClose={() => setIsModalOpen(false)}
                 />
             </Modal>

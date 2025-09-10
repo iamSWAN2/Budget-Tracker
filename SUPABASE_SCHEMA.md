@@ -24,6 +24,7 @@ CREATE TABLE accounts (
   name VARCHAR(255) NOT NULL,
   balance DECIMAL(15,2) DEFAULT 0,
   propensity VARCHAR(50) NOT NULL,
+  payment_day INTEGER DEFAULT NULL CHECK (payment_day >= 1 AND payment_day <= 31),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
@@ -41,6 +42,7 @@ CREATE POLICY "Allow all operations on accounts" ON accounts
 - `name`: 계좌명 (예: "신한은행 주계좌")
 - `balance`: 현재 잔액 (소수점 2자리까지)
 - `propensity`: 계좌 유형 (`Checking`, `Savings`, `Credit Card`, `Investment`, `Cash`, `Loan`)
+- `payment_day`: 신용카드 결제일 (1-31, Credit Card일 때만 사용)
 - `created_at`, `updated_at`: 생성 및 수정 시간
 
 ### 2. transactions 테이블
@@ -57,6 +59,7 @@ CREATE TABLE transactions (
   category VARCHAR(100) NOT NULL,
   account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
   installment_months INTEGER DEFAULT 1,
+  is_interest_free BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
@@ -83,6 +86,7 @@ CREATE POLICY "Allow all operations on transactions" ON transactions
 - `category`: 거래 카테고리 (예: "식비", "교통비", "급여")
 - `account_id`: 연결된 계좌 ID (외래키)
 - `installment_months`: 할부 개월 수 (1이면 일시불)
+- `is_interest_free`: 무이자 할부 여부 (true: 무이자, false: 일반 할부)
 - `created_at`, `updated_at`: 생성 및 수정 시간
 
 ### 3. updated_at 자동 업데이트 트리거

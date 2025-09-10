@@ -29,6 +29,112 @@ const typeCircleClasses = (type: TransactionType) =>
 export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, accountName, categoryLabel, onDelete, onDeleteDirect, onUpdate, accounts, categories }) => {
   const isInstallment = !!transaction.installmentMonths && transaction.installmentMonths > 1;
   const isIncome = transaction.type === TransactionType.INCOME;
+  
+  // 실제 할부 수수료 계산 로직
+  // 할부 개월수에 따른 연이율 결정
+  const getAnnualInterestRate = (months: number): number => {
+    if (months === 2) return 0.165; // 16.5%
+    if (months >= 3 && months <= 12) return 0.195; // 19.5%
+    if (months >= 13) return 0.199; // 19.9%
+    return 0; // 1개월은 무이자
+  };
+
+  // 두 날짜 사이의 일수 계산
+  const getDaysBetween = (startDate: Date, endDate: Date): number => {
+    const timeDiff = endDate.getTime() - startDate.getTime();
+    return Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+  };
+
+  // 계좌의 결제일 가져오기
+  const getPaymentDay = (accountId: string): number => {
+    const account = accounts.find(acc => acc.id === accountId);
+    return account?.paymentDay || 14; // 기본값 14일
+  };
+
+  // 다음 결제일 계산
+  const getNextPaymentDate = (startDate: Date, monthsLater: number, paymentDay: number): Date => {
+    const paymentDate = new Date(startDate);
+    paymentDate.setMonth(paymentDate.getMonth() + monthsLater + 1); // 다음 달부터 시작
+    paymentDate.setDate(paymentDay);
+    return paymentDate;
+  };
+
+  // 현재 몇 번째 할부인지 계산
+  const getCurrentInstallmentNumber = (startDate: string, accountId: string): number => {
+    const start = new Date(startDate);
+    const now = new Date();
+    const paymentDay = getPaymentDay(accountId);
+    
+    let installmentNumber = 0;
+    let currentPaymentDate = getNextPaymentDate(start, 0, paymentDay);
+    
+    while (currentPaymentDate <= now) {
+      installmentNumber++;
+      currentPaymentDate = getNextPaymentDate(start, installmentNumber, paymentDay);
+    }
+    
+    return Math.min(installmentNumber, draft.installmentMonths || 1);
+  };
+
+  // 현재 월의 실제 할부 결제 금액 계산
+  const getCurrentMonthPayment = (amount: number, months: number, isInterestFree: boolean, startDate: string, accountId: string): number => {
+    if (isInterestFree || months === 1) return amount / months;
+    
+    const start = new Date(startDate);
+    const currentInstallmentNum = getCurrentInstallmentNumber(startDate, accountId);
+    const annualRate = getAnnualInterestRate(months);
+    const paymentDay = getPaymentDay(accountId);
+    
+    // 완납된 경우
+    if (currentInstallmentNum >= months) return 0;
+    
+    const monthlyPrincipal = amount / months; // 매월 상환할 원금
+    const remainingPrincipal = amount - (monthlyPrincipal * currentInstallmentNum); // 현재 잔여 원금
+    
+    // 현재 결제의 경과 일수 계산
+    let previousPaymentDate = start;
+    if (currentInstallmentNum > 0) {
+      previousPaymentDate = getNextPaymentDate(start, currentInstallmentNum - 1, paymentDay);
+    }
+    
+    const currentPaymentDate = getNextPaymentDate(start, currentInstallmentNum, paymentDay);
+    const elapsedDays = getDaysBetween(previousPaymentDate, currentPaymentDate);
+    
+    // 월 수수료 = (할부 잔액) x (연이율 / 365) x (해당 월의 경과 일수)
+    const monthlyFee = remainingPrincipal * (annualRate / 365) * elapsedDays;
+    
+    return monthlyPrincipal + monthlyFee;
+  };
+
+  // 전체 할부 기간의 총 지불 금액 계산
+  const getTotalPaymentAmount = (amount: number, months: number, isInterestFree: boolean, startDate: string, accountId: string): number => {
+    if (isInterestFree || months === 1) return amount;
+    
+    const start = new Date(startDate);
+    const monthlyPrincipal = amount / months;
+    const annualRate = getAnnualInterestRate(months);
+    const paymentDay = getPaymentDay(accountId);
+    let totalFees = 0;
+    
+    for (let i = 0; i < months; i++) {
+      const remainingPrincipal = amount - (monthlyPrincipal * i);
+      
+      // 각 결제의 경과 일수 계산
+      let previousDate = start;
+      if (i > 0) {
+        previousDate = getNextPaymentDate(start, i - 1, paymentDay);
+      }
+      
+      const currentPaymentDate = getNextPaymentDate(start, i, paymentDay);
+      const elapsedDays = getDaysBetween(previousDate, currentPaymentDate);
+      
+      // 해당 월의 수수료
+      const monthlyFee = remainingPrincipal * (annualRate / 365) * elapsedDays;
+      totalFees += monthlyFee;
+    }
+    
+    return amount + totalFees;
+  };
   const [editing, setEditing] = useState<null |
     'description' | 'amount' | 'date' | 'account' | 'category' | 'type' | 'installment'>(null);
   const [draft, setDraft] = useState<Transaction>(transaction);
@@ -48,6 +154,13 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, a
     setDraft(updated);
     onUpdate(updated);
     setEditing(null);
+  };
+
+  const handleToggleInterestFree = (isInterestFree: boolean) => {
+    const updated: Transaction = { ...draft, isInterestFree } as Transaction;
+    setDraft(updated);
+    onUpdate(updated);
+    // 편집 모드를 해제하지 않음
   };
 
   const handleCancel = () => {
@@ -216,7 +329,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, a
                 />
               ) : (
                 <button className={`font-extrabold text-xl leading-none ${isIncome ? 'text-emerald-600' : 'text-rose-600'}`} onClick={() => setEditing('amount')}>
-                  {formatCurrency(draft.amount / (draft.installmentMonths || 1))}
+                  {formatCurrency(getCurrentMonthPayment(draft.amount, draft.installmentMonths || 1, draft.isInterestFree || false, draft.date, draft.accountId))}
                   <span className="text-sm text-slate-500 font-medium ml-1">{(draft.installmentMonths || 1) > 1 ? '/월' : ''}</span>
                 </button>
               )}
@@ -224,7 +337,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, a
               {editing === 'installment' || (draft.installmentMonths && draft.installmentMonths > 1) ? (
                 <div className="text-xs text-slate-600 flex items-center justify-end gap-2">
                   <span className="whitespace-nowrap">총액</span>
-                  <span className="font-medium">{formatCurrency(draft.amount)}</span>
+                  <span className="font-medium">{formatCurrency(getTotalPaymentAmount(draft.amount, draft.installmentMonths || 1, draft.isInterestFree || false, draft.date, draft.accountId))}</span>
                   <span className="text-slate-400">·</span>
                   {monthsEditing ? (
                     <div className="relative inline-block">
@@ -260,7 +373,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, a
                       <input
                         type="checkbox"
                         checked={!!draft.isInterestFree}
-                        onChange={(e) => handleCommit({ isInterestFree: e.target.checked })}
+                        onChange={(e) => handleToggleInterestFree(e.target.checked)}
                       />
                       무이자
                     </label>
@@ -268,7 +381,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, a
                 </div>
               ) : (
                 <button className="text-xs text-slate-500 font-medium" onClick={() => setEditing('installment')}>
-                  총액 {formatCurrency(draft.amount)} · {(draft.installmentMonths || 1)}개월{draft.isInterestFree ? ' · 무이자' : ''}
+                  총액 {formatCurrency(getTotalPaymentAmount(draft.amount, draft.installmentMonths || 1, draft.isInterestFree || false, draft.date, draft.accountId))} · {(draft.installmentMonths || 1)}개월{draft.isInterestFree ? ' · 무이자' : ''}
                 </button>
               )}
             </div>
@@ -290,7 +403,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, a
                 />
               ) : (
                 <button className={`font-extrabold text-xl ${isIncome ? 'text-emerald-600' : 'text-rose-600'}`} onClick={() => setEditing('amount')}>
-                  {formatCurrency(draft.amount)}
+                  {formatCurrency(getCurrentMonthPayment(draft.amount, draft.installmentMonths || 1, draft.isInterestFree || false, draft.date, draft.accountId))}
                 </button>
               )}
             </div>

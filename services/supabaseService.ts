@@ -7,7 +7,8 @@ const mapDbAccount = (row: any): Account => ({
   id: row.id,
   name: row.name,
   balance: parseFloat(row.balance),
-  propensity: row.propensity as AccountPropensity
+  propensity: row.propensity as AccountPropensity,
+  paymentDay: row.payment_day
 });
 
 // Convert database row to Transaction type
@@ -19,7 +20,8 @@ const mapDbTransaction = (row: any): Transaction => ({
   type: row.type as TransactionType,
   category: row.category,
   accountId: row.account_id,
-  installmentMonths: row.installment_months
+  installmentMonths: row.installment_months,
+  isInterestFree: row.is_interest_free
 });
 
 // Convert database row to Category type
@@ -91,7 +93,8 @@ export const addTransaction = async (transaction: Omit<Transaction, 'id'>): Prom
     type: transaction.type,
     category: transaction.category,
     account_id: transaction.accountId,
-    installment_months: transaction.installmentMonths || null
+    installment_months: transaction.installmentMonths || null,
+    is_interest_free: transaction.isInterestFree || false
   };
 
   const { data, error } = await supabase
@@ -130,7 +133,8 @@ export const updateTransaction = async (transaction: Transaction): Promise<Trans
     type: transaction.type,
     category: transaction.category,
     account_id: transaction.accountId,
-    installment_months: transaction.installmentMonths || null
+    installment_months: transaction.installmentMonths || null,
+    is_interest_free: transaction.isInterestFree || false
   };
 
   const { data, error } = await supabase
@@ -188,7 +192,8 @@ export const addAccount = async (account: Omit<Account, 'id'>): Promise<Account>
   const dbAccount = {
     name: account.name,
     balance: account.balance,
-    propensity: account.propensity
+    propensity: account.propensity,
+    payment_day: account.paymentDay || null
   };
 
   const { data, error } = await supabase
@@ -216,7 +221,8 @@ export const updateAccount = async (account: Account): Promise<Account> => {
   const dbAccount = {
     name: account.name,
     balance: account.balance,
-    propensity: account.propensity
+    propensity: account.propensity,
+    payment_day: account.paymentDay || null
   };
 
   const { data, error } = await supabase
@@ -448,7 +454,8 @@ export const initializeDefaultAccounts = async (): Promise<void> => {
     id: account.id,
     name: account.name,
     balance: account.balance,
-    propensity: account.propensity
+    propensity: account.propensity,
+    payment_day: account.paymentDay || null
   }));
 
   const { error } = await supabase
@@ -588,7 +595,8 @@ export const importData = async (data: { accounts: Account[], transactions: Tran
       id: account.id,
       name: account.name,
       balance: account.balance,
-      propensity: account.propensity
+      propensity: account.propensity,
+      payment_day: account.paymentDay || null
     }));
 
     const { error: accountError } = await supabase
@@ -616,7 +624,8 @@ export const importData = async (data: { accounts: Account[], transactions: Tran
       type: transaction.type,
       category: transaction.category,
       account_id: transaction.accountId,
-      installment_months: transaction.installmentMonths || null
+      installment_months: transaction.installmentMonths || null,
+      is_interest_free: transaction.isInterestFree || false
     }));
 
     const { error: transactionError } = await supabase
