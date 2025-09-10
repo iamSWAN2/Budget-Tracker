@@ -5,12 +5,30 @@ export type LocaleCode = 'ko-KR' | 'en-US';
 // 통화 포매터: 기본은 KRW, 소수 0자리(원 단위)
 export const formatCurrency = (
   value: number,
-  options?: { locale?: LocaleCode; currency?: string; maximumFractionDigits?: number }
+  options?: { 
+    locale?: LocaleCode; 
+    currency?: string; 
+    maximumFractionDigits?: number;
+    compact?: boolean;
+  }
 ): string => {
   const locale = options?.locale ?? 'ko-KR';
   const currency = options?.currency ?? 'KRW';
   const maximumFractionDigits = options?.maximumFractionDigits ?? 0; // 원화 기준
+  const compact = options?.compact ?? false;
+
   try {
+    if (compact) {
+      // 축약 표시: 1K, 1M 등
+      if (Math.abs(value) >= 1000000000) {
+        return `₩${(value / 1000000000).toFixed(1)}B`;
+      } else if (Math.abs(value) >= 1000000) {
+        return `₩${(value / 1000000).toFixed(1)}M`;
+      } else if (Math.abs(value) >= 1000) {
+        return `₩${(value / 1000).toFixed(1)}K`;
+      }
+    }
+    
     return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency,

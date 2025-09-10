@@ -15,6 +15,342 @@ import { InstallmentsWidget } from '../components/dashboard/InstallmentsWidget';
 import { RecurringWidget } from '../components/dashboard/RecurringWidget';
 import { OutliersWidget } from '../components/dashboard/OutliersWidget';
 import { CreditCardBillWidget } from '../components/dashboard/CreditCardBillWidget';
+import { MonthlyTrendChart } from '../components/charts/MonthlyTrendChart';
+import { CategoryDonutChart } from '../components/charts/CategoryDonutChart';
+import { AccountBalanceChart } from '../components/charts/AccountBalanceChart';
+import { BudgetProgressChart } from '../components/charts/BudgetProgressChart';
+
+// 개요 탭 컴포넌트
+const OverviewTab: React.FC<{
+  data: UseDataReturn;
+  monthlyIncomeTotal: number;
+  monthlyExpenseTotal: number;
+  monthlyBalance: number;
+  recentTransactions: Transaction[];
+  transactions: Transaction[];
+  accounts: any[];
+  categories: any[];
+  currentMonth: number;
+  currentYear: number;
+  viewMode: 'month' | 'week';
+  addTransaction: (tx: Omit<Transaction, 'id'>) => void;
+  updateTransaction: (tx: Transaction) => void;
+  deleteTransaction: (id: string) => void;
+  handleDelete: (id: string) => void;
+  t: (key: string) => string;
+}> = ({
+  monthlyIncomeTotal,
+  monthlyExpenseTotal,
+  monthlyBalance,
+  recentTransactions,
+  transactions,
+  accounts,
+  categories,
+  currentMonth,
+  currentYear,
+  viewMode,
+  addTransaction,
+  updateTransaction,
+  deleteTransaction,
+  handleDelete,
+  t
+}) => {
+  const [isDesktop, setIsDesktop] = React.useState(false);
+
+  React.useEffect(() => {
+    const mql = window.matchMedia('(min-width: 1024px)');
+    const apply = (matches: boolean) => setIsDesktop(matches);
+    apply(mql.matches);
+    const listener = (e: MediaQueryListEvent) => apply(e.matches);
+    if (mql.addEventListener) mql.addEventListener('change', listener);
+    else if (mql.addListener) mql.addListener(listener);
+    return () => {
+      if (mql.removeEventListener) mql.removeEventListener('change', listener);
+      else if (mql.removeListener) mql.removeListener(listener);
+    };
+  }, []);
+
+  return (
+    <div className="flex-1 flex flex-col space-y-4 md:space-y-6 min-h-0">
+      {/* 재정 개요 카드 */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 flex-shrink-0">
+        <div className="bg-white rounded-lg shadow-md p-3 md:p-4">
+          <h3 className="text-sm md:text-xs font-medium text-slate-600 mb-2 md:mb-1">{t('summary.income')}</h3>
+          <p className="text-base md:text-lg font-bold text-green-600 truncate">{formatCurrency(monthlyIncomeTotal)}</p>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow-md p-3 md:p-4">
+          <h3 className="text-sm md:text-xs font-medium text-slate-600 mb-2 md:mb-1">{t('summary.expense')}</h3>
+          <p className="text-base md:text-lg font-bold text-red-600 truncate">{formatCurrency(monthlyExpenseTotal)}</p>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow-md p-3 md:p-4">
+          <h3 className="text-sm md:text-xs font-medium text-slate-600 mb-2 md:mb-1">{t('summary.balance')}</h3>
+          <p className={`text-base md:text-lg font-bold ${monthlyBalance >= 0 ? 'text-slate-800' : 'text-red-600'} truncate`}>
+            {formatCurrency(monthlyBalance)}
+          </p>
+        </div>
+
+        <CreditCardBillWidget
+          transactions={transactions}
+          accounts={accounts}
+          currentMonth={currentMonth}
+          currentYear={currentYear}
+        />
+      </div>
+
+      {/* 메인 콘텐츠 그리드 */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 flex-1 min-h-0">
+        {/* 거래 추가 - 데스크톱만 */}
+        <div className="hidden lg:block bg-white rounded-lg shadow-md p-4 lg:col-span-2">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-slate-800">{t('form.addTransaction')}</h3>
+            <div className="flex items-center gap-2">
+              <Suspense fallback={<span className="text-xs text-slate-400">AI…</span>}>
+                <AIAssist data={{ accounts, transactions, categories, addTransaction, updateTransaction, deleteTransaction, installments: [], isLoading: false, error: null, clearAllData: async () => {}, exportData: () => {}, importData: (file: File) => {} }} />
+              </Suspense>
+            </div>
+          </div>
+          <AddTransactionFormInline accounts={accounts} categories={categories} onAdd={addTransaction} />
+        </div>
+
+        {/* 거래 내역 */}
+        <div className="bg-white rounded-lg shadow-md p-4 lg:col-span-3 flex flex-col min-h-0 lg:min-h-0">
+          <div className="flex items-center justify-between mb-3 flex-shrink-0">
+            <h3 className="text-sm font-semibold text-slate-800">{viewMode === 'week' ? '이번 주 거래' : t('nav.transactions')}</h3>
+            <input
+              type="text"
+              placeholder={t('placeholder.search')}
+              className="px-3 py-1.5 text-sm border border-slate-300 rounded-md w-48"
+            />
+          </div>
+          
+          <div className="space-y-2 flex-1 min-h-0 overflow-visible lg:overflow-y-auto lg:max-h-[50vh] touch-pan-y">
+            {recentTransactions.length > 0 ? (
+              <TransactionsList
+                transactions={recentTransactions}
+                accounts={accounts}
+                categories={categories}
+                onUpdate={updateTransaction}
+                onDelete={handleDelete}
+                onDeleteDirect={deleteTransaction}
+              />
+            ) : (
+              <div className="text-center py-8">
+                <div className="w-8 h-8 mx-auto mb-2 rounded-full bg-slate-100 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                </div>
+                <p className="text-slate-500 text-sm font-medium">No transactions yet.</p>
+                <p className="text-xs text-slate-400 mt-1">Add a transaction to get started!</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 분석 탭 컴포넌트
+const AnalyticsTab: React.FC<{
+  transactions: Transaction[];
+  accounts: any[];
+  categories: any[];
+  currentMonth: number;
+  currentYear: number;
+  viewMode: 'month' | 'week';
+  weekStart: WeekStart;
+}> = ({ transactions, accounts, categories, currentMonth, currentYear }) => {
+  
+  // 월별 트렌드 데이터 생성 (최근 12개월)
+  const monthlyTrendData = React.useMemo(() => {
+    const data = [];
+    const now = new Date();
+    
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const month = date.getMonth();
+      const year = date.getFullYear();
+      
+      const monthTransactions = transactions.filter(t => {
+        const tDate = new Date(t.date);
+        return tDate.getMonth() === month && tDate.getFullYear() === year;
+      });
+      
+      const income = monthTransactions
+        .filter(t => t.type === TransactionType.INCOME)
+        .reduce((sum, t) => sum + t.amount, 0);
+      
+      const expense = monthTransactions
+        .filter(t => t.type === TransactionType.EXPENSE)
+        .reduce((sum, t) => sum + t.amount, 0);
+      
+      data.push({
+        month: `${year.toString().slice(2)}년 ${month + 1}월`,
+        수입: income,
+        지출: expense,
+        순익: income - expense
+      });
+    }
+    
+    return data;
+  }, [transactions]);
+
+  // 카테고리별 지출 분포 데이터
+  const categoryExpenseData = React.useMemo(() => {
+    const currentMonthTransactions = transactions.filter(t => {
+      const tDate = new Date(t.date);
+      return t.type === TransactionType.EXPENSE &&
+             tDate.getMonth() === currentMonth &&
+             tDate.getFullYear() === currentYear;
+    });
+
+    const categoryTotals = currentMonthTransactions.reduce((acc, t) => {
+      acc[t.category] = (acc[t.category] || 0) + t.amount;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(categoryTotals)
+      .map(([category, amount]) => ({
+        name: category,
+        value: amount,
+        색상: `hsl(${Math.floor(Math.random() * 360)}, 70%, 60%)`
+      }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8); // 상위 8개 카테고리만
+  }, [transactions, currentMonth, currentYear]);
+
+  // 계좌별 잔액 데이터
+  const accountBalanceData = React.useMemo(() => {
+    return accounts.map(account => ({
+      name: account.name,
+      잔액: account.balance || 0,
+      색상: account.propensity === 'CREDIT_CARD' ? '#ff6b6b' : 
+            account.propensity === 'SAVINGS' ? '#4ecdc4' : '#45b7d1'
+    })).sort((a, b) => b.잔액 - a.잔액);
+  }, [accounts]);
+
+  // 예산 진행률 데이터 (샘플 데이터 - 향후 실제 예산 기능과 연동)
+  const budgetProgressData = React.useMemo(() => {
+    const currentMonthTransactions = transactions.filter(t => {
+      const tDate = new Date(t.date);
+      return t.type === TransactionType.EXPENSE &&
+             tDate.getMonth() === currentMonth &&
+             tDate.getFullYear() === currentYear;
+    });
+
+    const categoryTotals = currentMonthTransactions.reduce((acc, t) => {
+      acc[t.category] = (acc[t.category] || 0) + t.amount;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // 샘플 예산 데이터 (실제 구현시에는 사용자 설정 예산 사용)
+    const sampleBudgets = {
+      '식비': 500000,
+      '교통비': 150000,
+      '쇼핑': 300000,
+      '문화/여가': 200000,
+      '의료비': 100000
+    };
+
+    return Object.entries(sampleBudgets)
+      .filter(([category]) => categoryTotals[category] > 0)
+      .map(([category, budget]) => ({
+        category,
+        budget,
+        spent: categoryTotals[category] || 0,
+        color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 60%)`
+      }))
+      .slice(0, 5); // 상위 5개 카테고리만
+  }, [transactions, currentMonth, currentYear]);
+
+  return (
+    <div className="flex-1 flex flex-col space-y-6 min-h-0 overflow-y-auto">
+      {/* 월별 트렌드 차트 */}
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h3 className="text-lg font-semibold text-slate-800 mb-4">📈 월별 수입/지출 트렌드</h3>
+        <div className="h-64">
+          <MonthlyTrendChart data={monthlyTrendData} />
+        </div>
+      </div>
+
+      {/* 차트 그리드 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* 카테고리 분포 차트 */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold text-slate-800 mb-4">🍩 이번 달 지출 분포</h3>
+          <div className="h-64">
+            <CategoryDonutChart data={categoryExpenseData} />
+          </div>
+        </div>
+
+        {/* 계좌별 잔액 차트 */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold text-slate-800 mb-4">💰 계좌별 현재 잔액</h3>
+          <div className="h-64">
+            <AccountBalanceChart data={accountBalanceData} />
+          </div>
+        </div>
+      </div>
+
+      {/* 예산 진행률 */}
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h3 className="text-lg font-semibold text-slate-800 mb-4">🎯 예산 대비 실적</h3>
+        <BudgetProgressChart data={budgetProgressData} />
+      </div>
+    </div>
+  );
+};
+
+// 위젯 탭 컴포넌트
+const WidgetsTab: React.FC<{
+  data: UseDataReturn;
+  transactions: Transaction[];
+  viewMode: 'month' | 'week';
+  currentMonth: number;
+  currentYear: number;
+  weekStart: WeekStart;
+}> = ({ data, transactions, viewMode, currentMonth, currentYear, weekStart }) => {
+  return (
+    <div className="flex-1 flex flex-col space-y-4 md:space-y-6 min-h-0">
+      {/* 위젯 그리드 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-shrink-0">
+        {/* 할부 위젯 */}
+        <InstallmentsWidget
+          installments={data.installments}
+          viewMode={viewMode}
+          currentMonth={currentMonth}
+          currentYear={currentYear}
+          weekStart={weekStart}
+        />
+
+        {/* 반복 결제 위젯 */}
+        <RecurringWidget
+          transactions={transactions}
+          viewMode={viewMode}
+          currentMonth={currentMonth}
+          currentYear={currentYear}
+          weekStart={weekStart}
+        />
+
+        {/* 이상치 위젯 - 전체 너비 */}
+        <div className="md:col-span-2">
+          <OutliersWidget
+            transactions={transactions}
+            viewMode={viewMode}
+            currentMonth={currentMonth}
+            currentYear={currentYear}
+            weekStart={weekStart}
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+type DashboardTab = 'overview' | 'analytics' | 'widgets';
 
 export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   const { accounts, transactions, categories, addTransaction, updateTransaction, deleteTransaction } = data;
@@ -22,6 +358,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   const [transactionType, setTransactionType] = useState<TransactionType>(TransactionType.EXPENSE);
   const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
   const [weekStart, setWeekStart] = useState<WeekStart>('mon');
+  const [activeTab, setActiveTab] = useState<DashboardTab>('overview');
   
   // Load saved week start setting from localStorage
   React.useEffect(() => {
@@ -197,6 +534,13 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
 
   const formatMonth = (month: number, year: number) => formatMonthKo(month, year);
 
+  // 탭 정의
+  const dashboardTabs = [
+    { id: 'overview' as DashboardTab, name: '개요', icon: '📊' },
+    { id: 'analytics' as DashboardTab, name: '분석', icon: '📈' },
+    { id: 'widgets' as DashboardTab, name: '위젯', icon: '⚡' }
+  ];
+
   const navigateMonth = (direction: 'prev' | 'next') => {
     if (direction === 'prev') {
       if (currentMonth === 0) {
@@ -292,118 +636,89 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
             </button>
           </div>
         </div>
+
+        {/* Dashboard Sub Navigation */}
+        <div className="flex justify-center">
+          <div className="relative inline-flex rounded-2xl bg-slate-100 p-1 overflow-hidden">
+            {/* 슬라이딩 인디케이터 */}
+            <div 
+              className="absolute top-1 bottom-1 bg-indigo-600 rounded-xl shadow-sm transition-all duration-300 ease-out"
+              style={{
+                width: 'calc(33.333% - 2px)',
+                left: '2px',
+                transform: `translateX(${
+                  activeTab === 'overview' ? '0%' :
+                  activeTab === 'analytics' ? '100%' :
+                  '200%'
+                })`
+              }}
+            />
+            
+            {/* 탭 버튼들 */}
+            {dashboardTabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`relative z-10 flex items-center px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap text-center ${
+                  activeTab === tab.id
+                    ? 'text-white'
+                    : 'text-slate-700 hover:text-slate-900'
+                }`}
+                style={{ minWidth: '100px' }}
+              >
+                <span className="text-base mr-2">{tab.icon}</span>
+                <span>{tab.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
-      <div className="flex-1 flex flex-col space-y-4 md:space-y-6 min-h-0">
-        {/* Summary Cards - Responsive Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 flex-shrink-0">
-          <div className="bg-white rounded-lg shadow-md p-3 md:p-4">
-            <h3 className="text-sm md:text-xs font-medium text-slate-600 mb-2 md:mb-1">{t('summary.income')}</h3>
-            <p className="text-base md:text-lg font-bold text-green-600 truncate">{formatCurrency(monthlyIncomeTotal)}</p>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-md p-3 md:p-4">
-            <h3 className="text-sm md:text-xs font-medium text-slate-600 mb-2 md:mb-1">{t('summary.expense')}</h3>
-            <p className="text-base md:text-lg font-bold text-red-600 truncate">{formatCurrency(monthlyExpenseTotal)}</p>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-md p-3 md:p-4">
-            <h3 className="text-sm md:text-xs font-medium text-slate-600 mb-2 md:mb-1">{t('summary.balance')}</h3>
-            <p className={`text-base md:text-lg font-bold ${monthlyBalance >= 0 ? 'text-slate-800' : 'text-red-600'} truncate`}>
-              {formatCurrency(monthlyBalance)}
-            </p>
-          </div>
-
-          <CreditCardBillWidget
+      <div className="flex-1 flex flex-col min-h-0">
+        {/* 탭별 콘텐츠 렌더링 */}
+        {activeTab === 'overview' && (
+          <OverviewTab 
+            data={data}
+            monthlyIncomeTotal={monthlyIncomeTotal}
+            monthlyExpenseTotal={monthlyExpenseTotal}
+            monthlyBalance={monthlyBalance}
+            recentTransactions={recentTransactions}
             transactions={transactions}
             accounts={accounts}
+            categories={categories}
             currentMonth={currentMonth}
             currentYear={currentYear}
-          />
-        </div>
-
-        {/* Dashboard Widgets - Improved Layout */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-shrink-0">
-          {/* Installments Widget */}
-          <InstallmentsWidget
-            installments={data.installments}
             viewMode={viewMode}
+            addTransaction={addTransaction}
+            updateTransaction={updateTransaction}
+            deleteTransaction={deleteTransaction}
+            handleDelete={handleDelete}
+            t={t}
+          />
+        )}
+
+        {activeTab === 'analytics' && (
+          <AnalyticsTab 
+            transactions={transactions}
+            accounts={accounts}
+            categories={categories}
             currentMonth={currentMonth}
             currentYear={currentYear}
+            viewMode={viewMode}
             weekStart={weekStart}
           />
+        )}
 
-          {/* Recurring Payments Widget */}
-          <RecurringWidget
+        {activeTab === 'widgets' && (
+          <WidgetsTab 
+            data={data}
             transactions={transactions}
             viewMode={viewMode}
             currentMonth={currentMonth}
             currentYear={currentYear}
             weekStart={weekStart}
           />
-
-          {/* Outliers Widget - Full Width */}
-          <div className="md:col-span-2">
-            <OutliersWidget
-              transactions={transactions}
-              viewMode={viewMode}
-              currentMonth={currentMonth}
-              currentYear={currentYear}
-              weekStart={weekStart}
-            />
-          </div>
-        </div>
-
-        {/* Main Content Grid - Optimized Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 flex-1 min-h-0">
-          {/* Add New Transaction - Desktop only (mobile uses FAB + modal) */}
-          <div className="hidden lg:block bg-white rounded-lg shadow-md p-4 lg:col-span-2">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold text-slate-800">{t('form.addTransaction')}</h3>
-              <div className="flex items-center gap-2">
-                <Suspense fallback={<span className="text-xs text-slate-400">AI…</span>}>
-                  <AIAssist data={data} />
-                </Suspense>
-              </div>
-            </div>
-            <AddTransactionFormInline accounts={accounts} categories={categories} onAdd={addTransaction} />
-          </div>
-
-          {/* Transaction History - Expanded */}
-          <div className="bg-white rounded-lg shadow-md p-4 lg:col-span-3 flex flex-col min-h-0 lg:min-h-0">
-            <div className="flex items-center justify-between mb-3 flex-shrink-0">
-              <h3 className="text-sm font-semibold text-slate-800">{viewMode === 'week' ? '이번 주 거래' : t('nav.transactions')}</h3>
-              <input
-                type="text"
-                placeholder={t('placeholder.search')}
-                className="px-3 py-1.5 text-sm border border-slate-300 rounded-md w-48"
-              />
-            </div>
-            
-            <div className="space-y-2 flex-1 min-h-0 overflow-visible lg:overflow-y-auto lg:max-h-[50vh] touch-pan-y">
-              {recentTransactions.length > 0 ? (
-                <TransactionsList
-                  transactions={recentTransactions}
-                  accounts={accounts}
-                  categories={categories}
-                  onUpdate={updateTransaction}
-                  onDelete={handleDelete}
-                  onDeleteDirect={deleteTransaction}
-                />
-              ) : (
-                <div className="text-center py-8">
-                  <div className="w-8 h-8 mx-auto mb-2 rounded-full bg-slate-100 flex items-center justify-center">
-                    <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                    </svg>
-                  </div>
-                  <p className="text-slate-500 text-sm font-medium">No transactions yet.</p>
-                  <p className="text-xs text-slate-400 mt-1">Add a transaction to get started!</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Floating draggable toggle for form (mobile only) */}
