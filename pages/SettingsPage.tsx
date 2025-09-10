@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Button } from '../components/ui/Button';
 import { UseDataReturn } from '../hooks/useData';
 import { Category, TransactionType } from '../types';
 import { Modal } from '../components/ui/Modal';
@@ -587,42 +588,30 @@ const AppSettings: React.FC<{
             </div>
           </div>
 
-          {/* 주 시작일 설정 - 슬라이딩 스타일 */}
+          {/* 주 시작일 설정 - 버튼 형식 */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-slate-700">주 시작일</label>
-            <div className="relative inline-flex rounded-2xl bg-slate-100 p-1 w-full">
-              {/* 슬라이딩 인디케이터 */}
-              <div 
-                className="absolute top-1 bottom-1 bg-indigo-600 rounded-xl shadow-sm transition-all duration-300 ease-out"
-                style={{
-                  width: 'calc(50% - 2px)',
-                  left: '2px',
-                  transform: `translateX(${weekStart === 'mon' ? '0%' : '100%'})`
-                }}
-              />
-              
-              <button
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant={weekStart === 'mon' ? 'primary' : 'secondary'}
+                size="sm"
+                aria-pressed={weekStart === 'mon'}
                 onClick={() => saveWeekStart('mon')}
-                className={`relative z-10 flex-1 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap text-center ${
-                  weekStart === 'mon' ? 'text-white' : 'text-slate-700 hover:text-slate-900'
-                }`}
+                className="flex-1 justify-center"
               >
-                <div className="flex items-center justify-center">
-                  <span className="mr-2">📅</span>
-                  <span className="font-medium">월요일</span>
-                </div>
-              </button>
-              <button
+                월요일 시작
+              </Button>
+              <Button
+                type="button"
+                variant={weekStart === 'sun' ? 'primary' : 'secondary'}
+                size="sm"
+                aria-pressed={weekStart === 'sun'}
                 onClick={() => saveWeekStart('sun')}
-                className={`relative z-10 flex-1 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap text-center ${
-                  weekStart === 'sun' ? 'text-white' : 'text-slate-700 hover:text-slate-900'
-                }`}
+                className="flex-1 justify-center"
               >
-                <div className="flex items-center justify-center">
-                  <span className="mr-2">📅</span>
-                  <span className="font-medium">일요일</span>
-                </div>
-              </button>
+                일요일 시작
+              </Button>
             </div>
           </div>
         </div>
