@@ -39,11 +39,14 @@ export const Calendar: React.FC<CalendarProps> = ({ visibleDate, onVisibleDateCh
     const d = new Date(visibleDate);
     d.setMonth(d.getMonth() - 1);
     onVisibleDateChange(d);
+    // 월을 바꾸면 기본값(월 전체)로 복귀
+    onSelectedRangeChange(null);
   };
   const handleNext = () => {
     const d = new Date(visibleDate);
     d.setMonth(d.getMonth() + 1);
     onVisibleDateChange(d);
+    onSelectedRangeChange(null);
   };
 
   const beginDrag = (date: Date) => {
@@ -67,29 +70,46 @@ export const Calendar: React.FC<CalendarProps> = ({ visibleDate, onVisibleDateCh
     return () => window.removeEventListener('pointerup', up);
   }, []);
 
-  const inSelected = (d: Date) => {
+  const activeRange = () => {
     if (dragging) {
       const a = dragging.start < dragging.end ? dragging.start : dragging.end;
       const b = dragging.start < dragging.end ? dragging.end : dragging.start;
-      return isBetweenInclusive(d, a, b);
+      return { start: a, end: b };
     }
-    if (!selectedRange) return false;
-    return isBetweenInclusive(d, selectedRange.start, selectedRange.end);
+    if (selectedRange) return selectedRange;
+    return null;
+  };
+  const inSelected = (d: Date) => {
+    const r = activeRange();
+    if (!r) return false;
+    return isBetweenInclusive(d, r.start, r.end);
+  };
+  const isStart = (d: Date) => {
+    const r = activeRange();
+    return !!r && sameDay(d, r.start);
+  };
+  const isEnd = (d: Date) => {
+    const r = activeRange();
+    return !!r && sameDay(d, r.end);
   };
 
   return (
     <div className="bg-white rounded-lg shadow-md p-3 md:p-4 select-none">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <button onClick={handlePrev} className="p-1.5 rounded hover:bg-slate-100 text-slate-600" aria-label="이전 달">←</button>
-          <div className="text-sm font-semibold text-slate-800" aria-live="polite">{label}</div>
-          <button onClick={handleNext} className="p-1.5 rounded hover:bg-slate-100 text-slate-600" aria-label="다음 달">→</button>
+        <div className="flex items-center gap-1 sm:gap-2">
+          <button onClick={handlePrev} className="p-1.5 rounded-md hover:bg-slate-100 text-slate-600 transition" aria-label="이전 달">
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <div className="text-base sm:text-lg font-semibold text-slate-800 tracking-tight" aria-live="polite">{label}</div>
+          <button onClick={handleNext} className="p-1.5 rounded-md hover:bg-slate-100 text-slate-600 transition" aria-label="다음 달">
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
+          </button>
         </div>
         {onAddClick && (
           <button
             onClick={onAddClick}
-            className="hidden lg:flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-500"
+            className="hidden lg:flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-500 shadow-sm"
             title="거래 추가"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -102,8 +122,8 @@ export const Calendar: React.FC<CalendarProps> = ({ visibleDate, onVisibleDateCh
 
       {/* Weekday headers */}
       <div className="grid grid-cols-7 text-[11px] text-slate-500 mb-1">
-        {['일','월','화','수','목','금','토'].map((w) => (
-          <div key={w} className="text-center py-1">{w}</div>
+        {['일','월','화','수','목','금','토'].map((w, i) => (
+          <div key={w} className={`text-center py-1 ${i===0 ? 'text-rose-500' : i===6 ? 'text-blue-500' : ''}`}>{w}</div>
         ))}
       </div>
 
@@ -116,15 +136,15 @@ export const Calendar: React.FC<CalendarProps> = ({ visibleDate, onVisibleDateCh
                 onPointerDown={() => beginDrag(d)}
                 onPointerEnter={() => dragging && extendDrag(d)}
                 onClick={() => onSelectedRangeChange({ start: d, end: d })}
-                className={`w-full h-full rounded-md text-sm relative
-                  ${inSelected(d) ? 'bg-indigo-100 ring-1 ring-indigo-400' : 'hover:bg-slate-100'}
-                  ${sameDay(d, cur) ? 'outline outline-1 outline-indigo-400' : ''}
+                className={`w-full h-full rounded-md text-sm relative transition
+                  ${isStart(d) || isEnd(d) ? 'bg-indigo-600 text-white' : inSelected(d) ? 'bg-indigo-100 text-indigo-700' : 'hover:bg-slate-100'}
+                  ${sameDay(d, cur) ? 'ring-1 ring-indigo-400' : ''}
                 `}
                 aria-current={sameDay(d, cur) ? 'date' : undefined}
                 aria-pressed={inSelected(d)}
                 style={{ touchAction: 'none' }}
               >
-                <span className="absolute top-1 left-1 text-slate-700">{d.getDate()}</span>
+                <span className={`absolute top-1 left-1 ${isStart(d) || isEnd(d) ? 'text-white' : 'text-slate-700'}`}>{d.getDate()}</span>
               </button>
             ) : (
               <div />
@@ -135,11 +155,13 @@ export const Calendar: React.FC<CalendarProps> = ({ visibleDate, onVisibleDateCh
 
       {/* Footer helpers */}
       <div className="mt-2 flex items-center justify-between">
-        <div className="text-[11px] text-slate-500">
-          {selectedRange ? `${selectedRange.start.getMonth()+1}/${selectedRange.start.getDate()} – ${selectedRange.end.getMonth()+1}/${selectedRange.end.getDate()}` : '이 달 전체'}
-        </div>
-        {selectedRange && (
-          <button className="text-[11px] text-slate-500 hover:text-slate-700" onClick={() => onSelectedRangeChange(null)}>선택 해제</button>
+        <button className="text-[11px] text-slate-500 hover:text-slate-700" onClick={() => onSelectedRangeChange(null)}>이 달 전체</button>
+        {selectedRange ? (
+          <div className="text-[11px] text-slate-500">
+            {`${selectedRange.start.getMonth()+1}/${selectedRange.start.getDate()} – ${selectedRange.end.getMonth()+1}/${selectedRange.end.getDate()}`}
+          </div>
+        ) : (
+          <div className="text-[11px] text-slate-500">선택 없음</div>
         )}
       </div>
     </div>
@@ -147,4 +169,3 @@ export const Calendar: React.FC<CalendarProps> = ({ visibleDate, onVisibleDateCh
 };
 
 export default Calendar;
-
