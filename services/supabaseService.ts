@@ -389,6 +389,43 @@ export const clearTransactions = async (filter?: ClearTransactionsFilter): Promi
   }
   const affectedAccountIds = Array.from(new Set((rows || []).map((r: any) => r.account_id).filter(Boolean)));
 
+  // 1-2) 초기잔액 보정: 삭제 전 시점의 전체 거래합계와 현재 잔액으로 baseline(초기잔액)을 계산해 캐시에 저장
+  if (affectedAccountIds.length > 0) {
+    // 현재 계좌 잔액 조회
+    const { data: accountRows, error: accErr } = await supabase
+      .from('accounts')
+      .select('id, balance')
+      .in('id', affectedAccountIds);
+    if (accErr) {
+      console.error('Error fetching accounts for baseline:', accErr);
+      throw new Error(`Failed to fetch accounts for baseline: ${accErr.message}`);
+    }
+
+    // 각 계좌의 전체 거래 불러와 합계 계산(수입 +, 지출 -)
+    const { data: allTx, error: allTxErr } = await supabase
+      .from('transactions')
+      .select('account_id, amount, type')
+      .in('account_id', affectedAccountIds);
+    if (allTxErr) {
+      console.error('Error fetching transactions for baseline:', allTxErr);
+      throw new Error(`Failed to fetch transactions for baseline: ${allTxErr.message}`);
+    }
+
+    const totals = new Map<string, number>();
+    (allTx || []).forEach((tx: any) => {
+      const sign = tx.type === TransactionType.INCOME ? 1 : -1;
+      const amt = parseFloat(tx.amount);
+      totals.set(tx.account_id, (totals.get(tx.account_id) || 0) + (isNaN(amt) ? 0 : sign * amt));
+    });
+
+    (accountRows || []).forEach((acc: any) => {
+      const currentBalance = parseFloat(acc.balance) || 0;
+      const txTotal = totals.get(acc.id) || 0;
+      const baseline = currentBalance - txTotal; // 초기잔액 = 현재잔액 - 전체거래합계
+      accountInitialBalances.set(acc.id, baseline);
+    });
+  }
+
   // 2) 거래 삭제
   let deleteQuery = supabase.from('transactions').delete();
   if (filter?.accountId) deleteQuery = deleteQuery.eq('account_id', filter.accountId);
