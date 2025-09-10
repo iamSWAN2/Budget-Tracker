@@ -15,10 +15,10 @@ import { InstallmentsWidget } from '../components/dashboard/InstallmentsWidget';
 import { RecurringWidget } from '../components/dashboard/RecurringWidget';
 import { OutliersWidget } from '../components/dashboard/OutliersWidget';
 import { CreditCardBillWidget } from '../components/dashboard/CreditCardBillWidget';
-import { MonthlyTrendChart } from '../components/charts/MonthlyTrendChart';
-import { CategoryDonutChart } from '../components/charts/CategoryDonutChart';
-import { AccountBalanceChart } from '../components/charts/AccountBalanceChart';
-import { BudgetProgressChart } from '../components/charts/BudgetProgressChart';
+// 간단한 CSS 차트 컴포넌트들로 교체
+import { SimpleBarChart } from '../components/charts/SimpleBarChart';
+import { SimplePieChart } from '../components/charts/SimplePieChart';
+import { MonthlyTrendDisplay } from '../components/charts/MonthlyTrendDisplay';
 
 // 개요 탭 컴포넌트
 const OverviewTab: React.FC<{
@@ -56,6 +56,24 @@ const OverviewTab: React.FC<{
   t
 }) => {
   const [isDesktop, setIsDesktop] = React.useState(false);
+  const [query, setQuery] = React.useState('');
+
+  const accountNameMap = React.useMemo(() => {
+    const map = new Map<string, string>();
+    accounts.forEach(a => map.set(a.id, a.name));
+    return map;
+  }, [accounts]);
+
+  const filteredTransactions = React.useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return recentTransactions;
+    return recentTransactions.filter(t => {
+      const desc = (t.description || '').toLowerCase();
+      const cat = (t.category || '').toLowerCase();
+      const acc = (accountNameMap.get(t.accountId) || '').toLowerCase();
+      return desc.includes(q) || cat.includes(q) || acc.includes(q);
+    });
+  }, [recentTransactions, query, accountNameMap]);
 
   React.useEffect(() => {
     const mql = window.matchMedia('(min-width: 1024px)');
@@ -121,14 +139,17 @@ const OverviewTab: React.FC<{
             <input
               type="text"
               placeholder={t('placeholder.search')}
+              aria-label={t('aria.searchTransactions')}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
               className="px-3 py-1.5 text-sm border border-slate-300 rounded-md w-48"
             />
           </div>
           
           <div className="space-y-2 flex-1 min-h-0 overflow-visible lg:overflow-y-auto lg:max-h-[50vh] touch-pan-y">
-            {recentTransactions.length > 0 ? (
+            {filteredTransactions.length > 0 ? (
               <TransactionsList
-                transactions={recentTransactions}
+                transactions={filteredTransactions}
                 accounts={accounts}
                 categories={categories}
                 onUpdate={updateTransaction}
@@ -142,8 +163,8 @@ const OverviewTab: React.FC<{
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
                 </div>
-                <p className="text-slate-500 text-sm font-medium">No transactions yet.</p>
-                <p className="text-xs text-slate-400 mt-1">Add a transaction to get started!</p>
+                <p className="text-slate-500 text-sm font-medium">{t('empty.noTransactions')}</p>
+                <p className="text-xs text-slate-400 mt-1">{t('empty.addFirst')}</p>
               </div>
             )}
           </div>
@@ -153,7 +174,7 @@ const OverviewTab: React.FC<{
   );
 };
 
-// 분석 탭 컴포넌트
+// 분석 탭 컴포넌트 (CSS 기반 차트로 재구현)
 const AnalyticsTab: React.FC<{
   transactions: Transaction[];
   accounts: any[];
@@ -164,12 +185,12 @@ const AnalyticsTab: React.FC<{
   weekStart: WeekStart;
 }> = ({ transactions, accounts, categories, currentMonth, currentYear }) => {
   
-  // 월별 트렌드 데이터 생성 (최근 12개월)
+  // 월별 트렌드 데이터 (최근 6개월)
   const monthlyTrendData = React.useMemo(() => {
     const data = [];
     const now = new Date();
     
-    for (let i = 11; i >= 0; i--) {
+    for (let i = 5; i >= 0; i--) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const month = date.getMonth();
       const year = date.getFullYear();
@@ -189,9 +210,9 @@ const AnalyticsTab: React.FC<{
       
       data.push({
         month: `${year.toString().slice(2)}년 ${month + 1}월`,
-        수입: income,
-        지출: expense,
-        순익: income - expense
+        income,
+        expense,
+        balance: income - expense
       });
     }
     
@@ -212,93 +233,49 @@ const AnalyticsTab: React.FC<{
       return acc;
     }, {} as Record<string, number>);
 
+    const colors = ['#6366f1', '#8b5cf6', '#ec4899', '#ef4444', '#f97316', '#eab308'];
+    
     return Object.entries(categoryTotals)
-      .map(([category, amount]) => ({
-        name: category,
-        value: amount,
-        색상: `hsl(${Math.floor(Math.random() * 360)}, 70%, 60%)`
+      .map(([name, value], index) => ({
+        name,
+        value,
+        color: colors[index % colors.length]
       }))
       .sort((a, b) => b.value - a.value)
-      .slice(0, 8); // 상위 8개 카테고리만
+      .slice(0, 6);
   }, [transactions, currentMonth, currentYear]);
 
   // 계좌별 잔액 데이터
   const accountBalanceData = React.useMemo(() => {
     return accounts.map(account => ({
       name: account.name,
-      잔액: account.balance || 0,
-      색상: account.propensity === 'CREDIT_CARD' ? '#ff6b6b' : 
-            account.propensity === 'SAVINGS' ? '#4ecdc4' : '#45b7d1'
-    })).sort((a, b) => b.잔액 - a.잔액);
+      value: account.balance || 0,
+      color: account.propensity === 'CREDIT_CARD' ? '#ef4444' : 
+             account.propensity === 'SAVINGS' ? '#10b981' : '#3b82f6'
+    })).sort((a, b) => b.value - a.value).slice(0, 8);
   }, [accounts]);
-
-  // 예산 진행률 데이터 (샘플 데이터 - 향후 실제 예산 기능과 연동)
-  const budgetProgressData = React.useMemo(() => {
-    const currentMonthTransactions = transactions.filter(t => {
-      const tDate = new Date(t.date);
-      return t.type === TransactionType.EXPENSE &&
-             tDate.getMonth() === currentMonth &&
-             tDate.getFullYear() === currentYear;
-    });
-
-    const categoryTotals = currentMonthTransactions.reduce((acc, t) => {
-      acc[t.category] = (acc[t.category] || 0) + t.amount;
-      return acc;
-    }, {} as Record<string, number>);
-
-    // 샘플 예산 데이터 (실제 구현시에는 사용자 설정 예산 사용)
-    const sampleBudgets = {
-      '식비': 500000,
-      '교통비': 150000,
-      '쇼핑': 300000,
-      '문화/여가': 200000,
-      '의료비': 100000
-    };
-
-    return Object.entries(sampleBudgets)
-      .filter(([category]) => categoryTotals[category] > 0)
-      .map(([category, budget]) => ({
-        category,
-        budget,
-        spent: categoryTotals[category] || 0,
-        color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 60%)`
-      }))
-      .slice(0, 5); // 상위 5개 카테고리만
-  }, [transactions, currentMonth, currentYear]);
 
   return (
     <div className="flex-1 flex flex-col space-y-6 min-h-0 overflow-y-auto">
-      {/* 월별 트렌드 차트 */}
+      {/* 월별 트렌드 */}
       <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-lg font-semibold text-slate-800 mb-4">📈 월별 수입/지출 트렌드</h3>
-        <div className="h-64">
-          <MonthlyTrendChart data={monthlyTrendData} />
-        </div>
+        <h3 className="text-lg font-semibold text-slate-800 mb-4">📈 최근 6개월 트렌드</h3>
+        <MonthlyTrendDisplay data={monthlyTrendData} />
       </div>
 
       {/* 차트 그리드 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* 카테고리 분포 차트 */}
+        {/* 카테고리 분포 */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-lg font-semibold text-slate-800 mb-4">🍩 이번 달 지출 분포</h3>
-          <div className="h-64">
-            <CategoryDonutChart data={categoryExpenseData} />
-          </div>
+          <SimplePieChart data={categoryExpenseData} />
         </div>
 
-        {/* 계좌별 잔액 차트 */}
+        {/* 계좌별 잔액 */}
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-slate-800 mb-4">💰 계좌별 현재 잔액</h3>
-          <div className="h-64">
-            <AccountBalanceChart data={accountBalanceData} />
-          </div>
+          <h3 className="text-lg font-semibold text-slate-800 mb-4">💰 계좌별 잔액</h3>
+          <SimpleBarChart data={accountBalanceData} />
         </div>
-      </div>
-
-      {/* 예산 진행률 */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-lg font-semibold text-slate-800 mb-4">🎯 예산 대비 실적</h3>
-        <BudgetProgressChart data={budgetProgressData} />
       </div>
     </div>
   );
@@ -595,7 +572,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
 
         {/* View Mode Toggle - Centered with Sliding Indicator */}
         <div className="flex justify-center">
-          <div className="relative bg-slate-100 rounded-2xl p-1 inline-flex">
+          <div className="relative bg-slate-100 rounded-2xl p-1 inline-flex" role="tablist" aria-label={t('aria.viewModeTabs')}>
             {/* Sliding Background Indicator */}
             <div 
               className="absolute top-1 bottom-1 bg-white rounded-xl shadow-sm transition-all duration-300 ease-out"
@@ -613,6 +590,8 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                   ? 'text-indigo-600'
                   : 'text-slate-600 hover:text-slate-800'
               }`}
+              role="tab"
+              aria-selected={viewMode === 'month'}
               onClick={() => setViewMode('month')}
             >
               <svg className="w-4 h-4 lg:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -627,6 +606,8 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                   ? 'text-indigo-600'
                   : 'text-slate-600 hover:text-slate-800'
               }`}
+              role="tab"
+              aria-selected={viewMode === 'week'}
               onClick={() => setViewMode('week')}
             >
               <svg className="w-4 h-4 lg:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -639,7 +620,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
 
         {/* Dashboard Sub Navigation */}
         <div className="flex justify-center">
-          <div className="relative inline-flex rounded-2xl bg-slate-100 p-1 overflow-hidden">
+          <div className="relative inline-flex rounded-2xl bg-slate-100 p-1 overflow-hidden" role="tablist" aria-label={t('aria.dashboardTabs')}>
             {/* 슬라이딩 인디케이터 */}
             <div 
               className="absolute top-1 bottom-1 bg-indigo-600 rounded-xl shadow-sm transition-all duration-300 ease-out"
@@ -658,6 +639,10 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
             {dashboardTabs.map((tab) => (
               <button
                 key={tab.id}
+                id={`tab-${tab.id}`}
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                aria-controls={`panel-${tab.id}`}
                 onClick={() => setActiveTab(tab.id)}
                 className={`relative z-10 flex items-center px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap text-center ${
                   activeTab === tab.id
@@ -677,47 +662,53 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
       <div className="flex-1 flex flex-col min-h-0">
         {/* 탭별 콘텐츠 렌더링 */}
         {activeTab === 'overview' && (
-          <OverviewTab 
-            data={data}
-            monthlyIncomeTotal={monthlyIncomeTotal}
-            monthlyExpenseTotal={monthlyExpenseTotal}
-            monthlyBalance={monthlyBalance}
-            recentTransactions={recentTransactions}
-            transactions={transactions}
-            accounts={accounts}
-            categories={categories}
-            currentMonth={currentMonth}
-            currentYear={currentYear}
-            viewMode={viewMode}
-            addTransaction={addTransaction}
-            updateTransaction={updateTransaction}
-            deleteTransaction={deleteTransaction}
-            handleDelete={handleDelete}
-            t={t}
-          />
+          <div role="tabpanel" id="panel-overview" aria-labelledby="tab-overview">
+            <OverviewTab 
+              data={data}
+              monthlyIncomeTotal={monthlyIncomeTotal}
+              monthlyExpenseTotal={monthlyExpenseTotal}
+              monthlyBalance={monthlyBalance}
+              recentTransactions={recentTransactions}
+              transactions={transactions}
+              accounts={accounts}
+              categories={categories}
+              currentMonth={currentMonth}
+              currentYear={currentYear}
+              viewMode={viewMode}
+              addTransaction={addTransaction}
+              updateTransaction={updateTransaction}
+              deleteTransaction={deleteTransaction}
+              handleDelete={handleDelete}
+              t={t}
+            />
+          </div>
         )}
 
         {activeTab === 'analytics' && (
-          <AnalyticsTab 
-            transactions={transactions}
-            accounts={accounts}
-            categories={categories}
-            currentMonth={currentMonth}
-            currentYear={currentYear}
-            viewMode={viewMode}
-            weekStart={weekStart}
-          />
+          <div role="tabpanel" id="panel-analytics" aria-labelledby="tab-analytics">
+            <AnalyticsTab 
+              transactions={transactions}
+              accounts={accounts}
+              categories={categories}
+              currentMonth={currentMonth}
+              currentYear={currentYear}
+              viewMode={viewMode}
+              weekStart={weekStart}
+            />
+          </div>
         )}
 
         {activeTab === 'widgets' && (
-          <WidgetsTab 
-            data={data}
-            transactions={transactions}
-            viewMode={viewMode}
-            currentMonth={currentMonth}
-            currentYear={currentYear}
-            weekStart={weekStart}
-          />
+          <div role="tabpanel" id="panel-widgets" aria-labelledby="tab-widgets">
+            <WidgetsTab 
+              data={data}
+              transactions={transactions}
+              viewMode={viewMode}
+              currentMonth={currentMonth}
+              currentYear={currentYear}
+              weekStart={weekStart}
+            />
+          </div>
         )}
       </div>
 
