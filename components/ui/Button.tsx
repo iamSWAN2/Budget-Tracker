@@ -1,6 +1,6 @@
 import React from 'react';
 
-type Variant = 'primary' | 'emphasis' | 'secondary' | 'tertiary' | 'ghost';
+type Variant = 'primary' | 'emphasis' | 'secondary' | 'tertiary' | 'ghost' | 'accent';
 type Size = 'icon' | 'sm' | 'md';
 
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -14,6 +14,7 @@ const variantClasses: Record<Variant, string> = {
   secondary: 'bg-indigo-100 text-indigo-700 border border-indigo-200 hover:bg-indigo-200/60 focus:ring-indigo-200',
   tertiary: 'text-indigo-600 hover:bg-indigo-50 focus:ring-indigo-300',
   ghost: 'text-indigo-600 hover:bg-indigo-50 border border-transparent focus:ring-indigo-300',
+  accent: 'bg-purple-600 text-white hover:bg-purple-700 focus:ring-purple-500',
 };
 
 const sizeClasses: Record<Size, string> = {
@@ -43,4 +44,3 @@ export const Button: React.FC<ButtonProps> = ({ variant = 'primary', size = 'sm'
 };
 
 export default Button;
-
