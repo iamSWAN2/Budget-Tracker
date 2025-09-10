@@ -23,6 +23,27 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
   const [weekStart, setWeekStart] = useState<WeekStart>('mon');
   
+  // Load saved week start setting from localStorage
+  React.useEffect(() => {
+    const savedWeekStart = localStorage.getItem('week-start');
+    if (savedWeekStart) {
+      setWeekStart(savedWeekStart as WeekStart);
+    }
+  }, []);
+
+  // Listen for week start changes from the settings page
+  React.useEffect(() => {
+    const handleWeekStartChange = (event: CustomEvent) => {
+      setWeekStart(event.detail);
+    };
+
+    window.addEventListener('week-start-changed', handleWeekStartChange as EventListener);
+    
+    return () => {
+      window.removeEventListener('week-start-changed', handleWeekStartChange as EventListener);
+    };
+  }, []);
+
   // Debug transactionType changes
   React.useEffect(() => {
     console.log('TransactionType changed to:', transactionType);
@@ -196,86 +217,99 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   
   return (
     <div className="h-full flex flex-col">
-      {/* Month Navigation + View Toggle */}
-      <div className="mb-2 flex flex-col items-center flex-shrink-0">
-        <div className="flex items-center justify-center">
-          <button
-            onClick={() => navigateMonth('prev')}
-            className="p-2 rounded-md hover:bg-slate-200 text-slate-600"
-          >
-            ← {t('month.prev')}
-          </button>
-          <h2 className="mx-6 text-xl font-semibold text-slate-800">
-            {formatMonth(currentMonth, currentYear)}
-          </h2>
-          <button
-            onClick={() => navigateMonth('next')}
-            className="p-2 rounded-md hover:bg-slate-200 text-slate-600"
-          >
-            {t('month.next')} →
-          </button>
-        </div>
-        {(() => {
-          const { start, end } = getPeriodRange(viewMode, currentMonth, currentYear, weekStart);
-          const label = viewMode === 'month'
-            ? `${currentYear}년 ${currentMonth + 1}월`
-            : `${start.getMonth() + 1}월 ${start.getDate()}–${end.getDate()}일`;
-          return (
-            <div className="mt-1 text-[11px] text-slate-500">{label}</div>
-          );
-        })()}
-        <div className="mt-2 inline-flex rounded-md overflow-hidden border border-slate-300 text-xs">
-          <button
-            type="button"
-            className={`px-3 py-1.5 ${viewMode === 'month' ? 'bg-slate-800 text-white' : 'bg-white text-slate-700 hover:bg-slate-100'}`}
-            onClick={() => setViewMode('month')}
-          >
-            월 보기
-          </button>
-          <button
-            type="button"
-            className={`px-3 py-1.5 border-l ${viewMode === 'week' ? 'bg-slate-800 text-white' : 'bg-white text-slate-700 hover:bg-slate-100'}`}
-            onClick={() => setViewMode('week')}
-          >
-            주 보기
-          </button>
-        </div>
-        {viewMode === 'week' && (
-          <div className="mt-2 inline-flex rounded-md overflow-hidden border border-slate-300 text-xs">
+      {/* Header with Month Navigation and View Toggle */}
+      <div className="mb-2 flex flex-col flex-shrink-0 gap-3">
+        {/* Month Navigation - Always Centered */}
+        <div className="flex flex-col items-center">
+          <div className="flex items-center justify-center">
             <button
-              type="button"
-              className={`px-3 py-1.5 ${weekStart === 'mon' ? 'bg-slate-800 text-white' : 'bg-white text-slate-700 hover:bg-slate-100'}`}
-              onClick={() => setWeekStart('mon')}
+              onClick={() => navigateMonth('prev')}
+              className="p-2 rounded-md hover:bg-slate-200 text-slate-600 transition-colors"
             >
-              주 시작: 월
+              ← {t('month.prev')}
             </button>
+            <h2 className="mx-6 text-xl font-semibold text-slate-800">
+              {formatMonth(currentMonth, currentYear)}
+            </h2>
             <button
-              type="button"
-              className={`px-3 py-1.5 border-l ${weekStart === 'sun' ? 'bg-slate-800 text-white' : 'bg-white text-slate-700 hover:bg-slate-100'}`}
-              onClick={() => setWeekStart('sun')}
+              onClick={() => navigateMonth('next')}
+              className="p-2 rounded-md hover:bg-slate-200 text-slate-600 transition-colors"
             >
-              주 시작: 일
+              {t('month.next')} →
             </button>
           </div>
-        )}
+          {(() => {
+            const { start, end } = getPeriodRange(viewMode, currentMonth, currentYear, weekStart);
+            const label = viewMode === 'month'
+              ? `${currentYear}년 ${currentMonth + 1}월`
+              : `${start.getMonth() + 1}월 ${start.getDate()}–${end.getDate()}일`;
+            return (
+              <div className="mt-1 text-[11px] text-slate-500">{label}</div>
+            );
+          })()}
+        </div>
+
+        {/* View Mode Toggle - Centered with Sliding Indicator */}
+        <div className="flex justify-center">
+          <div className="relative bg-slate-100 rounded-2xl p-1 inline-flex">
+            {/* Sliding Background Indicator */}
+            <div 
+              className="absolute top-1 bottom-1 bg-white rounded-xl shadow-sm transition-all duration-300 ease-out"
+              style={{
+                width: 'calc(50% - 2px)',
+                transform: `translateX(${viewMode === 'month' ? '0%' : '100%'})`
+              }}
+            />
+            
+            {/* Buttons */}
+            <button
+              type="button"
+              className={`relative z-10 px-3 lg:px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 flex items-center ${
+                viewMode === 'month'
+                  ? 'text-indigo-600'
+                  : 'text-slate-600 hover:text-slate-800'
+              }`}
+              onClick={() => setViewMode('month')}
+            >
+              <svg className="w-4 h-4 lg:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span className="hidden lg:inline">월간</span>
+            </button>
+            <button
+              type="button"
+              className={`relative z-10 px-3 lg:px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 flex items-center ${
+                viewMode === 'week'
+                  ? 'text-indigo-600'
+                  : 'text-slate-600 hover:text-slate-800'
+              }`}
+              onClick={() => setViewMode('week')}
+            >
+              <svg className="w-4 h-4 lg:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              <span className="hidden lg:inline">주간</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="flex-1 flex flex-col space-y-4 md:space-y-6 min-h-0">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-4 gap-2 md:gap-4 flex-shrink-0">
-          <div className="bg-white rounded-lg shadow-md p-2 md:p-4">
-            <h3 className="text-xs font-medium text-slate-600 mb-1">{t('summary.income')}</h3>
-            <p className="text-sm md:text-lg font-bold text-green-600 truncate">{formatCurrency(monthlyIncomeTotal)}</p>
+        {/* Summary Cards - Responsive Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 flex-shrink-0">
+          <div className="bg-white rounded-lg shadow-md p-3 md:p-4">
+            <h3 className="text-sm md:text-xs font-medium text-slate-600 mb-2 md:mb-1">{t('summary.income')}</h3>
+            <p className="text-base md:text-lg font-bold text-green-600 truncate">{formatCurrency(monthlyIncomeTotal)}</p>
           </div>
           
-          <div className="bg-white rounded-lg shadow-md p-2 md:p-4">
-            <h3 className="text-xs font-medium text-slate-600 mb-1">{t('summary.expense')}</h3>
-            <p className="text-sm md:text-lg font-bold text-red-600 truncate">{formatCurrency(monthlyExpenseTotal)}</p>
+          <div className="bg-white rounded-lg shadow-md p-3 md:p-4">
+            <h3 className="text-sm md:text-xs font-medium text-slate-600 mb-2 md:mb-1">{t('summary.expense')}</h3>
+            <p className="text-base md:text-lg font-bold text-red-600 truncate">{formatCurrency(monthlyExpenseTotal)}</p>
           </div>
           
-          <div className="bg-white rounded-lg shadow-md p-2 md:p-4">
-            <h3 className="text-xs font-medium text-slate-600 mb-1">{t('summary.balance')}</h3>
-            <p className={`text-sm md:text-lg font-bold ${monthlyBalance >= 0 ? 'text-slate-800' : 'text-red-600'} truncate`}>
+          <div className="bg-white rounded-lg shadow-md p-3 md:p-4">
+            <h3 className="text-sm md:text-xs font-medium text-slate-600 mb-2 md:mb-1">{t('summary.balance')}</h3>
+            <p className={`text-base md:text-lg font-bold ${monthlyBalance >= 0 ? 'text-slate-800' : 'text-red-600'} truncate`}>
               {formatCurrency(monthlyBalance)}
             </p>
           </div>
@@ -286,31 +320,30 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
             currentMonth={currentMonth}
             currentYear={currentYear}
           />
+        </div>
 
-          {/* Installments due in selected period */}
-          <div className="col-span-4">
-            <InstallmentsWidget
-              installments={data.installments}
-              viewMode={viewMode}
-              currentMonth={currentMonth}
-              currentYear={currentYear}
-              weekStart={weekStart}
-            />
-          </div>
+        {/* Dashboard Widgets - Improved Layout */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-shrink-0">
+          {/* Installments Widget */}
+          <InstallmentsWidget
+            installments={data.installments}
+            viewMode={viewMode}
+            currentMonth={currentMonth}
+            currentYear={currentYear}
+            weekStart={weekStart}
+          />
 
-          {/* Recurring payments in selected period */}
-          <div className="col-span-4">
-            <RecurringWidget
-              transactions={transactions}
-              viewMode={viewMode}
-              currentMonth={currentMonth}
-              currentYear={currentYear}
-              weekStart={weekStart}
-            />
-          </div>
+          {/* Recurring Payments Widget */}
+          <RecurringWidget
+            transactions={transactions}
+            viewMode={viewMode}
+            currentMonth={currentMonth}
+            currentYear={currentYear}
+            weekStart={weekStart}
+          />
 
-          {/* Outliers in selected period */}
-          <div className="col-span-4">
+          {/* Outliers Widget - Full Width */}
+          <div className="md:col-span-2">
             <OutliersWidget
               transactions={transactions}
               viewMode={viewMode}

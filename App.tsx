@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, Suspense } from 'react';
+import React, { useState, useMemo, Suspense, useEffect } from 'react';
 // pages는 named export를 사용하므로 lazy 로드 시 default로 매핑
 const DashboardPage = React.lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
 const AccountsPage = React.lazy(() => import('./pages/AccountsPage').then(m => ({ default: m.AccountsPage })));
@@ -14,9 +14,53 @@ import { Spinner } from './components/ui/Spinner';
 function AppInner() {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [txFilter, setTxFilter] = useState<{ q?: string; start?: string; end?: string } | null>(null);
+  const [appTitle, setAppTitle] = useState<string>('Household Ledger');
+  const [titleColor, setTitleColor] = useState<string>('#4f46e5'); // default indigo-600
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
   const data = useData();
   const { t, lang, toggle } = useI18n();
   const { density, toggleDensity } = useUISettings();
+
+  // Load saved title and color from localStorage
+  useEffect(() => {
+    const savedTitle = localStorage.getItem('app-title');
+    const savedColor = localStorage.getItem('app-title-color');
+    if (savedTitle) {
+      setAppTitle(savedTitle);
+    }
+    if (savedColor) {
+      setTitleColor(savedColor);
+    }
+  }, []);
+
+  // Listen for settings changes from the settings page
+  useEffect(() => {
+    const handleTitleColorChange = (event: CustomEvent) => {
+      setTitleColor(event.detail);
+    };
+
+    window.addEventListener('title-color-changed', handleTitleColorChange as EventListener);
+    
+    return () => {
+      window.removeEventListener('title-color-changed', handleTitleColorChange as EventListener);
+    };
+  }, []);
+
+  // Save title to localStorage when changed
+  const saveTitle = (newTitle: string) => {
+    setAppTitle(newTitle);
+    localStorage.setItem('app-title', newTitle);
+    setIsEditingTitle(false);
+  };
+
+  const handleTitleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      const target = e.target as HTMLInputElement;
+      saveTitle(target.value);
+    } else if (e.key === 'Escape') {
+      setIsEditingTitle(false);
+    }
+  };
 
   React.useEffect(() => {
     const handler = (e: Event) => {
@@ -52,18 +96,56 @@ function AppInner() {
       <header className="bg-white border-b border-slate-200 flex-shrink-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="text-center">
-            <h1 className="text-3xl font-bold text-indigo-600 mb-2">Household Ledger</h1>
-            <p className="text-slate-600">{t('app.subtitle')}</p>
+            {isEditingTitle ? (
+              <input
+                type="text"
+                defaultValue={appTitle}
+                onKeyDown={handleTitleKeyPress}
+                onBlur={(e) => saveTitle(e.target.value)}
+                className="text-3xl font-bold mb-2 bg-transparent border-b-2 focus:outline-none text-center"
+                style={{ 
+                  color: titleColor,
+                  borderColor: `${titleColor}50`,
+                  width: `${Math.max(appTitle.length * 0.6, 10)}em` 
+                }}
+                autoFocus
+              />
+            ) : (
+              <h1 
+                className="text-3xl font-bold mb-2 cursor-pointer hover:opacity-80 transition-opacity"
+                style={{ color: titleColor }}
+                onClick={() => setIsEditingTitle(true)}
+                title="클릭하여 제목 편집"
+              >
+                {appTitle}
+              </h1>
+            )}
           </div>
           
           {/* Navigation */}
-          <nav className="mt-6 flex justify-center items-center space-x-3">
-            <div className="inline-flex rounded-lg bg-slate-100 p-1">
+          <nav className="mt-6 flex justify-center items-center px-4">
+            <div className="relative inline-flex rounded-2xl bg-slate-100 p-1 overflow-hidden w-full max-w-md">
+              {/* Sliding Background Indicator */}
+              <div 
+                className="absolute top-1 bottom-1 bg-indigo-600 rounded-xl shadow-sm transition-all duration-300 ease-out"
+                style={{
+                  width: 'calc(25% - 2px)',
+                  left: '2px',
+                  transform: `translateX(${
+                    currentPage === 'dashboard' ? '0%' :
+                    currentPage === 'accounts' ? '100%' :
+                    currentPage === 'transactions' ? '200%' :
+                    '300%'
+                  })`
+                }}
+              />
+              
+              {/* Navigation Buttons */}
               <button
                 onClick={() => setCurrentPage('dashboard')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`relative z-10 flex-1 px-2 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 whitespace-nowrap text-center ${
                   currentPage === 'dashboard'
-                    ? 'bg-indigo-600 text-white shadow-sm'
+                    ? 'text-white'
                     : 'text-slate-700 hover:text-slate-900'
                 }`}
               >
@@ -71,9 +153,9 @@ function AppInner() {
               </button>
               <button
                 onClick={() => setCurrentPage('accounts')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`relative z-10 flex-1 px-2 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 whitespace-nowrap text-center ${
                   currentPage === 'accounts'
-                    ? 'bg-indigo-600 text-white shadow-sm'
+                    ? 'text-white'
                     : 'text-slate-700 hover:text-slate-900'
                 }`}
               >
@@ -81,9 +163,9 @@ function AppInner() {
               </button>
               <button
                 onClick={() => setCurrentPage('transactions')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`relative z-10 flex-1 px-2 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 whitespace-nowrap text-center ${
                   currentPage === 'transactions'
-                    ? 'bg-indigo-600 text-white shadow-sm'
+                    ? 'text-white'
                     : 'text-slate-700 hover:text-slate-900'
                 }`}
               >
@@ -91,9 +173,9 @@ function AppInner() {
               </button>
               <button
                 onClick={() => setCurrentPage('settings')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`relative z-10 flex-1 px-2 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 whitespace-nowrap text-center ${
                   currentPage === 'settings'
-                    ? 'bg-indigo-600 text-white shadow-sm'
+                    ? 'text-white'
                     : 'text-slate-700 hover:text-slate-900'
                 }`}
               >

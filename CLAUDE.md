@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Language Policy
 
-Claude Code must ALWAYS respond in Korean (한국어) to all user interactions and communications throughout this project.
+Claude Code must ALWAYS respond in Korean (한국어) to all user interactions and communications throughout this project. Even when users submit prompts in English, Claude must respond in Korean.
 
 ## File Maintenance
 
@@ -20,14 +20,18 @@ This is an AI-powered household ledger application built with React 19, TypeScri
 
 ## Development Commands
 
-- `npm run dev` - Start development server with Vite
-- `npm run build` - Build production bundle
-- `npm run preview` - Preview production build locally
 - `npm install` - Install dependencies
+- `npm run dev` - Start development server with Vite (hot reload enabled)
+- `npm run build` - Build production bundle with Rollup optimizations
+- `npm run preview` - Preview production build locally
 
 ## Environment Setup
 
 The app requires a `GEMINI_API_KEY` in `.env.local` for AI features to work. The vite.config.ts exposes this as both `process.env.API_KEY` and `process.env.GEMINI_API_KEY` in the client.
+
+Additional environment variables (optional):
+- `SUPABASE_URL` - For real Supabase integration (currently uses mock service)  
+- `SUPABASE_ANON_KEY` - For real Supabase integration (currently uses mock service)
 
 ## Architecture Overview
 
@@ -104,6 +108,13 @@ The codebase uses a feature-based structure:
 - Error handling is consistent across all async operations with try/catch patterns
 - All service calls include artificial delays to simulate real API behavior
 
+## Build Configuration
+
+- **Bundle Optimization**: Manual chunks configured for `react`, `supabase`, and `charts` libraries
+- **Code Splitting**: React.lazy() used for page-level components with Suspense fallbacks
+- **Performance**: Chunk size warning limit raised to 1000kb for better optimization control
+- **Path Resolution**: Root-level alias `@/` for clean imports throughout the codebase
+
 ## Claude Code Action Guidelines
 
 When working with this codebase, Claude Code should follow these interaction protocols:
@@ -161,3 +172,15 @@ Claude Code should provide constructive feedback when:
 - Industry best practices are not being followed
 
 This ensures higher quality technical discussions and prevents suboptimal implementations.
+
+## Important Instructions
+
+**File Maintenance Policy:**
+- ALWAYS prefer editing existing files over creating new ones
+- NEVER create files unless absolutely necessary for the goal
+- NEVER proactively create documentation files (*.md) or README files unless explicitly requested
+- Only create documentation files if explicitly requested by the user
+
+**Task Completion Protocol:**
+- Do what has been asked; nothing more, nothing less
+- Focus on the specific task without adding unnecessary features or documentation
