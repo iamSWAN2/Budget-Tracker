@@ -351,6 +351,161 @@ export const updateAccountBalance = async (accountId: string): Promise<void> => 
   }
 };
 
+// -----------------------------
+// Selective Clear (New Feature)
+// -----------------------------
+
+export type ClearTransactionsFilter = {
+  accountId?: string;
+  from?: string; // YYYY-MM-DD
+  to?: string;   // YYYY-MM-DD
+  type?: TransactionType;
+};
+
+export type ClearAccountsOption = boolean | {
+  ids?: string[];            // 지정된 계좌만 삭제
+  includeDefault?: boolean;  // 기본 계좌 포함 여부(기본 false)
+};
+
+export type ClearDataOptions = {
+  transactions?: boolean | ClearTransactionsFilter;
+  accounts?: ClearAccountsOption;
+  categories?: false | 'custom' | 'all';
+  reassignCategoryTo?: string; // 카테고리 삭제 전 재할당 대상(기본 'Uncategorized')
+};
+
+export const clearTransactions = async (filter?: ClearTransactionsFilter): Promise<void> => {
+  let query = supabase.from('transactions').delete();
+
+  if (filter?.accountId) query = query.eq('account_id', filter.accountId);
+  if (filter?.from) query = query.gte('date', filter.from);
+  if (filter?.to) query = query.lte('date', filter.to);
+  if (filter?.type) query = query.eq('type', filter.type);
+
+  const { error } = await query;
+  if (error) {
+    console.error('Error clearing transactions:', error);
+    throw new Error(`Failed to clear transactions: ${error.message}`);
+  }
+};
+
+export const bulkDeleteAccounts = async (option: ClearAccountsOption): Promise<void> => {
+  if (!option) return;
+
+  const includeDefault = typeof option === 'object' ? !!option.includeDefault : false;
+  let targetIds: string[] = [];
+
+  if (option === true) {
+    const { data, error } = await supabase.from('accounts').select('id');
+    if (error) {
+      console.error('Error fetching accounts for bulk delete:', error);
+      throw new Error(`Failed to fetch accounts: ${error.message}`);
+    }
+    const defaultIds = DEFAULT_ACCOUNTS.map(a => a.id);
+    targetIds = (data || []).map((r: any) => r.id).filter((id: string) => includeDefault || !defaultIds.includes(id));
+  } else if (Array.isArray(option.ids) && option.ids.length > 0) {
+    const defaultIds = DEFAULT_ACCOUNTS.map(a => a.id);
+    targetIds = option.ids.filter(id => includeDefault || !defaultIds.includes(id));
+  }
+
+  if (targetIds.length === 0) return;
+
+  // 1) 해당 계좌들의 거래 삭제
+  {
+    const { error } = await supabase
+      .from('transactions')
+      .delete()
+      .in('account_id', targetIds);
+    if (error) {
+      console.error('Error deleting transactions for accounts:', error);
+      throw new Error(`Failed to delete related transactions: ${error.message}`);
+    }
+  }
+
+  // 2) 계좌 삭제
+  {
+    const { error } = await supabase
+      .from('accounts')
+      .delete()
+      .in('id', targetIds);
+    if (error) {
+      console.error('Error deleting accounts:', error);
+      throw new Error(`Failed to delete accounts: ${error.message}`);
+    }
+  }
+
+  // 3) 초기 잔액 캐시 정리
+  targetIds.forEach(id => accountInitialBalances.delete(id));
+};
+
+export const deleteCategories = async (mode: 'custom' | 'all', reassignTo?: string): Promise<void> => {
+  const fallback = reassignTo || 'Uncategorized';
+
+  if (mode === 'all') {
+    const { error: updateError } = await supabase
+      .from('transactions')
+      .update({ category: fallback })
+      .gt('created_at', '1970-01-01');
+    if (updateError) {
+      console.error('Error reassigning categories (all):', updateError);
+      throw new Error(`Failed to reassign categories: ${updateError.message}`);
+    }
+
+    const { error: delError } = await supabase
+      .from('categories')
+      .delete()
+      .gt('created_at', '1970-01-01');
+    if (delError) {
+      console.error('Error deleting all categories:', delError);
+      throw new Error(`Failed to delete categories: ${delError.message}`);
+    }
+  } else {
+    // 커스텀 카테고리 이름 목록 조회
+    const { data: customCats } = await supabase
+      .from('categories')
+      .select('name')
+      .eq('is_default', false);
+    const customNames = (customCats || []).map((c: any) => c.name);
+
+    if (customNames.length > 0) {
+      const { error: updateError } = await supabase
+        .from('transactions')
+        .update({ category: fallback })
+        .in('category', customNames);
+      if (updateError) {
+        console.error('Error reassigning categories (custom):', updateError);
+        throw new Error(`Failed to reassign custom categories: ${updateError.message}`);
+      }
+    }
+
+    const { error: delError } = await supabase
+      .from('categories')
+      .delete()
+      .eq('is_default', false);
+    if (delError) {
+      console.error('Error deleting custom categories:', delError);
+      throw new Error(`Failed to delete custom categories: ${delError.message}`);
+    }
+  }
+};
+
+export const clearData = async (options: ClearDataOptions): Promise<void> => {
+  const { transactions, accounts, categories, reassignCategoryTo } = options;
+
+  if (transactions) {
+    if (typeof transactions === 'object') await clearTransactions(transactions);
+    else await clearTransactions();
+  }
+  if (accounts) {
+    await bulkDeleteAccounts(accounts);
+  }
+  if (categories) {
+    if (categories === 'all' || categories === 'custom') {
+      await deleteCategories(categories, reassignCategoryTo);
+    }
+  }
+};
+
 // Category management functions
 export const getCategories = async (): Promise<Category[]> => {
   console.log("Supabase: Fetching categories");
@@ -508,42 +663,12 @@ export const initializeDefaultCategories = async (): Promise<void> => {
 
 // Data management functions
 export const clearAllData = async (): Promise<void> => {
-  console.log("Supabase: Clearing all data");
-  
-  // Delete transactions first (due to foreign key constraints)
-  const { error: transactionError } = await supabase
-    .from('transactions')
-    .delete()
-    .gt('created_at', '1970-01-01'); // 모든 데이터 삭제 (1970년 이후 모든 데이터)
-
-  if (transactionError) {
-    console.error('Error clearing transactions:', transactionError);
-    throw new Error(`Failed to clear transactions: ${transactionError.message}`);
-  }
-  
-  // Delete accounts
-  const { error: accountError } = await supabase
-    .from('accounts')
-    .delete()
-    .gt('created_at', '1970-01-01'); // 모든 데이터 삭제
-
-  if (accountError) {
-    console.error('Error clearing accounts:', accountError);
-    throw new Error(`Failed to clear accounts: ${accountError.message}`);
-  }
-  
-  // Delete non-default categories only
-  const { error: categoryError } = await supabase
-    .from('categories')
-    .delete()
-    .eq('is_default', false); // 기본 카테고리가 아닌 것만 삭제
-
-  if (categoryError) {
-    console.error('Error clearing custom categories:', categoryError);
-    // Don't throw here, we can continue
-  }
-  
-  // Clear initial balances cache
+  console.log("Supabase: Clearing all data (alias)");
+  await clearData({
+    transactions: true,
+    accounts: true,
+    categories: 'custom',
+  });
   accountInitialBalances.clear();
 };
 

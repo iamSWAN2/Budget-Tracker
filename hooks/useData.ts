@@ -15,6 +15,7 @@ import {
   updateCategory as apiUpdateCategory,
   deleteCategory as apiDeleteCategory,
   clearAllData as apiClearAllData,
+  clearData as apiClearData,
   exportData as apiExportData,
   importData as apiImportData
 } from '../services/supabaseService';
@@ -225,6 +226,16 @@ export const useData = () => {
     }
   };
 
+  const clearData = async (options: import('../services/supabaseService').ClearDataOptions) => {
+    try {
+      await apiClearData(options);
+      await fetchData();
+    } catch (err) {
+      setError('Failed to clear selected data.');
+      console.error(err);
+    }
+  };
+
   const exportData = async () => {
     try {
       const data = await apiExportData();
@@ -273,6 +284,7 @@ export const useData = () => {
     updateCategory,
     deleteCategory,
     clearAllData,
+    clearData,
     exportData,
     importData,
   };
