@@ -219,17 +219,24 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, a
                 <div className="text-xs text-slate-600 flex items-center justify-end gap-2">
                   <span className="whitespace-nowrap">총액</span>
                   <span className="font-medium">{formatCurrency(draft.amount)}</span>
-                  <input
-                    type="number"
-                    min={1}
-                    step={1}
-                    value={draft.installmentMonths || 1}
-                    onChange={(e) => setDraft(prev => ({ ...prev, installmentMonths: Math.max(1, parseInt(e.target.value || '1', 10)) }))}
-                    onBlur={() => handleCommit({ installmentMonths: draft.installmentMonths || 1 })}
-                    className="w-14 text-right border border-slate-300 rounded px-1 py-0.5"
-                    title="할부 개월"
-                  />
-                  <span>개월</span>
+                  <div className="relative inline-block">
+                    <input
+                      type="number"
+                      min={1}
+                      max={36}
+                      step={1}
+                      value={draft.installmentMonths || 1}
+                      onChange={(e) => setDraft(prev => ({ ...prev, installmentMonths: Math.max(1, Math.min(36, parseInt(e.target.value || '1', 10))) }))}
+                      onBlur={() => handleCommit({ installmentMonths: draft.installmentMonths || 1 })}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleCommit({ installmentMonths: draft.installmentMonths || 1 });
+                        if (e.key === 'Escape') handleCancel();
+                      }}
+                      className="w-20 text-right border border-slate-300 rounded px-2 py-0.5 pr-8 bg-white"
+                      title="할부 개월"
+                    />
+                    <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-500">개월</span>
+                  </div>
                   {(draft.installmentMonths || 1) > 1 && (
                     <label className="inline-flex items-center gap-1 cursor-pointer select-none">
                       <input
