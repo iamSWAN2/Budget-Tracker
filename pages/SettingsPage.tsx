@@ -404,7 +404,7 @@ const CategoryManager: React.FC<{ data: UseDataReturn }> = ({ data }) => {
 };
 
 const DataManager: React.FC<{ data: UseDataReturn }> = ({ data }) => {
-  const { accounts, categories, clearAllData, clearData, exportData, importData } = data;
+  const { accounts, clearData, exportData, importData } = data;
   const [isClearing, setIsClearing] = useState(false);
 
   // 선택적 초기화 상태
@@ -419,17 +419,13 @@ const DataManager: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   const [accSelected, setAccSelected] = useState<string[]>([]);
   const [accIncludeDefault, setAccIncludeDefault] = useState(false);
 
-  const [catMode, setCatMode] = useState<'none' | 'custom' | 'all'>('none');
-  const [catReassign, setCatReassign] = useState<string>('Uncategorized');
-
   const resetSelectiveForm = () => {
     setTxEnabled(false); setTxAccountId(''); setTxFrom(''); setTxTo(''); setTxType('ALL');
     setAccEnabled(false); setAccMode('all'); setAccSelected([]); setAccIncludeDefault(false);
-    setCatMode('none'); setCatReassign('Uncategorized');
   };
 
   const handleSelectiveClear = async () => {
-    if (!txEnabled && !accEnabled && catMode === 'none') {
+    if (!txEnabled && !accEnabled) {
       alert('삭제할 항목을 선택하세요.');
       return;
     }
@@ -449,10 +445,6 @@ const DataManager: React.FC<{ data: UseDataReturn }> = ({ data }) => {
       if (accEnabled) {
         if (accMode === 'all') options.accounts = { includeDefault: accIncludeDefault };
         else options.accounts = { ids: accSelected, includeDefault: accIncludeDefault };
-      }
-      if (catMode !== 'none') {
-        options.categories = catMode;
-        options.reassignCategoryTo = catReassign || 'Uncategorized';
       }
       await clearData(options);
       alert('선택한 데이터가 삭제되었습니다.');
@@ -519,19 +511,19 @@ const DataManager: React.FC<{ data: UseDataReturn }> = ({ data }) => {
           </div>
         </div>
 
-        {/* 선택적 초기화 */}
+        {/* 초기화 */}
         <div className="p-5 border rounded-lg bg-white">
           <div className="flex items-start justify-between">
             <div>
-              <h4 className="font-medium text-slate-900">선택적 초기화</h4>
+              <h4 className="font-medium text-slate-900">초기화</h4>
               <p className="text-xs text-slate-500 mt-1">아래에서 삭제할 범주와 조건을 선택하세요.</p>
             </div>
             <button 
               onClick={handleSelectiveClear}
               disabled={isClearing}
-              className="w-32 justify-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+              className="w-28 justify-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
             >
-              {isClearing ? '진행 중…' : '선택 항목 삭제'}
+              {isClearing ? '진행 중…' : '삭제'}
             </button>
           </div>
 
@@ -608,50 +600,10 @@ const DataManager: React.FC<{ data: UseDataReturn }> = ({ data }) => {
             )}
           </div>
 
-          {/* 카테고리 삭제 옵션 */}
-          <div className="mt-4 border-t pt-4">
-            <label className="block text-sm font-medium text-slate-800 mb-2">카테고리 삭제</label>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div>
-                <select value={catMode} onChange={(e) => setCatMode(e.target.value as any)} className="w-full border rounded-md px-2 py-1.5 text-sm">
-                  <option value="none">삭제 안 함</option>
-                  <option value="custom">커스텀만</option>
-                  <option value="all">전체</option>
-                </select>
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-xs text-slate-600 mb-1">재할당 카테고리</label>
-                <select value={catReassign} onChange={(e) => setCatReassign(e.target.value)} className="w-full border rounded-md px-2 py-1.5 text-sm">
-                  <option value="Uncategorized">Uncategorized</option>
-                  {categories.map(c => (
-                    <option key={c.id} value={c.name}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
+          
         </div>
 
-        {/* 전체 초기화(기존) */}
-        <div className="flex items-center justify-between p-5 border rounded-lg bg-white min-h-28">
-          <div>
-            <h4 className="font-medium text-slate-900">전체 초기화</h4>
-            <p className="text-xs text-slate-500 mt-1">계좌/거래/사용자 카테고리 모두 삭제</p>
-          </div>
-          <button 
-            onClick={async () => {
-              if (!window.confirm('모든 데이터를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) return;
-              setIsClearing(true);
-              try { await clearAllData(); alert('모든 데이터가 삭제되었습니다.'); }
-              catch { alert('데이터 삭제 중 오류가 발생했습니다.'); }
-              finally { setIsClearing(false); }
-            }}
-            disabled={isClearing}
-            className="w-28 justify-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
-          >
-            {isClearing ? '진행 중…' : '전체 삭제'}
-          </button>
-        </div>
+        
       </div>
     </div>
   );

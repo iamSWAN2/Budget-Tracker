@@ -91,9 +91,9 @@ function AppInner() {
   }, [currentPage, data]);
 
   return (
-    <div className="min-h-[100svh] bg-slate-50 flex flex-col">
+    <div className="min-h-[100svh] bg-slate-100 flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 flex-shrink-0">
+      <header className="bg-white border-b border-slate-300 shadow-sm flex-shrink-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="text-center">
             {isEditingTitle ? (

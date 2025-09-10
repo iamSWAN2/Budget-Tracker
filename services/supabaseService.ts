@@ -7,6 +7,7 @@ const mapDbAccount = (row: any): Account => ({
   id: row.id,
   name: row.name,
   balance: parseFloat(row.balance),
+  initialBalance: parseFloat(row.initial_balance || 0),
   propensity: row.propensity as AccountPropensity,
   paymentDay: row.payment_day
 });
@@ -192,8 +193,9 @@ export const addAccount = async (account: Omit<Account, 'id'>): Promise<Account>
   const dbAccount = {
     name: account.name,
     balance: account.balance,
+    initial_balance: account.initialBalance,
     propensity: account.propensity,
-    payment_day: account.paymentDay || null
+    payment_day: account.propensity === 'Credit Card' ? account.paymentDay || null : null
   };
 
   const { data, error } = await supabase
@@ -207,12 +209,7 @@ export const addAccount = async (account: Omit<Account, 'id'>): Promise<Account>
     throw new Error(`Failed to add account: ${error.message}`);
   }
 
-  const newAccount = mapDbAccount(data);
-  
-  // Store the initial balance for this account
-  accountInitialBalances.set(newAccount.id, newAccount.balance);
-
-  return newAccount;
+  return mapDbAccount(data);
 };
 
 export const updateAccount = async (account: Account): Promise<Account> => {
@@ -221,8 +218,9 @@ export const updateAccount = async (account: Account): Promise<Account> => {
   const dbAccount = {
     name: account.name,
     balance: account.balance,
+    initial_balance: account.initialBalance,
     propensity: account.propensity,
-    payment_day: account.paymentDay || null
+    payment_day: account.propensity === 'Credit Card' ? account.paymentDay || null : null
   };
 
   const { data, error } = await supabase
@@ -270,70 +268,46 @@ export const deleteAccount = async (id: string): Promise<void> => {
     console.error('Error deleting account:', error);
     throw new Error(`Failed to delete account: ${error.message}`);
   }
-  
-  // Cleanup cached initial balance
-  accountInitialBalances.delete(id);
 };
-
-// Add a special flag to track if this is initial balance calculation
-let accountInitialBalances = new Map<string, number>();
-
-// Utility function to get account's original initial balance
-export const getAccountInitialBalance = async (accountId: string): Promise<number> => {
-  if (accountInitialBalances.has(accountId)) {
-    return accountInitialBalances.get(accountId)!;
-  }
-  
-  // Get the account creation data
-  const { data: accountData, error } = await supabase
+// 새로운 잔액 계산 로직: initialBalance + 거래 내역 = 현재 잔액
+export const recalculateAccountBalance = async (accountId: string): Promise<number> => {
+  // 1. 계좌의 초기 잔액 가져오기
+  const { data: accountData, error: accountError } = await supabase
     .from('accounts')
-    .select('balance')
+    .select('initial_balance')
     .eq('id', accountId)
     .single();
 
-  if (error) {
-    console.error('Error getting initial balance:', error);
+  if (accountError) {
+    console.error('Error fetching account initial balance:', accountError);
     return 0;
   }
 
-  const initialBalance = parseFloat(accountData.balance) || 0;
-  accountInitialBalances.set(accountId, initialBalance);
-  return initialBalance;
-};
+  const initialBalance = parseFloat(accountData?.initial_balance || 0);
 
-// Utility function to recalculate account balance from initial + transactions
-export const recalculateAccountBalance = async (accountId: string): Promise<number> => {
-  // Get the account's initial balance (set when account was created)
-  const initialBalance = await getAccountInitialBalance(accountId);
-  
-  // Get all transactions for this account
-  const { data: transactions, error: transactionsError } = await supabase
+  // 2. 해당 계좌의 모든 거래 내역 가져오기 (OPENING 타입 제외)
+  const { data: transactions, error: transactionError } = await supabase
     .from('transactions')
     .select('amount, type')
-    .eq('account_id', accountId);
+    .eq('account_id', accountId)
+    .neq('type', TransactionType.OPENING); // OPENING 타입은 제외
 
-  if (transactionsError) {
-    console.error('Error calculating balance:', transactionsError);
+  if (transactionError) {
+    console.error('Error fetching transactions for balance calculation:', transactionError);
     return initialBalance;
   }
 
-  // Calculate transaction total
-  const transactionTotal = transactions.reduce((sum: number, transaction: any) => {
-    switch (transaction.type) {
-      case TransactionType.INCOME:
-        return sum + parseFloat(transaction.amount);
-      case TransactionType.EXPENSE:
-        return sum - parseFloat(transaction.amount);
-      case TransactionType.TRANSFER:
-        // For transfers, this would need more complex logic
-        // For now, treating as expense
-        return sum - parseFloat(transaction.amount);
-      default:
-        return sum;
-    }
+  // 3. 거래 내역 합계 계산
+  const transactionSum = (transactions || []).reduce((sum: number, t: any) => {
+    const amt = parseFloat(t.amount) || 0;
+    if (t.type === TransactionType.INCOME) return sum + amt;
+    if (t.type === TransactionType.EXPENSE) return sum - amt;
+    if (t.type === TransactionType.TRANSFER) return sum - amt;
+    return sum;
   }, 0);
 
-  return initialBalance + transactionTotal;
+  // 4. 초기 잔액 + 거래 내역 = 현재 잔액
+  return initialBalance + transactionSum;
 };
 
 // Function to update account balance
@@ -390,48 +364,18 @@ export const clearTransactions = async (filter?: ClearTransactionsFilter): Promi
   const affectedAccountIds = Array.from(new Set((rows || []).map((r: any) => r.account_id).filter(Boolean)));
 
   // 1-2) 초기잔액 보정: 삭제 전 시점의 전체 거래합계와 현재 잔액으로 baseline(초기잔액)을 계산해 캐시에 저장
-  if (affectedAccountIds.length > 0) {
-    // 현재 계좌 잔액 조회
-    const { data: accountRows, error: accErr } = await supabase
-      .from('accounts')
-      .select('id, balance')
-      .in('id', affectedAccountIds);
-    if (accErr) {
-      console.error('Error fetching accounts for baseline:', accErr);
-      throw new Error(`Failed to fetch accounts for baseline: ${accErr.message}`);
-    }
-
-    // 각 계좌의 전체 거래 불러와 합계 계산(수입 +, 지출 -)
-    const { data: allTx, error: allTxErr } = await supabase
-      .from('transactions')
-      .select('account_id, amount, type')
-      .in('account_id', affectedAccountIds);
-    if (allTxErr) {
-      console.error('Error fetching transactions for baseline:', allTxErr);
-      throw new Error(`Failed to fetch transactions for baseline: ${allTxErr.message}`);
-    }
-
-    const totals = new Map<string, number>();
-    (allTx || []).forEach((tx: any) => {
-      const sign = tx.type === TransactionType.INCOME ? 1 : -1;
-      const amt = parseFloat(tx.amount);
-      totals.set(tx.account_id, (totals.get(tx.account_id) || 0) + (isNaN(amt) ? 0 : sign * amt));
-    });
-
-    (accountRows || []).forEach((acc: any) => {
-      const currentBalance = parseFloat(acc.balance) || 0;
-      const txTotal = totals.get(acc.id) || 0;
-      const baseline = currentBalance - txTotal; // 초기잔액 = 현재잔액 - 전체거래합계
-      accountInitialBalances.set(acc.id, baseline);
-    });
-  }
-
   // 2) 거래 삭제
   let deleteQuery = supabase.from('transactions').delete();
   if (filter?.accountId) deleteQuery = deleteQuery.eq('account_id', filter.accountId);
   if (filter?.from) deleteQuery = deleteQuery.gte('date', filter.from);
   if (filter?.to) deleteQuery = deleteQuery.lte('date', filter.to);
   if (filter?.type) deleteQuery = deleteQuery.eq('type', filter.type);
+
+  // Supabase는 전체 삭제를 방지하기 위해 WHERE 절을 요구함
+  // 필터가 전혀 없으면 전체 삭제 의도로 판단하고 더미 조건을 추가
+  if (!filter || (!filter.accountId && !filter.from && !filter.to && !filter.type)) {
+    deleteQuery = deleteQuery.gt('created_at', '1970-01-01');
+  }
 
   const { error: deleteError } = await deleteQuery;
   if (deleteError) {
@@ -497,7 +441,7 @@ export const bulkDeleteAccounts = async (option: ClearAccountsOption): Promise<v
   }
 
   // 3) 초기 잔액 캐시 정리
-  targetIds.forEach(id => accountInitialBalances.delete(id));
+  // opening 트랜잭션은 함께 삭제되었으므로 별도 캐시 정리 없음
 };
 
 export const deleteCategories = async (mode: 'custom' | 'all', reassignTo?: string): Promise<void> => {
@@ -670,8 +614,9 @@ export const initializeDefaultAccounts = async (): Promise<void> => {
     id: account.id,
     name: account.name,
     balance: account.balance,
+    initial_balance: account.initialBalance,
     propensity: account.propensity,
-    payment_day: account.paymentDay || null
+    payment_day: account.propensity === 'Credit Card' ? account.paymentDay || null : null
   }));
 
   const { error } = await supabase
@@ -682,11 +627,6 @@ export const initializeDefaultAccounts = async (): Promise<void> => {
     console.error('Error initializing default accounts:', error);
     // Don't throw here as we can fall back to allowing manual account creation
   }
-  
-  // Store initial balances for default accounts
-  DEFAULT_ACCOUNTS.forEach(account => {
-    accountInitialBalances.set(account.id, account.balance);
-  });
 };
 
 export const initializeDefaultCategories = async (): Promise<void> => {
@@ -731,7 +671,6 @@ export const clearAllData = async (): Promise<void> => {
     accounts: true,
     categories: 'custom',
   });
-  accountInitialBalances.clear();
 };
 
 export const exportData = async (): Promise<{ accounts: Account[], transactions: Transaction[], categories: Category[] }> => {
@@ -781,8 +720,9 @@ export const importData = async (data: { accounts: Account[], transactions: Tran
       id: account.id,
       name: account.name,
       balance: account.balance,
+      initial_balance: account.initialBalance,
       propensity: account.propensity,
-      payment_day: account.paymentDay || null
+      payment_day: account.propensity === 'Credit Card' ? account.paymentDay || null : null
     }));
 
     const { error: accountError } = await supabase
@@ -793,11 +733,6 @@ export const importData = async (data: { accounts: Account[], transactions: Tran
       console.error('Error importing accounts:', accountError);
       throw new Error(`Failed to import accounts: ${accountError.message}`);
     }
-    
-    // Store initial balances
-    data.accounts.forEach(account => {
-      accountInitialBalances.set(account.id, account.balance);
-    });
   }
   
   // Import transactions
@@ -821,6 +756,17 @@ export const importData = async (data: { accounts: Account[], transactions: Tran
     if (transactionError) {
       console.error('Error importing transactions:', transactionError);
       throw new Error(`Failed to import transactions: ${transactionError.message}`);
+    }
+  }
+
+  // After importing, recalculate all account balances
+  if (data.accounts && data.accounts.length > 0) {
+    for (const acc of data.accounts) {
+      try {
+        await updateAccountBalance(acc.id);
+      } catch (e) {
+        console.warn('Failed to update balance after import for account:', acc.id, e);
+      }
     }
   }
 };

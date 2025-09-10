@@ -7,7 +7,8 @@ export const DEFAULT_ACCOUNTS: Account[] = [
   { 
     id: '00000000-0000-0000-0000-000000000001', // UUID 형식의 기본 현금 계좌 ID
     name: '현금', 
-    balance: 100000, // 초기 현금 10만원
+    balance: 0, // 초기 금액 0원으로 변경
+    initialBalance: 0, // 초기 잔액
     propensity: AccountPropensity.CASH 
   }
 ];

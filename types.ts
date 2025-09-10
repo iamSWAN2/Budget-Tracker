@@ -3,6 +3,7 @@ export enum TransactionType {
   INCOME = 'INCOME',
   EXPENSE = 'EXPENSE',
   TRANSFER = 'TRANSFER',
+  OPENING = 'OPENING',
 }
 
 export enum AccountPropensity {
@@ -18,6 +19,7 @@ export interface Account {
   id: string;
   name: string;
   balance: number;
+  initialBalance: number; // 초기 잔액 (오프닝 밸런스)
   propensity: AccountPropensity;
   paymentDay?: number; // 신용카드 결제일 (1-31, Credit Card일 때만 사용)
 }

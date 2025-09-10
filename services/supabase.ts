@@ -17,7 +17,9 @@ export type Database = {
           id: string;
           name: string;
           balance: number;
+          initial_balance: number;
           propensity: string;
+          payment_day: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -25,7 +27,9 @@ export type Database = {
           id?: string;
           name: string;
           balance?: number;
+          initial_balance?: number;
           propensity: string;
+          payment_day?: number | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -33,7 +37,9 @@ export type Database = {
           id?: string;
           name?: string;
           balance?: number;
+          initial_balance?: number;
           propensity?: string;
+          payment_day?: number | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -48,6 +54,7 @@ export type Database = {
           category: string;
           account_id: string;
           installment_months: number | null;
+          is_interest_free: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -60,6 +67,7 @@ export type Database = {
           category: string;
           account_id: string;
           installment_months?: number | null;
+          is_interest_free?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -72,6 +80,7 @@ export type Database = {
           category?: string;
           account_id?: string;
           installment_months?: number | null;
+          is_interest_free?: boolean;
           created_at?: string;
           updated_at?: string;
         };
