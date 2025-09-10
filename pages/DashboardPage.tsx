@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, Suspense } from 'react';
 import { UseDataReturn } from '../hooks/useData';
 import { TransactionType, Transaction } from '../types';
 import { Modal } from '../components/ui/Modal';
@@ -17,6 +17,7 @@ import { SimpleBarChart } from '../components/charts/SimpleBarChart';
 import { SimplePieChart } from '../components/charts/SimplePieChart';
 import { MonthlyTrendDisplay } from '../components/charts/MonthlyTrendDisplay';
 import { Calendar } from '../components/calendar/Calendar';
+const AIAssist = React.lazy(() => import('../components/AIAssist'));
 
 // 개요 탭 컴포넌트
 const OverviewTab: React.FC<{
@@ -40,6 +41,7 @@ const OverviewTab: React.FC<{
   handleDelete: (id: string) => void;
   t: (key: string) => string;
 }> = ({
+  data,
   monthlyIncomeTotal,
   monthlyExpenseTotal,
   monthlyBalance,
@@ -138,6 +140,11 @@ const OverviewTab: React.FC<{
               const evt = new CustomEvent('dashboard:add-transaction');
               window.dispatchEvent(evt);
             }}
+            extraActions={
+              <Suspense fallback={<span className="text-xs text-slate-400">AI…</span>}>
+                <AIAssist data={data} />
+              </Suspense>
+            }
           />
         </div>
 

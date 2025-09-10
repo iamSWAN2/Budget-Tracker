@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button } from '../ui/Button';
+import { PlusIcon } from '../icons/Icons';
 
 type DateRange = { start: Date; end: Date } | null;
 
@@ -9,6 +10,7 @@ interface CalendarProps {
   selectedRange: DateRange;
   onSelectedRangeChange: (range: DateRange) => void;
   onAddClick?: () => void; // 데스크톱에서만 노출
+  extraActions?: React.ReactNode; // 데스크톱에서만 노출 (예: AI 버튼)
 }
 
 const startOfMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth(), 1);
@@ -17,7 +19,7 @@ const endOfMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth() + 1, 0);
 const sameDay = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 const isBetweenInclusive = (d: Date, a: Date, b: Date) => d >= a && d <= b;
 
-export const Calendar: React.FC<CalendarProps> = ({ visibleDate, onVisibleDateChange, selectedRange, onSelectedRangeChange, onAddClick }) => {
+export const Calendar: React.FC<CalendarProps> = ({ visibleDate, onVisibleDateChange, selectedRange, onSelectedRangeChange, onAddClick, extraActions }) => {
   const monthStart = startOfMonth(visibleDate);
   const monthEnd = endOfMonth(visibleDate);
   const cur = new Date();
@@ -107,13 +109,15 @@ export const Calendar: React.FC<CalendarProps> = ({ visibleDate, onVisibleDateCh
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
           </Button>
         </div>
-        {onAddClick && (
-          <Button onClick={onAddClick} className="hidden lg:inline-flex" title="거래 추가" variant="emphasis" size="sm">
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
-            </svg>
-            추가
-          </Button>
+        {(onAddClick || extraActions) && (
+          <div className="hidden lg:inline-flex items-center gap-2">
+            {extraActions}
+            {onAddClick && (
+              <Button onClick={onAddClick} title="거래 추가" aria-label="거래 추가" variant="primary" size="sm" className="px-2.5 py-1.5">
+                <PlusIcon />
+              </Button>
+            )}
+          </div>
         )}
       </div>
 
