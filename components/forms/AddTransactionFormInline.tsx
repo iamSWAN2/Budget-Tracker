@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Button } from '../ui/Button';
 import { Account, Category, Transaction, TransactionType } from '../../types';
 import { useI18n } from '../../i18n/I18nProvider';
 import { formatCurrency } from '../../utils/format';
@@ -167,13 +168,12 @@ export const AddTransactionFormInline: React.FC<Props> = ({ accounts, categories
 
       {/* Submit */}
       <div className="pt-2">
-        <button type="submit" className="w-full bg-indigo-600 text-white py-3 px-4 rounded-md hover:bg-indigo-700 font-medium text-sm">
+        <Button type="submit" variant="primary" size="md" className="w-full justify-center">
           {t('form.addTransaction')}
-        </button>
+        </Button>
       </div>
     </form>
   );
 };
 
 export default AddTransactionFormInline;
-

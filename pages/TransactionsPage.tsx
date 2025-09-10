@@ -6,6 +6,7 @@ import { PlusIcon } from '../components/icons/Icons';
 import { Modal } from '../components/ui/Modal';
 import { TransactionForm } from '../components/forms/TransactionForm';
 import { AddTransactionFormInline } from '../components/forms/AddTransactionFormInline';
+import { Button } from '../components/ui/Button';
 import { EditTransactionFormInline } from '../components/forms/EditTransactionFormInline';
 import { AddTransactionFormInline } from '../components/forms/AddTransactionFormInline';
 const AIAssist = React.lazy(() => import('../components/AIAssist'));
@@ -134,19 +135,17 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn; initialFilter?: {
                   <React.Suspense fallback={<span className="text-xs text-slate-400">AI…</span>}>
                     <AIAssist data={data} />
                   </React.Suspense>
-                  <button 
-                    onClick={handleAdd} 
+                  <Button 
+                    onClick={handleAdd}
                     disabled={accounts.length === 0}
-                    className={`flex items-center justify-center px-2.5 py-1.5 rounded-md ${
-                      accounts.length === 0 
-                        ? 'bg-slate-300 text-slate-500 cursor-not-allowed' 
-                        : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                    }`}
+                    variant="primary"
+                    size="sm"
                     aria-label={t('form.addTransaction')}
                     title={t('form.addTransaction')}
+                    className="px-2.5 py-1.5"
                   >
-                      <PlusIcon />
-                  </button>
+                    <PlusIcon />
+                  </Button>
                 </div>
             </div>
             {/* Active Filters */}

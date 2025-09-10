@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Button } from '../ui/Button';
 import { Transaction, TransactionType, Account, Category } from '../../types';
 
 interface TransactionFormProps {
@@ -247,19 +248,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 </div>
             )}
             <div className="flex justify-end pt-4 space-x-2">
-                <button 
-                    type="button" 
-                    onClick={onClose} 
-                    className="px-4 py-2 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300"
-                >
-                    취소
-                </button>
-                <button 
-                    type="submit" 
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-                >
-                    저장
-                </button>
+                <Button type="button" onClick={onClose} variant="secondary" size="sm">취소</Button>
+                <Button type="submit" variant="primary" size="sm">저장</Button>
             </div>
         </form>
     );
