@@ -1,14 +1,14 @@
 import React, { useMemo } from 'react';
 import { Transaction, TransactionType } from '../../types';
-import { getPeriodRange, ViewMode, isWithinRange, WeekStart } from '../../utils/dateRange';
+import { isWithinRange } from '../../utils/dateRange';
 import { formatCurrency } from '../../utils/format';
 
 type Props = {
   transactions: Transaction[];
-  viewMode: ViewMode;
+  periodStart: Date;
+  periodEnd: Date;
   currentMonth: number;
   currentYear: number;
-  weekStart?: WeekStart;
 };
 
 // 간단 휴리스틱: 최근 90일 내 같은 설명으로 2회 이상 발생하면 반복 결제로 간주
@@ -20,8 +20,9 @@ const isRecent = (d: Date, days: number) => {
   return d >= from && d <= now;
 };
 
-export const RecurringWidget: React.FC<Props> = ({ transactions, viewMode, currentMonth, currentYear, weekStart = 'mon' }) => {
-  const { start, end } = getPeriodRange(viewMode, currentMonth, currentYear, weekStart);
+export const RecurringWidget: React.FC<Props> = ({ transactions, periodStart, periodEnd, currentMonth, currentYear }) => {
+  const start = periodStart;
+  const end = periodEnd;
 
   const { recurringInPeriod, total } = useMemo(() => {
     const recentGroups = new Map<string, Transaction[]>();
@@ -54,7 +55,7 @@ export const RecurringWidget: React.FC<Props> = ({ transactions, viewMode, curre
   return (
     <div className="bg-white rounded-lg shadow-md p-3 md:p-4">
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-xs font-medium text-slate-600">{viewMode === 'week' ? '이번 주 반복 결제' : '이번 달 반복 결제'}</h3>
+        <h3 className="text-xs font-medium text-slate-600">선택 기간 반복 결제</h3>
         <div className="text-xs text-slate-500">{recurringInPeriod.length}건</div>
       </div>
       <div className="flex items-end justify-between">

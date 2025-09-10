@@ -1,16 +1,13 @@
-import React, { useMemo, useState, Suspense } from 'react';
+import React, { useMemo, useState } from 'react';
 import { UseDataReturn } from '../hooks/useData';
 import { TransactionType, Transaction } from '../types';
-const AIAssist = React.lazy(() => import('../components/AIAssist'));
 import { Modal } from '../components/ui/Modal';
 import { TransactionForm } from '../components/forms/TransactionForm';
 import { AddTransactionFormInline } from '../components/forms/AddTransactionFormInline';
-import { formatCurrency, formatDateDisplay, formatMonthKo } from '../utils/format';
-import { getPeriodRange, WeekStart } from '../utils/dateRange';
+import { formatCurrency } from '../utils/format';
 import { useI18n } from '../i18n/I18nProvider';
 import { TransactionItem } from '../components/transactions/TransactionItem';
 import { TransactionsList } from '../components/transactions/TransactionsList';
-import { PlusIcon } from '../components/icons/Icons';
 import { InstallmentsWidget } from '../components/dashboard/InstallmentsWidget';
 import { RecurringWidget } from '../components/dashboard/RecurringWidget';
 import { OutliersWidget } from '../components/dashboard/OutliersWidget';
@@ -19,6 +16,7 @@ import { CreditCardBillWidget } from '../components/dashboard/CreditCardBillWidg
 import { SimpleBarChart } from '../components/charts/SimpleBarChart';
 import { SimplePieChart } from '../components/charts/SimplePieChart';
 import { MonthlyTrendDisplay } from '../components/charts/MonthlyTrendDisplay';
+import { Calendar } from '../components/calendar/Calendar';
 
 // 개요 탭 컴포넌트
 const OverviewTab: React.FC<{
@@ -32,7 +30,10 @@ const OverviewTab: React.FC<{
   categories: any[];
   currentMonth: number;
   currentYear: number;
-  viewMode: 'month' | 'week';
+  selectedRange: { start: Date; end: Date } | null;
+  visibleDate: Date;
+  onVisibleDateChange: (d: Date) => void;
+  onSelectedRangeChange: (r: { start: Date; end: Date } | null) => void;
   addTransaction: (tx: Omit<Transaction, 'id'>) => void;
   updateTransaction: (tx: Transaction) => void;
   deleteTransaction: (id: string) => void;
@@ -48,12 +49,15 @@ const OverviewTab: React.FC<{
   categories,
   currentMonth,
   currentYear,
-  viewMode,
+  selectedRange,
+  visibleDate,
   addTransaction,
   updateTransaction,
   deleteTransaction,
   handleDelete,
-  t
+  t,
+  onVisibleDateChange,
+  onSelectedRangeChange
 }) => {
   const [isDesktop, setIsDesktop] = React.useState(false);
   const [query, setQuery] = React.useState('');
@@ -88,6 +92,10 @@ const OverviewTab: React.FC<{
     };
   }, []);
 
+  const monthStart = React.useMemo(() => new Date(visibleDate.getFullYear(), visibleDate.getMonth(), 1), [visibleDate]);
+  const monthEnd = React.useMemo(() => new Date(visibleDate.getFullYear(), visibleDate.getMonth() + 1, 0), [visibleDate]);
+  const period = selectedRange ?? { start: monthStart, end: new Date(monthEnd.getFullYear(), monthEnd.getMonth(), monthEnd.getDate(), 23, 59, 59, 999) };
+
   return (
     <div className="flex-1 flex flex-col space-y-4 md:space-y-6 min-h-0">
       {/* 재정 개요 카드 */}
@@ -119,23 +127,24 @@ const OverviewTab: React.FC<{
 
       {/* 메인 콘텐츠 그리드 */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 flex-1 min-h-0">
-        {/* 거래 추가 - 데스크톱만 */}
-        <div className="hidden lg:block bg-white rounded-lg shadow-md p-4 lg:col-span-2">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-semibold text-slate-800">{t('form.addTransaction')}</h3>
-            <div className="flex items-center gap-2">
-              <Suspense fallback={<span className="text-xs text-slate-400">AI…</span>}>
-                <AIAssist data={{ accounts, transactions, categories, addTransaction, updateTransaction, deleteTransaction, installments: [], isLoading: false, error: null, clearAllData: async () => {}, exportData: () => {}, importData: (file: File) => {} }} />
-              </Suspense>
-            </div>
-          </div>
-          <AddTransactionFormInline accounts={accounts} categories={categories} onAdd={addTransaction} />
+        {/* 캘린더 (거래 추가 카드 대체) */}
+        <div className="lg:col-span-2">
+          <Calendar
+            visibleDate={visibleDate}
+            onVisibleDateChange={onVisibleDateChange}
+            selectedRange={selectedRange}
+            onSelectedRangeChange={onSelectedRangeChange}
+            onAddClick={() => {
+              const evt = new CustomEvent('dashboard:add-transaction');
+              window.dispatchEvent(evt);
+            }}
+          />
         </div>
 
         {/* 거래 내역 */}
         <div className="bg-white rounded-lg shadow-md p-4 lg:col-span-3 flex flex-col min-h-0 lg:min-h-0">
           <div className="flex items-center justify-between mb-3 flex-shrink-0">
-            <h3 className="text-sm font-semibold text-slate-800">{viewMode === 'week' ? '이번 주 거래' : t('nav.transactions')}</h3>
+            <h3 className="text-sm font-semibold text-slate-800">{t('nav.transactions')}</h3>
             <input
               type="text"
               placeholder={t('placeholder.search')}
@@ -181,8 +190,6 @@ const AnalyticsTab: React.FC<{
   categories: any[];
   currentMonth: number;
   currentYear: number;
-  viewMode: 'month' | 'week';
-  weekStart: WeekStart;
 }> = ({ transactions, accounts, categories, currentMonth, currentYear }) => {
   
   // 월별 트렌드 데이터 (최근 6개월)
@@ -285,11 +292,11 @@ const AnalyticsTab: React.FC<{
 const WidgetsTab: React.FC<{
   data: UseDataReturn;
   transactions: Transaction[];
-  viewMode: 'month' | 'week';
+  periodStart: Date;
+  periodEnd: Date;
   currentMonth: number;
   currentYear: number;
-  weekStart: WeekStart;
-}> = ({ data, transactions, viewMode, currentMonth, currentYear, weekStart }) => {
+}> = ({ data, transactions, periodStart, periodEnd, currentMonth, currentYear }) => {
   return (
     <div className="flex-1 flex flex-col space-y-4 md:space-y-6 min-h-0">
       {/* 위젯 그리드 */}
@@ -297,29 +304,29 @@ const WidgetsTab: React.FC<{
         {/* 할부 위젯 */}
         <InstallmentsWidget
           installments={data.installments}
-          viewMode={viewMode}
+          periodStart={periodStart}
+          periodEnd={periodEnd}
           currentMonth={currentMonth}
           currentYear={currentYear}
-          weekStart={weekStart}
         />
 
         {/* 반복 결제 위젯 */}
         <RecurringWidget
           transactions={transactions}
-          viewMode={viewMode}
+          periodStart={periodStart}
+          periodEnd={periodEnd}
           currentMonth={currentMonth}
           currentYear={currentYear}
-          weekStart={weekStart}
         />
 
         {/* 이상치 위젯 - 전체 너비 */}
         <div className="md:col-span-2">
           <OutliersWidget
             transactions={transactions}
-            viewMode={viewMode}
+            periodStart={periodStart}
+            periodEnd={periodEnd}
             currentMonth={currentMonth}
             currentYear={currentYear}
-            weekStart={weekStart}
           />
         </div>
       </div>
@@ -333,29 +340,18 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   const { accounts, transactions, categories, addTransaction, updateTransaction, deleteTransaction } = data;
   const { t } = useI18n();
   const [transactionType, setTransactionType] = useState<TransactionType>(TransactionType.EXPENSE);
-  const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
-  const [weekStart, setWeekStart] = useState<WeekStart>('mon');
+  const [visibleDate, setVisibleDate] = useState<Date>(new Date());
+  const [selectedRange, setSelectedRange] = useState<{ start: Date; end: Date } | null>(null);
   const [activeTab, setActiveTab] = useState<DashboardTab>('overview');
   
-  // Load saved week start setting from localStorage
+  // Calendar add button (desktop) → open add modal
   React.useEffect(() => {
-    const savedWeekStart = localStorage.getItem('week-start');
-    if (savedWeekStart) {
-      setWeekStart(savedWeekStart as WeekStart);
-    }
-  }, []);
-
-  // Listen for week start changes from the settings page
-  React.useEffect(() => {
-    const handleWeekStartChange = (event: CustomEvent) => {
-      setWeekStart(event.detail);
+    const handler = () => {
+      setEditingTransaction(null);
+      setIsEditModalOpen(true);
     };
-
-    window.addEventListener('week-start-changed', handleWeekStartChange as EventListener);
-    
-    return () => {
-      window.removeEventListener('week-start-changed', handleWeekStartChange as EventListener);
-    };
+    window.addEventListener('dashboard:add-transaction', handler as EventListener);
+    return () => window.removeEventListener('dashboard:add-transaction', handler as EventListener);
   }, []);
 
   // Debug transactionType changes
@@ -384,43 +380,37 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   // Responsive: form collapsed on mobile, open on desktop
   React.useEffect(() => {
     const mql = window.matchMedia('(min-width: 1024px)');
-    const apply = (matches: boolean) => {
-      setIsDesktop(matches);
-      // 데스크톱은 인라인 폼, 모바일은 모달로 처리
-    };
+    const apply = (matches: boolean) => setIsDesktop(matches);
     apply(mql.matches);
     const listener = (e: MediaQueryListEvent) => apply(e.matches);
     if (mql.addEventListener) mql.addEventListener('change', listener);
-    // Fallback for older browsers
-    // @ts-ignore
-    else if (mql.addListener) mql.addListener(listener);
+    else if (mql.addListener) mql.addListener(listener as any);
     return () => {
       if (mql.removeEventListener) mql.removeEventListener('change', listener);
-      // @ts-ignore
-      else if (mql.removeListener) mql.removeListener(listener);
+      else if (mql.removeListener) mql.removeListener(listener as any);
     };
   }, []);
 
+  const monthStart = React.useMemo(() => new Date(currentYear, currentMonth, 1), [currentYear, currentMonth]);
+  const monthEnd = React.useMemo(() => new Date(currentYear, currentMonth + 1, 0, 23, 59, 59, 999), [currentYear, currentMonth]);
+  const selectedStart = selectedRange ? selectedRange.start : monthStart;
+  const selectedEnd = selectedRange ? selectedRange.end : monthEnd;
   const isInSelectedPeriod = (iso: string) => {
     const d = new Date(iso);
-    if (viewMode === 'month') {
-      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-    }
-    const { start, end } = getPeriodRange('week', currentMonth, currentYear, weekStart);
-    return d >= start && d <= end;
+    return d >= selectedStart && d <= selectedEnd;
   };
 
   const monthlyIncomeTotal = useMemo(() => (
     transactions
       .filter(t => t.type === TransactionType.INCOME && isInSelectedPeriod(t.date))
       .reduce((sum, t) => sum + t.amount, 0)
-  ), [transactions, currentMonth, currentYear, viewMode]);
+  ), [transactions, currentMonth, currentYear, selectedStart, selectedEnd]);
 
   const monthlyExpenseTotal = useMemo(() => (
     transactions
       .filter(t => t.type === TransactionType.EXPENSE && isInSelectedPeriod(t.date))
       .reduce((sum, t) => sum + t.amount, 0)
-  ), [transactions, currentMonth, currentYear, viewMode]);
+  ), [transactions, currentMonth, currentYear, selectedStart, selectedEnd]);
 
   const monthlyBalance = useMemo(() => monthlyIncomeTotal - monthlyExpenseTotal, [monthlyIncomeTotal, monthlyExpenseTotal]);
 
@@ -430,7 +420,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
     return transactions
       .filter(t => isInSelectedPeriod(t.date))
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [transactions, currentMonth, currentYear, viewMode]);
+  }, [transactions, currentMonth, currentYear, selectedStart, selectedEnd]);
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type, checked } = e.target as HTMLInputElement;
@@ -509,8 +499,6 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
     return parent ? `${parent.name} > ${cat.name}` : cat.name;
   };
 
-  const formatMonth = (month: number, year: number) => formatMonthKo(month, year);
-
   // 탭 정의
   const dashboardTabs = [
     { id: 'overview' as DashboardTab, name: '개요', icon: '📊' },
@@ -518,106 +506,12 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
     { id: 'widgets' as DashboardTab, name: '위젯', icon: '⚡' }
   ];
 
-  const navigateMonth = (direction: 'prev' | 'next') => {
-    if (direction === 'prev') {
-      if (currentMonth === 0) {
-        setCurrentMonth(11);
-        setCurrentYear(currentYear - 1);
-      } else {
-        setCurrentMonth(currentMonth - 1);
-      }
-    } else {
-      if (currentMonth === 11) {
-        setCurrentMonth(0);
-        setCurrentYear(currentYear + 1);
-      } else {
-        setCurrentMonth(currentMonth + 1);
-      }
-    }
-  };
+  // month navigation is handled within Calendar
   
   return (
     <div className="h-full flex flex-col">
-      {/* Header with Month Navigation and View Toggle */}
+      {/* Sub Navigation only */}
       <div className="mb-2 flex flex-col flex-shrink-0 gap-3">
-        {/* Month Navigation - Always Centered */}
-        <div className="flex flex-col items-center">
-          <div className="flex items-center justify-center">
-            <button
-              onClick={() => navigateMonth('prev')}
-              className="p-2 rounded-md hover:bg-slate-200 text-slate-600 transition-colors"
-            >
-              ← {t('month.prev')}
-            </button>
-            <h2 className="mx-6 text-xl font-semibold text-slate-800">
-              {formatMonth(currentMonth, currentYear)}
-            </h2>
-            <button
-              onClick={() => navigateMonth('next')}
-              className="p-2 rounded-md hover:bg-slate-200 text-slate-600 transition-colors"
-            >
-              {t('month.next')} →
-            </button>
-          </div>
-          {(() => {
-            const { start, end } = getPeriodRange(viewMode, currentMonth, currentYear, weekStart);
-            const label = viewMode === 'month'
-              ? `${currentYear}년 ${currentMonth + 1}월`
-              : `${start.getMonth() + 1}월 ${start.getDate()}–${end.getDate()}일`;
-            return (
-              <div className="mt-1 text-[11px] text-slate-500">{label}</div>
-            );
-          })()}
-        </div>
-
-        {/* View Mode Toggle - Centered with Sliding Indicator */}
-        <div className="flex justify-center">
-          <div className="relative bg-slate-100 rounded-2xl p-1 inline-flex" role="tablist" aria-label={t('aria.viewModeTabs')}>
-            {/* Sliding Background Indicator */}
-            <div 
-              className="absolute top-1 bottom-1 bg-white rounded-xl shadow-sm transition-all duration-300 ease-out"
-              style={{
-                width: 'calc(50% - 2px)',
-                transform: `translateX(${viewMode === 'month' ? '0%' : '100%'})`
-              }}
-            />
-            
-            {/* Buttons */}
-            <button
-              type="button"
-              className={`relative z-10 px-3 lg:px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 flex items-center ${
-                viewMode === 'month'
-                  ? 'text-indigo-600'
-                  : 'text-slate-600 hover:text-slate-800'
-              }`}
-              role="tab"
-              aria-selected={viewMode === 'month'}
-              onClick={() => setViewMode('month')}
-            >
-              <svg className="w-4 h-4 lg:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <span className="hidden lg:inline">월간</span>
-            </button>
-            <button
-              type="button"
-              className={`relative z-10 px-3 lg:px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 flex items-center ${
-                viewMode === 'week'
-                  ? 'text-indigo-600'
-                  : 'text-slate-600 hover:text-slate-800'
-              }`}
-              role="tab"
-              aria-selected={viewMode === 'week'}
-              onClick={() => setViewMode('week')}
-            >
-              <svg className="w-4 h-4 lg:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              <span className="hidden lg:inline">주간</span>
-            </button>
-          </div>
-        </div>
-
         {/* Dashboard Sub Navigation */}
         <div className="flex justify-center">
           <div className="relative inline-flex rounded-2xl bg-slate-100 p-1 overflow-hidden" role="tablist" aria-label={t('aria.dashboardTabs')}>
@@ -674,7 +568,20 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
               categories={categories}
               currentMonth={currentMonth}
               currentYear={currentYear}
-              viewMode={viewMode}
+              selectedRange={selectedStart && selectedEnd ? { start: selectedStart, end: selectedEnd } : null}
+              visibleDate={visibleDate}
+              onVisibleDateChange={(d) => {
+                setVisibleDate(d);
+                setCurrentMonth(d.getMonth());
+                setCurrentYear(d.getFullYear());
+                // 선택이 없을 때는 월 변경에 맞춰 자동 월 범위 적용
+                if (!selectedRange) {
+                  // no-op, 월 범위는 파생값으로 계산됨
+                }
+              }}
+              onSelectedRangeChange={(r) => {
+                setSelectedRange(r);
+              }}
               addTransaction={addTransaction}
               updateTransaction={updateTransaction}
               deleteTransaction={deleteTransaction}
@@ -692,8 +599,6 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
               categories={categories}
               currentMonth={currentMonth}
               currentYear={currentYear}
-              viewMode={viewMode}
-              weekStart={weekStart}
             />
           </div>
         )}
@@ -703,10 +608,10 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
             <WidgetsTab 
               data={data}
               transactions={transactions}
-              viewMode={viewMode}
+              periodStart={selectedStart}
+              periodEnd={selectedEnd}
               currentMonth={currentMonth}
               currentYear={currentYear}
-              weekStart={weekStart}
             />
           </div>
         )}

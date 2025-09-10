@@ -1,19 +1,20 @@
 import React, { useMemo } from 'react';
 import { Transaction, TransactionType } from '../../types';
-import { getPeriodRange, ViewMode, isWithinRange, WeekStart } from '../../utils/dateRange';
+import { isWithinRange } from '../../utils/dateRange';
 import { formatCurrency } from '../../utils/format';
 
 type Props = {
   transactions: Transaction[];
-  viewMode: ViewMode;
+  periodStart: Date;
+  periodEnd: Date;
   currentMonth: number;
   currentYear: number;
   factor?: number; // threshold multiplier, default 2x
-  weekStart?: WeekStart;
 };
 
-export const OutliersWidget: React.FC<Props> = ({ transactions, viewMode, currentMonth, currentYear, factor = 2, weekStart = 'mon' }) => {
-  const { start, end } = getPeriodRange(viewMode, currentMonth, currentYear, weekStart);
+export const OutliersWidget: React.FC<Props> = ({ transactions, periodStart, periodEnd, currentMonth, currentYear, factor = 2 }) => {
+  const start = periodStart;
+  const end = periodEnd;
 
   const { outliers, total } = useMemo(() => {
     // Baseline: last 90 days average by category (expenses only)
@@ -50,7 +51,7 @@ export const OutliersWidget: React.FC<Props> = ({ transactions, viewMode, curren
   return (
     <div className="bg-white rounded-lg shadow-md p-3 md:p-4">
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-xs font-medium text-slate-600">{viewMode === 'week' ? '이번 주 이상치' : '이번 달 이상치'}</h3>
+        <h3 className="text-xs font-medium text-slate-600">선택 기간 이상치</h3>
         <div className="text-xs text-slate-500">{outliers.length}건</div>
       </div>
       <div className="flex items-end justify-between">

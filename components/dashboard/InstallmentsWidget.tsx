@@ -1,14 +1,14 @@
 import React, { useMemo } from 'react';
 import { Installment } from '../../types';
-import { getPeriodRange, ViewMode, isWithinRange, WeekStart } from '../../utils/dateRange';
+import { isWithinRange } from '../../utils/dateRange';
 import { formatCurrency } from '../../utils/format';
 
 type Props = {
   installments: Installment[];
-  viewMode: ViewMode;
+  periodStart: Date;
+  periodEnd: Date;
   currentMonth: number;
   currentYear: number;
-  weekStart?: WeekStart;
 };
 
 const addMonths = (date: Date, months: number) => {
@@ -20,8 +20,9 @@ const addMonths = (date: Date, months: number) => {
   return d;
 };
 
-export const InstallmentsWidget: React.FC<Props> = ({ installments, viewMode, currentMonth, currentYear, weekStart = 'mon' }) => {
-  const { start, end } = getPeriodRange(viewMode, currentMonth, currentYear, weekStart);
+export const InstallmentsWidget: React.FC<Props> = ({ installments, periodStart, periodEnd, currentMonth, currentYear }) => {
+  const start = periodStart;
+  const end = periodEnd;
 
   const due = useMemo(() => {
     const result: { id: string; description: string; paymentDate: Date; monthlyPayment: number; remainingMonths: number; accountId: string }[] = [];
@@ -51,20 +52,21 @@ export const InstallmentsWidget: React.FC<Props> = ({ installments, viewMode, cu
   const total = useMemo(() => due.reduce((sum, i) => sum + (i.monthlyPayment || 0), 0), [due]);
 
   const periodLabel = useMemo(() => {
-    if (viewMode === 'month') {
-      return `${currentYear}년 ${currentMonth + 1}월`;
-    }
+    const ms = new Date(currentYear, currentMonth, 1);
+    const me = new Date(currentYear, currentMonth + 1, 0);
+    const isFullMonth = start.getFullYear() === ms.getFullYear() && start.getMonth() === ms.getMonth() && start.getDate() === 1 && end.getFullYear() === me.getFullYear() && end.getMonth() === me.getMonth();
+    if (isFullMonth) return `${currentYear}년 ${currentMonth + 1}월`;
     const m = start.getMonth() + 1;
     const s = start.getDate();
     const e = end.getDate();
     return `${m}월 ${s}–${e}일`;
-  }, [viewMode, start, end, currentMonth, currentYear]);
+  }, [start, end, currentMonth, currentYear]);
 
   return (
     <div className="bg-white rounded-lg shadow-md p-3 md:p-4">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-baseline gap-2">
-          <h3 className="text-xs font-medium text-slate-600">{viewMode === 'week' ? '이번 주 할부 납부' : '이번 달 할부 납부'}</h3>
+          <h3 className="text-xs font-medium text-slate-600">선택 기간 할부 납부</h3>
           <span className="text-[11px] text-slate-500">{periodLabel}</span>
         </div>
         <div className="text-xs text-slate-500">{due.length}건</div>
