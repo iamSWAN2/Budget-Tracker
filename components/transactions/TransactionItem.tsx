@@ -32,10 +32,16 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, a
   const [editing, setEditing] = useState<null |
     'description' | 'amount' | 'date' | 'account' | 'category' | 'type' | 'installment'>(null);
   const [draft, setDraft] = useState<Transaction>(transaction);
+  const [monthsEditing, setMonthsEditing] = useState(false);
 
   useEffect(() => {
     setDraft(transaction);
   }, [transaction]);
+
+  useEffect(() => {
+    // 편집 모드 전환 시 개월 입력 편집 상태 초기화
+    if (editing !== 'installment') setMonthsEditing(false);
+  }, [editing]);
 
   const handleCommit = (partial: Partial<Transaction>) => {
     const updated: Transaction = { ...draft, ...partial } as Transaction;
@@ -219,24 +225,36 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, a
                 <div className="text-xs text-slate-600 flex items-center justify-end gap-2">
                   <span className="whitespace-nowrap">총액</span>
                   <span className="font-medium">{formatCurrency(draft.amount)}</span>
-                  <div className="relative inline-block">
-                    <input
-                      type="number"
-                      min={1}
-                      max={36}
-                      step={1}
-                      value={draft.installmentMonths || 1}
-                      onChange={(e) => setDraft(prev => ({ ...prev, installmentMonths: Math.max(1, Math.min(36, parseInt(e.target.value || '1', 10))) }))}
-                      onBlur={() => handleCommit({ installmentMonths: draft.installmentMonths || 1 })}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleCommit({ installmentMonths: draft.installmentMonths || 1 });
-                        if (e.key === 'Escape') handleCancel();
-                      }}
-                      className="w-20 text-right border border-slate-300 rounded px-2 py-0.5 pr-8 bg-white"
-                      title="할부 개월"
-                    />
-                    <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-500">개월</span>
-                  </div>
+                  <span className="text-slate-400">·</span>
+                  {monthsEditing ? (
+                    <div className="relative inline-block">
+                      <input
+                        autoFocus
+                        type="number"
+                        min={1}
+                        max={36}
+                        step={1}
+                        value={draft.installmentMonths || 1}
+                        onChange={(e) => setDraft(prev => ({ ...prev, installmentMonths: Math.max(1, Math.min(36, parseInt(e.target.value || '1', 10))) }))}
+                        onBlur={() => handleCommit({ installmentMonths: draft.installmentMonths || 1 })}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleCommit({ installmentMonths: draft.installmentMonths || 1 });
+                          if (e.key === 'Escape') handleCancel();
+                        }}
+                        className="w-20 text-right border border-slate-300 rounded px-2 py-0.5 pr-8 bg-white"
+                        title="할부 개월"
+                      />
+                      <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-500">개월</span>
+                    </div>
+                  ) : (
+                    <button
+                      className="font-medium text-slate-800 hover:underline"
+                      title="할부 개월 수정"
+                      onClick={() => setMonthsEditing(true)}
+                    >
+                      {(draft.installmentMonths || 1)}개월
+                    </button>
+                  )}
                   {(draft.installmentMonths || 1) > 1 && (
                     <label className="inline-flex items-center gap-1 cursor-pointer select-none">
                       <input
