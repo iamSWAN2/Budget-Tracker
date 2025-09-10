@@ -375,17 +375,42 @@ export type ClearDataOptions = {
 };
 
 export const clearTransactions = async (filter?: ClearTransactionsFilter): Promise<void> => {
-  let query = supabase.from('transactions').delete();
+  // 1) 삭제 대상 거래들의 계좌 ID 수집 (삭제 전)
+  let selectQuery = supabase.from('transactions').select('account_id');
+  if (filter?.accountId) selectQuery = selectQuery.eq('account_id', filter.accountId);
+  if (filter?.from) selectQuery = selectQuery.gte('date', filter.from);
+  if (filter?.to) selectQuery = selectQuery.lte('date', filter.to);
+  if (filter?.type) selectQuery = selectQuery.eq('type', filter.type);
 
-  if (filter?.accountId) query = query.eq('account_id', filter.accountId);
-  if (filter?.from) query = query.gte('date', filter.from);
-  if (filter?.to) query = query.lte('date', filter.to);
-  if (filter?.type) query = query.eq('type', filter.type);
+  const { data: rows, error: selectError } = await selectQuery;
+  if (selectError) {
+    console.error('Error collecting affected accounts for transaction clear:', selectError);
+    throw new Error(`Failed to prepare transaction clear: ${selectError.message}`);
+  }
+  const affectedAccountIds = Array.from(new Set((rows || []).map((r: any) => r.account_id).filter(Boolean)));
 
-  const { error } = await query;
-  if (error) {
-    console.error('Error clearing transactions:', error);
-    throw new Error(`Failed to clear transactions: ${error.message}`);
+  // 2) 거래 삭제
+  let deleteQuery = supabase.from('transactions').delete();
+  if (filter?.accountId) deleteQuery = deleteQuery.eq('account_id', filter.accountId);
+  if (filter?.from) deleteQuery = deleteQuery.gte('date', filter.from);
+  if (filter?.to) deleteQuery = deleteQuery.lte('date', filter.to);
+  if (filter?.type) deleteQuery = deleteQuery.eq('type', filter.type);
+
+  const { error: deleteError } = await deleteQuery;
+  if (deleteError) {
+    console.error('Error clearing transactions:', deleteError);
+    throw new Error(`Failed to clear transactions: ${deleteError.message}`);
+  }
+
+  // 3) 삭제된 계좌들의 잔액 재계산
+  // 특정 계좌 지정이 있으면 그 계좌만, 아니면 수집된 계좌들만 업데이트
+  const targetIds = filter?.accountId ? [filter.accountId] : affectedAccountIds;
+  for (const accountId of targetIds) {
+    try {
+      await updateAccountBalance(accountId);
+    } catch (e) {
+      console.warn('Failed to update account balance after transaction clear:', accountId, e);
+    }
   }
 };
 
