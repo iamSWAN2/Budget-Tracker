@@ -39,13 +39,16 @@ const parseCSV = (csvText: string): Partial<Account>[] => {
         const values = line.split(',').map(v => v.replace(/^["']|["']$/g, '').trim());
         
         if (values.length >= 3) {
-            const [name, propensity, balance, paymentDay] = values;
+            const [name, propensity, balance, initialBalance, paymentDay] = values;
+            const accountPropensity = (propensity as AccountPropensity) || AccountPropensity.CHECKING;
+            const parsedPaymentDay = paymentDay ? parseInt(paymentDay) || undefined : undefined;
             
             accounts.push({
                 name: name || `계좌 ${i}`,
-                propensity: (propensity as AccountPropensity) || AccountPropensity.CHECKING,
+                propensity: accountPropensity,
                 balance: parseFloat(balance) || 0,
-                paymentDay: paymentDay ? parseInt(paymentDay) || undefined : undefined
+                initialBalance: parseFloat(initialBalance) || 0,
+                paymentDay: accountPropensity === AccountPropensity.CREDIT_CARD ? parsedPaymentDay : undefined
             });
         }
     }
@@ -66,11 +69,15 @@ const parseBulkText = (text: string): Partial<Account>[] => {
         const parts = line.split(/[\t,\s]+/).filter(part => part.length > 0);
         
         if (parts.length >= 1) {
+            const propensity = (parts[1] as AccountPropensity) || AccountPropensity.CHECKING;
+            const paymentDay = parts[4] ? parseInt(parts[4]) || undefined : undefined;
+            
             accounts.push({
                 name: parts[0] || `계좌 ${i + 1}`,
-                propensity: (parts[1] as AccountPropensity) || AccountPropensity.CHECKING,
+                propensity: propensity,
                 balance: parts[2] ? parseFloat(parts[2]) || 0 : 0,
-                paymentDay: parts[3] ? parseInt(parts[3]) || undefined : undefined
+                initialBalance: parts[3] ? parseFloat(parts[3]) || 0 : 0,
+                paymentDay: propensity === AccountPropensity.CREDIT_CARD ? paymentDay : undefined
             });
         }
     }
@@ -93,11 +100,13 @@ const AccountForm: React.FC<{
         name: number | null;
         propensity: number | null;
         balance: number | null;
+        initialBalance: number | null;
         paymentDay: number | null;
     }>({
         name: null,
         propensity: null,
         balance: null,
+        initialBalance: null,
         paymentDay: null
     });
     const [previewAccounts, setPreviewAccounts] = useState<Partial<Account>[]>([]);
@@ -106,7 +115,8 @@ const AccountForm: React.FC<{
     const [formData, setFormData] = useState({
         name: account?.name || '',
         propensity: account?.propensity || AccountPropensity.CHECKING,
-        balance: account?.balance || 0,
+        balance: '',
+        initialBalance: '',
         paymentDay: account?.paymentDay || 14,
     });
 
@@ -114,17 +124,35 @@ const AccountForm: React.FC<{
         const { name, value } = e.target;
         setFormData(prev => ({ 
             ...prev, 
-            [name]: name === 'balance' ? parseFloat(value) || 0 : 
+            [name]: name === 'balance' || name === 'initialBalance' ? value :
                    name === 'paymentDay' ? parseInt(value) || 1 : value 
         }));
     };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        
+        // Credit Card가 아닌 경우 payment_day를 null로 설정
+        const processedFormData = {
+            ...formData,
+            initialBalance: parseFloat(formData.initialBalance as string) || 0,
+            paymentDay: formData.propensity === AccountPropensity.CREDIT_CARD ? formData.paymentDay : null
+        };
+        
         if (account && 'id' in account) {
-            onSave({ ...account, ...formData });
+            // 수정 모드: balance도 포함
+            const updateData = {
+                ...processedFormData,
+                balance: parseFloat(formData.balance as string) || account.balance,
+            };
+            onSave({ ...account, ...updateData });
         } else {
-            onSave(formData);
+            // 추가 모드: balance는 initialBalance와 동일하게 설정 (거래 내역이 없으므로)
+            const newAccountData = {
+                ...processedFormData,
+                balance: processedFormData.initialBalance
+            };
+            onSave(newAccountData);
         }
         onClose();
     };
@@ -175,6 +203,7 @@ const AccountForm: React.FC<{
             name: null as number | null,
             propensity: null as number | null,
             balance: null as number | null,
+            initialBalance: null as number | null,
             paymentDay: null as number | null
         };
 
@@ -184,6 +213,10 @@ const AccountForm: React.FC<{
                 mapping.name = index;
             } else if (lower.includes('유형') || lower.includes('type') || lower.includes('propensity')) {
                 mapping.propensity = index;
+            } else if (lower.includes('현재') && (lower.includes('잔액') || lower.includes('balance'))) {
+                mapping.balance = index;
+            } else if (lower.includes('초기') && (lower.includes('잔액') || lower.includes('balance'))) {
+                mapping.initialBalance = index;
             } else if (lower.includes('잔액') || lower.includes('balance') || lower.includes('금액')) {
                 mapping.balance = index;
             } else if (lower.includes('결제일') || lower.includes('payment') || lower.includes('일')) {
@@ -213,11 +246,15 @@ const AccountForm: React.FC<{
             if (accountMap.has(key)) {
                 // 중복된 경우 기존 것과 병합 (더 완전한 데이터 우선)
                 const existing = accountMap.get(key)!;
+                const finalPropensity = existing.propensity || account.propensity;
+                const finalPaymentDay = existing.paymentDay || account.paymentDay;
+                
                 accountMap.set(key, {
                     name: existing.name || account.name,
-                    propensity: existing.propensity || account.propensity,
+                    propensity: finalPropensity,
                     balance: existing.balance !== undefined ? existing.balance : account.balance,
-                    paymentDay: existing.paymentDay || account.paymentDay
+                    initialBalance: existing.initialBalance !== undefined ? existing.initialBalance : account.initialBalance,
+                    paymentDay: finalPropensity === AccountPropensity.CREDIT_CARD ? finalPaymentDay : undefined
                 });
             } else {
                 accountMap.set(key, account);
@@ -249,7 +286,10 @@ const AccountForm: React.FC<{
             if (mapping.balance !== null && row[mapping.balance]) {
                 account.balance = parseFloat(row[mapping.balance]) || 0;
             }
-            if (mapping.paymentDay !== null && row[mapping.paymentDay]) {
+            if (mapping.initialBalance !== null && row[mapping.initialBalance]) {
+                account.initialBalance = parseFloat(row[mapping.initialBalance]) || 0;
+            }
+            if (mapping.paymentDay !== null && row[mapping.paymentDay] && account.propensity === AccountPropensity.CREDIT_CARD) {
                 const day = parseInt(row[mapping.paymentDay]);
                 if (day >= 1 && day <= 31) {
                     account.paymentDay = day;
@@ -358,18 +398,39 @@ const AccountForm: React.FC<{
                         </select>
                     </div>
                     <div>
-                        <label htmlFor="account-balance" className="block text-sm font-medium text-slate-700">초기 잔액</label>
+                        <label htmlFor="account-initialBalance" className="block text-sm font-medium text-slate-700">초기 잔액 (오프닝 밸런스)</label>
                         <input 
-                            id="account-balance"
+                            id="account-initialBalance"
                             type="number" 
-                            name="balance" 
-                            value={formData.balance} 
+                            name="initialBalance" 
+                            value={formData.initialBalance} 
                             onChange={handleChange} 
                             step="0.01" 
-                            placeholder="0.00" 
+                            placeholder={account ? `현재: ${formatCurrency(account.initialBalance ?? 0)}` : "초기 잔액을 입력하세요"} 
                             className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" 
                         />
+                        <p className="mt-1 text-xs text-slate-500">
+                            이 계좌의 시작 잔액입니다. 거래 내역과 별도로 관리됩니다.
+                        </p>
                     </div>
+                    {account && (
+                        <div>
+                            <label htmlFor="account-balance" className="block text-sm font-medium text-slate-700">현재 잔액</label>
+                            <input 
+                                id="account-balance"
+                                type="number" 
+                                name="balance" 
+                                value={formData.balance} 
+                                onChange={handleChange} 
+                                step="0.01" 
+                                placeholder={`현재: ${formatCurrency(account.balance)}`} 
+                                className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" 
+                            />
+                            <p className="mt-1 text-xs text-slate-500">
+                                실제 현재 잔액입니다. 초기 잔액 + 거래 내역 = 현재 잔액
+                            </p>
+                        </div>
+                    )}
                     {formData.propensity === AccountPropensity.CREDIT_CARD && (
                         <div>
                             <label htmlFor="account-paymentDay" className="block text-sm font-medium text-slate-700">결제일</label>
@@ -400,14 +461,14 @@ const AccountForm: React.FC<{
                             일괄 입력
                         </label>
                         <div className="text-xs text-slate-500 mb-2">
-                            한 줄에 하나씩: 계좌명 계좌유형 초기잔액 결제일(선택)
+                            한 줄에 하나씩: 계좌명 계좌유형 현재잔액 초기잔액 결제일(선택)
                         </div>
                         <textarea
                             id="bulk-text"
                             value={bulkText}
                             onChange={(e) => handleBulkTextChange(e.target.value)}
                             rows={8}
-                            placeholder="신한은행 주계좌 Checking 1500000&#10;삼성카드 Credit Card -200000 14&#10;적금계좌 Savings 5000000"
+                            placeholder="신한은행 주계좌 Checking 1500000 1000000&#10;삼성카드 Credit Card -200000 0 14&#10;적금계좌 Savings 5000000 3000000"
                             className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                         />
                     </div>
@@ -450,7 +511,8 @@ const AccountForm: React.FC<{
                                         <tr>
                                             <th className="px-2 py-1 text-left">계좌명</th>
                                             <th className="px-2 py-1 text-left">유형</th>
-                                            <th className="px-2 py-1 text-right">잔액</th>
+                                            <th className="px-2 py-1 text-right">현재잔액</th>
+                                            <th className="px-2 py-1 text-right">초기잔액</th>
                                             <th className="px-2 py-1 text-center">결제일</th>
                                         </tr>
                                     </thead>
@@ -460,6 +522,7 @@ const AccountForm: React.FC<{
                                                 <td className="px-2 py-1">{acc.name || '미지정'}</td>
                                                 <td className="px-2 py-1">{acc.propensity || 'Checking'}</td>
                                                 <td className="px-2 py-1 text-right">{formatCurrency(acc.balance || 0)}</td>
+                                                <td className="px-2 py-1 text-right">{formatCurrency(acc.initialBalance || 0)}</td>
                                                 <td className="px-2 py-1 text-center">{acc.paymentDay ? `${acc.paymentDay}일` : '-'}</td>
                                             </tr>
                                         ))}
@@ -491,7 +554,7 @@ const AccountForm: React.FC<{
                         <div className="text-xs text-slate-500 mb-2">
                             어떤 형식의 CSV 파일이든 업로드 후 컬럼을 매핑할 수 있습니다.<br/>
                             예시 파일을 <button type="button" className="text-indigo-600 underline" onClick={() => {
-                                const csv = '계좌명,계좌유형,초기잔액,결제일\n신한은행 주계좌,Checking,1500000,\n삼성카드,Credit Card,-200000,14\n적금계좌,Savings,5000000,';
+                                const csv = '계좌명,계좌유형,현재잔액,초기잔액,결제일\n신한은행 주계좌,Checking,1500000,1000000,\n삼성카드,Credit Card,-200000,0,14\n적금계좌,Savings,5000000,3000000,';
                                 const blob = new Blob([csv], { type: 'text/csv' });
                                 const url = URL.createObjectURL(blob);
                                 const a = document.createElement('a');
@@ -546,10 +609,23 @@ const AccountForm: React.FC<{
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium text-slate-600 mb-1">초기 잔액</label>
+                                    <label className="block text-xs font-medium text-slate-600 mb-1">현재 잔액</label>
                                     <select
                                         value={columnMapping.balance ?? ''}
                                         onChange={(e) => handleColumnMappingChange('balance', e.target.value ? parseInt(e.target.value) : null)}
+                                        className="w-full text-xs border border-slate-300 rounded px-2 py-1"
+                                    >
+                                        <option value="">선택 안함</option>
+                                        {csvHeaders.map((header, index) => (
+                                            <option key={index} value={index}>{header || `컬럼 ${index + 1}`}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-600 mb-1">초기 잔액</label>
+                                    <select
+                                        value={columnMapping.initialBalance ?? ''}
+                                        onChange={(e) => handleColumnMappingChange('initialBalance', e.target.value ? parseInt(e.target.value) : null)}
                                         className="w-full text-xs border border-slate-300 rounded px-2 py-1"
                                     >
                                         <option value="">선택 안함</option>
@@ -613,7 +689,8 @@ const AccountForm: React.FC<{
                                         <tr>
                                             <th className="px-2 py-1 text-left">계좌명</th>
                                             <th className="px-2 py-1 text-left">유형</th>
-                                            <th className="px-2 py-1 text-right">잔액</th>
+                                            <th className="px-2 py-1 text-right">현재잔액</th>
+                                            <th className="px-2 py-1 text-right">초기잔액</th>
                                             <th className="px-2 py-1 text-center">결제일</th>
                                         </tr>
                                     </thead>
@@ -623,6 +700,7 @@ const AccountForm: React.FC<{
                                                 <td className="px-2 py-1">{acc.name || '미지정'}</td>
                                                 <td className="px-2 py-1">{acc.propensity || 'Checking'}</td>
                                                 <td className="px-2 py-1 text-right">{formatCurrency(acc.balance || 0)}</td>
+                                                <td className="px-2 py-1 text-right">{formatCurrency(acc.initialBalance || 0)}</td>
                                                 <td className="px-2 py-1 text-center">{acc.paymentDay ? `${acc.paymentDay}일` : '-'}</td>
                                             </tr>
                                         ))}
@@ -729,7 +807,7 @@ export const AccountsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
             {/* Accounts Summary */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {accountsWithStats.map(account => (
-                    <div key={account.id} className="bg-white rounded-lg shadow-md p-6">
+                    <div key={account.id} className="bg-white rounded-lg shadow-lg border border-slate-200 p-6">
                         <div className="flex items-center justify-between mb-4">
                             <div>
                                 <div className="flex items-center gap-2">
@@ -799,7 +877,7 @@ export const AccountsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                 ))}
                 
                 {/* Add New Account Card */}
-                <div className="bg-white rounded-lg shadow-md p-6 border-2 border-dashed border-slate-300 flex items-center justify-center">
+                <div className="bg-white rounded-lg shadow-lg border-2 border-dashed border-slate-400 p-6 flex items-center justify-center hover:border-slate-500 transition-colors">
                     <button 
                         onClick={handleAdd}
                         className="text-center text-slate-500 hover:text-indigo-600"

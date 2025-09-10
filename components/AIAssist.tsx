@@ -24,7 +24,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
   const [newAccountForm, setNewAccountForm] = useState({
     name: '',
     propensity: AccountPropensity.CHECKING,
-    balance: 0
+    balance: ''
   });
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -146,7 +146,11 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
     
     try {
       setStep('loading');
-      await addAccount(newAccountForm);
+      const accountData = {
+        ...newAccountForm,
+        balance: parseFloat(newAccountForm.balance as string) || 0
+      };
+      await addAccount(accountData);
       // 새로 생성된 계좌를 선택하도록 하기 위해 accounts 배열이 업데이트되기를 기다립니다
       setTimeout(() => {
         const updatedAccounts = data.accounts;
@@ -155,7 +159,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
           setSelectedAccountId(newAccount.id);
         }
         setStep('account');
-        setNewAccountForm({ name: '', propensity: AccountPropensity.CHECKING, balance: 0 });
+        setNewAccountForm({ name: '', propensity: AccountPropensity.CHECKING, balance: '' });
       }, 100);
     } catch (error) {
       setErrorMessage("계좌 생성에 실패했습니다.");
@@ -175,7 +179,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
         setColumnMapping({});
         setParseMode('ai');
         setSelectedAccountId(accounts[0]?.id || '');
-        setNewAccountForm({ name: '', propensity: AccountPropensity.CHECKING, balance: 0 });
+        setNewAccountForm({ name: '', propensity: AccountPropensity.CHECKING, balance: '' });
     }, 300);
   };
 
@@ -382,12 +386,12 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
 
             <div className="mb-4">
               <h4 className="font-medium text-slate-700 mb-2">데이터 미리보기:</h4>
-              <div className="max-h-48 overflow-auto border rounded-md bg-slate-50">
+              <div className="max-h-48 overflow-auto border rounded-md bg-slate-50 relative">
                 <table className="w-full text-xs">
-                  <thead className="bg-slate-100">
+                  <thead className="bg-slate-100 sticky top-0 z-10">
                     <tr>
                       {parsedColumns.map((col, index) => (
-                        <th key={index} className="p-2 text-left border-r">
+                        <th key={index} className="p-2 text-left border-r bg-slate-100">
                           {col.name}
                           <br />
                           <span className="text-xs text-slate-500">({col.detectedType})</span>
@@ -448,13 +452,13 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                 <span className="text-slate-900">{accounts.find(acc => acc.id === selectedAccountId)?.name}</span>
               </div>
             </div>
-            <div className="max-h-64 overflow-y-auto border rounded-md p-2 bg-slate-50">
+            <div className="max-h-64 overflow-y-auto border rounded-md p-2 bg-slate-50 relative">
               <table className="w-full text-sm">
-                <thead>
+                <thead className="sticky top-0 z-10 bg-slate-50">
                   <tr className="text-left text-slate-600">
-                    <th className="p-2">날짜</th>
-                    <th className="p-2">설명</th>
-                    <th className="p-2">금액</th>
+                    <th className="p-2 bg-slate-50">날짜</th>
+                    <th className="p-2 bg-slate-50">설명</th>
+                    <th className="p-2 bg-slate-50">금액</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -512,9 +516,9 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                   id="ai-account-balance"
                   type="number" 
                   value={newAccountForm.balance} 
-                  onChange={(e) => setNewAccountForm(prev => ({ ...prev, balance: parseFloat(e.target.value) || 0 }))}
+                  onChange={(e) => setNewAccountForm(prev => ({ ...prev, balance: e.target.value }))}
                   step="0.01" 
-                  placeholder="0.00" 
+                  placeholder="초기 잔액을 입력하세요" 
                   className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" 
                 />
               </div>
