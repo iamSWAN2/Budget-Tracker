@@ -1,4 +1,5 @@
 import React from 'react';
+import { Button } from '../ui/Button';
 
 type DateRange = { start: Date; end: Date } | null;
 
@@ -98,25 +99,21 @@ export const Calendar: React.FC<CalendarProps> = ({ visibleDate, onVisibleDateCh
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-1 sm:gap-2">
-          <button onClick={handlePrev} className="p-1.5 rounded-md hover:bg-slate-100 text-slate-600 transition" aria-label="이전 달">
+          <Button onClick={handlePrev} aria-label="이전 달" variant="ghost" size="icon">
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
-          </button>
+          </Button>
           <div className="text-base sm:text-lg font-semibold text-slate-800 tracking-tight" aria-live="polite">{label}</div>
-          <button onClick={handleNext} className="p-1.5 rounded-md hover:bg-slate-100 text-slate-600 transition" aria-label="다음 달">
+          <Button onClick={handleNext} aria-label="다음 달" variant="ghost" size="icon">
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
-          </button>
+          </Button>
         </div>
         {onAddClick && (
-          <button
-            onClick={onAddClick}
-            className="hidden lg:flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-500 shadow-sm"
-            title="거래 추가"
-          >
+          <Button onClick={onAddClick} className="hidden lg:inline-flex" title="거래 추가" variant="emphasis" size="sm">
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
             </svg>
             추가
-          </button>
+          </Button>
         )}
       </div>
 

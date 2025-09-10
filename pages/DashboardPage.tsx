@@ -718,7 +718,7 @@ const FloatingFormToggle: React.FC<{ onOpen: () => void }> = ({ onOpen }) => {
       }}
       onPointerDown={onPointerDown}
       className={
-        'fixed lg:hidden z-50 w-14 h-14 rounded-full shadow-lg border border-slate-200 flex items-center justify-center bg-indigo-600 text-white'
+        'fixed lg:hidden z-50 w-14 h-14 rounded-full shadow-lg border border-slate-200 flex items-center justify-center bg-indigo-600 hover:bg-indigo-500 text-white transition'
       }
       style={{ left: pos.x, top: pos.y, touchAction: 'none' }}
     >
