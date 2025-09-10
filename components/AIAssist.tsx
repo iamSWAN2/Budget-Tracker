@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Modal } from './ui/Modal';
 import { AIIcon } from './icons/Icons';
 import { Spinner } from './ui/Spinner';
+import { Button } from './ui/Button';
 import { analyzeTransactionsFromFile } from '../services/geminiService';
 import { LocalCsvParser, ParsedColumn, ColumnMapping } from '../services/localCsvParser';
 import { AITransaction, Account, AccountPropensity } from '../types';
@@ -180,14 +181,9 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
 
   return (
     <>
-      <button
-        onClick={() => setIsModalOpen(true)}
-        className="flex items-center px-2.5 py-1.5 text-xs bg-purple-600 text-white rounded-md hover:bg-purple-700"
-        title="AI 가져오기"
-        aria-label="AI 가져오기"
-      >
+      <Button onClick={() => setIsModalOpen(true)} title="AI 가져오기" aria-label="AI 가져오기" variant="accent" size="sm" className="px-2.5 py-1.5">
         <AIIcon />
-      </button>
+      </Button>
 
       <Modal isOpen={isModalOpen} onClose={handleClose} title="AI Transaction Import">
         {step === 'loading' && (

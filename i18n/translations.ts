@@ -25,6 +25,11 @@ export const translations: Record<Lang, Record<string, string>> = {
     'form.category': '카테고리',
     'form.date': '날짜',
     'placeholder.search': '거래 검색...',
+    'empty.noTransactions': '거래가 없습니다.',
+    'empty.addFirst': '거래를 추가해 시작하세요.',
+    'aria.searchTransactions': '거래 검색',
+    'aria.dashboardTabs': '대시보드 탭',
+    'aria.viewModeTabs': '보기 모드 전환'
   },
   en: {
     'app.subtitle': 'Your personal finance dashboard.',
@@ -50,6 +55,10 @@ export const translations: Record<Lang, Record<string, string>> = {
     'form.category': 'Category',
     'form.date': 'Date',
     'placeholder.search': 'Search transactions...',
+    'empty.noTransactions': 'No transactions yet.',
+    'empty.addFirst': 'Add a transaction to get started.',
+    'aria.searchTransactions': 'Search transactions',
+    'aria.dashboardTabs': 'Dashboard tabs',
+    'aria.viewModeTabs': 'View mode switch'
   },
 };
-

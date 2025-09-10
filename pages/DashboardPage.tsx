@@ -1,22 +1,366 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, Suspense } from 'react';
 import { UseDataReturn } from '../hooks/useData';
 import { TransactionType, Transaction } from '../types';
-import AIAssist from '../components/AIAssist';
 import { Modal } from '../components/ui/Modal';
 import { TransactionForm } from '../components/forms/TransactionForm';
 import { AddTransactionFormInline } from '../components/forms/AddTransactionFormInline';
-import { formatCurrency, formatDateDisplay, formatMonthKo } from '../utils/format';
+import { formatCurrency } from '../utils/format';
 import { useI18n } from '../i18n/I18nProvider';
 import { TransactionItem } from '../components/transactions/TransactionItem';
 import { TransactionsList } from '../components/transactions/TransactionsList';
-import { PlusIcon } from '../components/icons/Icons';
+import { InstallmentsWidget } from '../components/dashboard/InstallmentsWidget';
+import { RecurringWidget } from '../components/dashboard/RecurringWidget';
+import { OutliersWidget } from '../components/dashboard/OutliersWidget';
+import { CreditCardBillWidget } from '../components/dashboard/CreditCardBillWidget';
+// 간단한 CSS 차트 컴포넌트들로 교체
+import { SimpleBarChart } from '../components/charts/SimpleBarChart';
+import { SimplePieChart } from '../components/charts/SimplePieChart';
+import { MonthlyTrendDisplay } from '../components/charts/MonthlyTrendDisplay';
+import { Calendar } from '../components/calendar/Calendar';
+const AIAssist = React.lazy(() => import('../components/AIAssist'));
+
+// 개요 탭 컴포넌트
+const OverviewTab: React.FC<{
+  data: UseDataReturn;
+  monthlyIncomeTotal: number;
+  monthlyExpenseTotal: number;
+  monthlyBalance: number;
+  recentTransactions: Transaction[];
+  transactions: Transaction[];
+  accounts: any[];
+  categories: any[];
+  currentMonth: number;
+  currentYear: number;
+  selectedRange: { start: Date; end: Date } | null;
+  visibleDate: Date;
+  onVisibleDateChange: (d: Date) => void;
+  onSelectedRangeChange: (r: { start: Date; end: Date } | null) => void;
+  addTransaction: (tx: Omit<Transaction, 'id'>) => void;
+  updateTransaction: (tx: Transaction) => void;
+  deleteTransaction: (id: string) => void;
+  handleDelete: (id: string) => void;
+  t: (key: string) => string;
+}> = ({
+  data,
+  monthlyIncomeTotal,
+  monthlyExpenseTotal,
+  monthlyBalance,
+  recentTransactions,
+  transactions,
+  accounts,
+  categories,
+  currentMonth,
+  currentYear,
+  selectedRange,
+  visibleDate,
+  addTransaction,
+  updateTransaction,
+  deleteTransaction,
+  handleDelete,
+  t,
+  onVisibleDateChange,
+  onSelectedRangeChange
+}) => {
+  const [isDesktop, setIsDesktop] = React.useState(false);
+  const [query, setQuery] = React.useState('');
+
+  const accountNameMap = React.useMemo(() => {
+    const map = new Map<string, string>();
+    accounts.forEach(a => map.set(a.id, a.name));
+    return map;
+  }, [accounts]);
+
+  const filteredTransactions = React.useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return recentTransactions;
+    return recentTransactions.filter(t => {
+      const desc = (t.description || '').toLowerCase();
+      const cat = (t.category || '').toLowerCase();
+      const acc = (accountNameMap.get(t.accountId) || '').toLowerCase();
+      return desc.includes(q) || cat.includes(q) || acc.includes(q);
+    });
+  }, [recentTransactions, query, accountNameMap]);
+
+  React.useEffect(() => {
+    const mql = window.matchMedia('(min-width: 1024px)');
+    const apply = (matches: boolean) => setIsDesktop(matches);
+    apply(mql.matches);
+    const listener = (e: MediaQueryListEvent) => apply(e.matches);
+    if (mql.addEventListener) mql.addEventListener('change', listener);
+    else if (mql.addListener) mql.addListener(listener);
+    return () => {
+      if (mql.removeEventListener) mql.removeEventListener('change', listener);
+      else if (mql.removeListener) mql.removeListener(listener);
+    };
+  }, []);
+
+  const monthStart = React.useMemo(() => new Date(visibleDate.getFullYear(), visibleDate.getMonth(), 1), [visibleDate]);
+  const monthEnd = React.useMemo(() => new Date(visibleDate.getFullYear(), visibleDate.getMonth() + 1, 0), [visibleDate]);
+  const period = selectedRange ?? { start: monthStart, end: new Date(monthEnd.getFullYear(), monthEnd.getMonth(), monthEnd.getDate(), 23, 59, 59, 999) };
+
+  return (
+    <div className="flex-1 flex flex-col space-y-4 md:space-y-6 min-h-0">
+      {/* 재정 개요 카드 */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 flex-shrink-0">
+        <div className="bg-white rounded-lg shadow-md p-3 md:p-4">
+          <h3 className="text-sm md:text-xs font-medium text-slate-600 mb-2 md:mb-1">{t('summary.income')}</h3>
+          <p className="text-base md:text-lg font-bold text-green-600 truncate">{formatCurrency(monthlyIncomeTotal)}</p>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow-md p-3 md:p-4">
+          <h3 className="text-sm md:text-xs font-medium text-slate-600 mb-2 md:mb-1">{t('summary.expense')}</h3>
+          <p className="text-base md:text-lg font-bold text-red-600 truncate">{formatCurrency(monthlyExpenseTotal)}</p>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow-md p-3 md:p-4">
+          <h3 className="text-sm md:text-xs font-medium text-slate-600 mb-2 md:mb-1">{t('summary.balance')}</h3>
+          <p className={`text-base md:text-lg font-bold ${monthlyBalance >= 0 ? 'text-slate-800' : 'text-red-600'} truncate`}>
+            {formatCurrency(monthlyBalance)}
+          </p>
+        </div>
+
+        <CreditCardBillWidget
+          transactions={transactions}
+          accounts={accounts}
+          currentMonth={currentMonth}
+          currentYear={currentYear}
+        />
+      </div>
+
+      {/* 메인 콘텐츠 그리드 */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 flex-1 min-h-0">
+        {/* 캘린더 (거래 추가 카드 대체) */}
+        <div className="lg:col-span-2">
+          <Calendar
+            visibleDate={visibleDate}
+            onVisibleDateChange={onVisibleDateChange}
+            selectedRange={selectedRange}
+            onSelectedRangeChange={onSelectedRangeChange}
+            onAddClick={() => {
+              const evt = new CustomEvent('dashboard:add-transaction');
+              window.dispatchEvent(evt);
+            }}
+            extraActions={
+              <Suspense fallback={<span className="text-xs text-slate-400">AI…</span>}>
+                <AIAssist data={data} />
+              </Suspense>
+            }
+          />
+        </div>
+
+        {/* 거래 내역 */}
+        <div className="bg-white rounded-lg shadow-md p-4 lg:col-span-3 flex flex-col min-h-0 lg:min-h-0">
+          <div className="flex items-center justify-between mb-3 flex-shrink-0">
+            <h3 className="text-sm font-semibold text-slate-800">{t('nav.transactions')}</h3>
+            <input
+              type="text"
+              placeholder={t('placeholder.search')}
+              aria-label={t('aria.searchTransactions')}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="px-3 py-1.5 text-sm border border-slate-300 rounded-md w-48"
+            />
+          </div>
+          
+          <div className="space-y-2 flex-1 min-h-0 overflow-visible lg:overflow-y-auto lg:max-h-[50vh] touch-pan-y">
+            {filteredTransactions.length > 0 ? (
+              <TransactionsList
+                transactions={filteredTransactions}
+                accounts={accounts}
+                categories={categories}
+                onUpdate={updateTransaction}
+                onDelete={handleDelete}
+                onDeleteDirect={deleteTransaction}
+              />
+            ) : (
+              <div className="text-center py-8">
+                <div className="w-8 h-8 mx-auto mb-2 rounded-full bg-slate-100 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                </div>
+                <p className="text-slate-500 text-sm font-medium">{t('empty.noTransactions')}</p>
+                <p className="text-xs text-slate-400 mt-1">{t('empty.addFirst')}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 분석 탭 컴포넌트 (CSS 기반 차트로 재구현)
+const AnalyticsTab: React.FC<{
+  transactions: Transaction[];
+  accounts: any[];
+  categories: any[];
+  currentMonth: number;
+  currentYear: number;
+}> = ({ transactions, accounts, categories, currentMonth, currentYear }) => {
+  
+  // 월별 트렌드 데이터 (최근 6개월)
+  const monthlyTrendData = React.useMemo(() => {
+    const data = [];
+    const now = new Date();
+    
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const month = date.getMonth();
+      const year = date.getFullYear();
+      
+      const monthTransactions = transactions.filter(t => {
+        const tDate = new Date(t.date);
+        return tDate.getMonth() === month && tDate.getFullYear() === year;
+      });
+      
+      const income = monthTransactions
+        .filter(t => t.type === TransactionType.INCOME)
+        .reduce((sum, t) => sum + t.amount, 0);
+      
+      const expense = monthTransactions
+        .filter(t => t.type === TransactionType.EXPENSE)
+        .reduce((sum, t) => sum + t.amount, 0);
+      
+      data.push({
+        month: `${year.toString().slice(2)}년 ${month + 1}월`,
+        income,
+        expense,
+        balance: income - expense
+      });
+    }
+    
+    return data;
+  }, [transactions]);
+
+  // 카테고리별 지출 분포 데이터
+  const categoryExpenseData = React.useMemo(() => {
+    const currentMonthTransactions = transactions.filter(t => {
+      const tDate = new Date(t.date);
+      return t.type === TransactionType.EXPENSE &&
+             tDate.getMonth() === currentMonth &&
+             tDate.getFullYear() === currentYear;
+    });
+
+    const categoryTotals = currentMonthTransactions.reduce((acc, t) => {
+      acc[t.category] = (acc[t.category] || 0) + t.amount;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const colors = ['#6366f1', '#8b5cf6', '#ec4899', '#ef4444', '#f97316', '#eab308'];
+    
+    return Object.entries(categoryTotals)
+      .map(([name, value], index) => ({
+        name,
+        value,
+        color: colors[index % colors.length]
+      }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 6);
+  }, [transactions, currentMonth, currentYear]);
+
+  // 계좌별 잔액 데이터
+  const accountBalanceData = React.useMemo(() => {
+    return accounts.map(account => ({
+      name: account.name,
+      value: account.balance || 0,
+      color: account.propensity === 'CREDIT_CARD' ? '#ef4444' : 
+             account.propensity === 'SAVINGS' ? '#10b981' : '#3b82f6'
+    })).sort((a, b) => b.value - a.value).slice(0, 8);
+  }, [accounts]);
+
+  return (
+    <div className="flex-1 flex flex-col space-y-6 min-h-0 overflow-y-auto">
+      {/* 월별 트렌드 */}
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h3 className="text-lg font-semibold text-slate-800 mb-4">📈 최근 6개월 트렌드</h3>
+        <MonthlyTrendDisplay data={monthlyTrendData} />
+      </div>
+
+      {/* 차트 그리드 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* 카테고리 분포 */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold text-slate-800 mb-4">🍩 이번 달 지출 분포</h3>
+          <SimplePieChart data={categoryExpenseData} />
+        </div>
+
+        {/* 계좌별 잔액 */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold text-slate-800 mb-4">💰 계좌별 잔액</h3>
+          <SimpleBarChart data={accountBalanceData} />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 위젯 탭 컴포넌트
+const WidgetsTab: React.FC<{
+  data: UseDataReturn;
+  transactions: Transaction[];
+  periodStart: Date;
+  periodEnd: Date;
+  currentMonth: number;
+  currentYear: number;
+}> = ({ data, transactions, periodStart, periodEnd, currentMonth, currentYear }) => {
+  return (
+    <div className="flex-1 flex flex-col space-y-4 md:space-y-6 min-h-0">
+      {/* 위젯 그리드 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-shrink-0">
+        {/* 할부 위젯 */}
+        <InstallmentsWidget
+          installments={data.installments}
+          periodStart={periodStart}
+          periodEnd={periodEnd}
+          currentMonth={currentMonth}
+          currentYear={currentYear}
+        />
+
+        {/* 반복 결제 위젯 */}
+        <RecurringWidget
+          transactions={transactions}
+          periodStart={periodStart}
+          periodEnd={periodEnd}
+          currentMonth={currentMonth}
+          currentYear={currentYear}
+        />
+
+        {/* 이상치 위젯 - 전체 너비 */}
+        <div className="md:col-span-2">
+          <OutliersWidget
+            transactions={transactions}
+            periodStart={periodStart}
+            periodEnd={periodEnd}
+            currentMonth={currentMonth}
+            currentYear={currentYear}
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+type DashboardTab = 'overview' | 'analytics' | 'widgets';
 
 export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   const { accounts, transactions, categories, addTransaction, updateTransaction, deleteTransaction } = data;
   const { t } = useI18n();
   const [transactionType, setTransactionType] = useState<TransactionType>(TransactionType.EXPENSE);
-  const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
+  const [visibleDate, setVisibleDate] = useState<Date>(new Date());
+  const [selectedRange, setSelectedRange] = useState<{ start: Date; end: Date } | null>(null);
+  const [activeTab, setActiveTab] = useState<DashboardTab>('overview');
   
+  // Calendar add button (desktop) → open add modal
+  React.useEffect(() => {
+    const handler = () => {
+      setEditingTransaction(null);
+      setIsEditModalOpen(true);
+    };
+    window.addEventListener('dashboard:add-transaction', handler as EventListener);
+    return () => window.removeEventListener('dashboard:add-transaction', handler as EventListener);
+  }, []);
+
   // Debug transactionType changes
   React.useEffect(() => {
     console.log('TransactionType changed to:', transactionType);
@@ -43,83 +387,47 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   // Responsive: form collapsed on mobile, open on desktop
   React.useEffect(() => {
     const mql = window.matchMedia('(min-width: 1024px)');
-    const apply = (matches: boolean) => {
-      setIsDesktop(matches);
-      // 데스크톱은 인라인 폼, 모바일은 모달로 처리
-    };
+    const apply = (matches: boolean) => setIsDesktop(matches);
     apply(mql.matches);
     const listener = (e: MediaQueryListEvent) => apply(e.matches);
     if (mql.addEventListener) mql.addEventListener('change', listener);
-    // Fallback for older browsers
-    // @ts-ignore
-    else if (mql.addListener) mql.addListener(listener);
+    else if (mql.addListener) mql.addListener(listener as any);
     return () => {
       if (mql.removeEventListener) mql.removeEventListener('change', listener);
-      // @ts-ignore
-      else if (mql.removeListener) mql.removeListener(listener);
+      else if (mql.removeListener) mql.removeListener(listener as any);
     };
   }, []);
 
+  const monthStart = React.useMemo(() => new Date(currentYear, currentMonth, 1), [currentYear, currentMonth]);
+  const monthEnd = React.useMemo(() => new Date(currentYear, currentMonth + 1, 0, 23, 59, 59, 999), [currentYear, currentMonth]);
+  const selectedStart = selectedRange ? selectedRange.start : monthStart;
+  const selectedEnd = selectedRange ? selectedRange.end : monthEnd;
   const isInSelectedPeriod = (iso: string) => {
     const d = new Date(iso);
-    if (viewMode === 'month') {
-      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-    }
-    // week: 현재 주(월요일 시작)
-    const now = new Date();
-    const day = (now.getDay() + 6) % 7; // 월(0)~일(6)
-    const start = new Date(now);
-    start.setDate(now.getDate() - day);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(start);
-    end.setDate(start.getDate() + 6);
-    end.setHours(23, 59, 59, 999);
-    return d >= start && d <= end;
+    return d >= selectedStart && d <= selectedEnd;
   };
 
   const monthlyIncomeTotal = useMemo(() => (
     transactions
       .filter(t => t.type === TransactionType.INCOME && isInSelectedPeriod(t.date))
       .reduce((sum, t) => sum + t.amount, 0)
-  ), [transactions, currentMonth, currentYear, viewMode]);
+  ), [transactions, currentMonth, currentYear, selectedStart, selectedEnd]);
 
   const monthlyExpenseTotal = useMemo(() => (
     transactions
       .filter(t => t.type === TransactionType.EXPENSE && isInSelectedPeriod(t.date))
       .reduce((sum, t) => sum + t.amount, 0)
-  ), [transactions, currentMonth, currentYear, viewMode]);
+  ), [transactions, currentMonth, currentYear, selectedStart, selectedEnd]);
 
   const monthlyBalance = useMemo(() => monthlyIncomeTotal - monthlyExpenseTotal, [monthlyIncomeTotal, monthlyExpenseTotal]);
 
-  const monthlyExpenseByCategory = useMemo(() => {
-    try {
-      const expenses = transactions.filter(t =>
-        t.type === TransactionType.EXPENSE &&
-        isInSelectedPeriod(t.date)
-      );
-
-      const categoryTotals = expenses.reduce((acc, curr) => {
-        const key = curr.category || '기타';
-        const amount = Number(curr.amount) || 0;
-        acc[key] = (acc[key] || 0) + amount;
-        return acc;
-      }, {} as Record<string, number>);
-
-      const items: { category: string; amount: number }[] = Object.entries(categoryTotals)
-        .map(([category, amount]) => ({ category, amount: Number(amount) || 0 }));
-
-      items.sort((a, b) => (b?.amount ?? 0) - (a?.amount ?? 0));
-      return items.slice(0, 5);
-    } catch {
-      return [] as { category: string; amount: number }[];
-    }
-  }, [transactions, currentMonth, currentYear, viewMode]);
+  // 지출 분포 위젯은 카드 결제 예상 위젯으로 대체됨
 
   const recentTransactions = useMemo(() => {
     return transactions
       .filter(t => isInSelectedPeriod(t.date))
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [transactions, currentMonth, currentYear, viewMode]);
+  }, [transactions, currentMonth, currentYear, selectedStart, selectedEnd]);
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type, checked } = e.target as HTMLInputElement;
@@ -198,147 +506,122 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
     return parent ? `${parent.name} > ${cat.name}` : cat.name;
   };
 
-  const formatMonth = (month: number, year: number) => formatMonthKo(month, year);
+  // 탭 정의
+  const dashboardTabs = [
+    { id: 'overview' as DashboardTab, name: '개요', icon: '📊' },
+    { id: 'analytics' as DashboardTab, name: '분석', icon: '📈' },
+    { id: 'widgets' as DashboardTab, name: '위젯', icon: '⚡' }
+  ];
 
-  const navigateMonth = (direction: 'prev' | 'next') => {
-    if (direction === 'prev') {
-      if (currentMonth === 0) {
-        setCurrentMonth(11);
-        setCurrentYear(currentYear - 1);
-      } else {
-        setCurrentMonth(currentMonth - 1);
-      }
-    } else {
-      if (currentMonth === 11) {
-        setCurrentMonth(0);
-        setCurrentYear(currentYear + 1);
-      } else {
-        setCurrentMonth(currentMonth + 1);
-      }
-    }
-  };
+  // month navigation is handled within Calendar
   
   return (
     <div className="h-full flex flex-col">
-      {/* Month Navigation + View Toggle */}
-      <div className="mb-2 flex flex-col items-center flex-shrink-0">
-        <div className="flex items-center justify-center">
-          <button
-            onClick={() => navigateMonth('prev')}
-            className="p-2 rounded-md hover:bg-slate-200 text-slate-600"
-          >
-            ← {t('month.prev')}
-          </button>
-          <h2 className="mx-6 text-xl font-semibold text-slate-800">
-            {formatMonth(currentMonth, currentYear)}
-          </h2>
-          <button
-            onClick={() => navigateMonth('next')}
-            className="p-2 rounded-md hover:bg-slate-200 text-slate-600"
-          >
-            {t('month.next')} →
-          </button>
-        </div>
-        <div className="mt-2 inline-flex rounded-md overflow-hidden border border-slate-300 text-xs">
-          <button
-            type="button"
-            className={`px-3 py-1.5 ${viewMode === 'month' ? 'bg-slate-800 text-white' : 'bg-white text-slate-700 hover:bg-slate-100'}`}
-            onClick={() => setViewMode('month')}
-          >
-            월 보기
-          </button>
-          <button
-            type="button"
-            className={`px-3 py-1.5 border-l ${viewMode === 'week' ? 'bg-slate-800 text-white' : 'bg-white text-slate-700 hover:bg-slate-100'}`}
-            onClick={() => setViewMode('week')}
-          >
-            주 보기
-          </button>
+      {/* Sub Navigation only */}
+      <div className="mb-2 flex flex-col flex-shrink-0 gap-3">
+        {/* Dashboard Sub Navigation */}
+        <div className="flex justify-center">
+          <div className="relative inline-flex rounded-2xl bg-slate-100 p-1 overflow-hidden" role="tablist" aria-label={t('aria.dashboardTabs')}>
+            {/* 슬라이딩 인디케이터 */}
+            <div 
+              className="absolute top-1 bottom-1 bg-indigo-600 rounded-xl shadow-sm transition-all duration-300 ease-out"
+              style={{
+                width: 'calc(33.333% - 2px)',
+                left: '2px',
+                transform: `translateX(${
+                  activeTab === 'overview' ? '0%' :
+                  activeTab === 'analytics' ? '100%' :
+                  '200%'
+                })`
+              }}
+            />
+            
+            {/* 탭 버튼들 */}
+            {dashboardTabs.map((tab) => (
+              <button
+                key={tab.id}
+                id={`tab-${tab.id}`}
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                aria-controls={`panel-${tab.id}`}
+                onClick={() => setActiveTab(tab.id)}
+                className={`relative z-10 flex items-center px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap text-center ${
+                  activeTab === tab.id
+                    ? 'text-white'
+                    : 'text-slate-700 hover:text-slate-900'
+                }`}
+                style={{ minWidth: '100px' }}
+              >
+                <span className="text-base mr-2">{tab.icon}</span>
+                <span>{tab.name}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col space-y-4 md:space-y-6 min-h-0">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-4 gap-2 md:gap-4 flex-shrink-0">
-          <div className="bg-white rounded-lg shadow-md p-2 md:p-4">
-            <h3 className="text-xs font-medium text-slate-600 mb-1">{t('summary.income')}</h3>
-            <p className="text-sm md:text-lg font-bold text-green-600 truncate">{formatCurrency(monthlyIncomeTotal)}</p>
+      <div className="flex-1 flex flex-col min-h-0">
+        {/* 탭별 콘텐츠 렌더링 */}
+        {activeTab === 'overview' && (
+          <div role="tabpanel" id="panel-overview" aria-labelledby="tab-overview">
+            <OverviewTab 
+              data={data}
+              monthlyIncomeTotal={monthlyIncomeTotal}
+              monthlyExpenseTotal={monthlyExpenseTotal}
+              monthlyBalance={monthlyBalance}
+              recentTransactions={recentTransactions}
+              transactions={transactions}
+              accounts={accounts}
+              categories={categories}
+              currentMonth={currentMonth}
+              currentYear={currentYear}
+              selectedRange={selectedStart && selectedEnd ? { start: selectedStart, end: selectedEnd } : null}
+              visibleDate={visibleDate}
+              onVisibleDateChange={(d) => {
+                setVisibleDate(d);
+                setCurrentMonth(d.getMonth());
+                setCurrentYear(d.getFullYear());
+                // 선택이 없을 때는 월 변경에 맞춰 자동 월 범위 적용
+                if (!selectedRange) {
+                  // no-op, 월 범위는 파생값으로 계산됨
+                }
+              }}
+              onSelectedRangeChange={(r) => {
+                setSelectedRange(r);
+              }}
+              addTransaction={addTransaction}
+              updateTransaction={updateTransaction}
+              deleteTransaction={deleteTransaction}
+              handleDelete={handleDelete}
+              t={t}
+            />
           </div>
-          
-          <div className="bg-white rounded-lg shadow-md p-2 md:p-4">
-            <h3 className="text-xs font-medium text-slate-600 mb-1">{t('summary.expense')}</h3>
-            <p className="text-sm md:text-lg font-bold text-red-600 truncate">{formatCurrency(monthlyExpenseTotal)}</p>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-md p-2 md:p-4">
-            <h3 className="text-xs font-medium text-slate-600 mb-1">{t('summary.balance')}</h3>
-            <p className={`text-sm md:text-lg font-bold ${monthlyBalance >= 0 ? 'text-slate-800' : 'text-red-600'} truncate`}>
-              {formatCurrency(monthlyBalance)}
-            </p>
-          </div>
+        )}
 
-          <div className="bg-white rounded-lg shadow-md p-2 md:p-4 col-span-4 md:col-span-1">
-            <h3 className="text-xs font-medium text-slate-600 mb-1">{t('summary.breakdown')}</h3>
-            <div className="space-y-1">
-              {monthlyExpenseByCategory.length > 0 ? (
-                monthlyExpenseByCategory.slice(0, 3).map((item, index) => (
-                  <div key={index} className="text-[11px] md:text-xs text-slate-600">
-                    {item.category}: {formatCurrency(item.amount)}
-                  </div>
-                ))
-              ) : (
-                <p className="text-[11px] md:text-xs text-slate-400">No expenses to display.</p>
-              )}
-            </div>
+        {activeTab === 'analytics' && (
+          <div role="tabpanel" id="panel-analytics" aria-labelledby="tab-analytics">
+            <AnalyticsTab 
+              transactions={transactions}
+              accounts={accounts}
+              categories={categories}
+              currentMonth={currentMonth}
+              currentYear={currentYear}
+            />
           </div>
-        </div>
+        )}
 
-        {/* Main Content Grid - Optimized Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 flex-1 min-h-0">
-          {/* Add New Transaction - Desktop only (mobile uses FAB + modal) */}
-          <div className="hidden lg:block bg-white rounded-lg shadow-md p-4 lg:col-span-2">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold text-slate-800">{t('form.addTransaction')}</h3>
-              <div className="flex items-center gap-2"><AIAssist data={data} /></div>
-            </div>
-            <AddTransactionFormInline accounts={accounts} categories={categories} onAdd={addTransaction} />
+        {activeTab === 'widgets' && (
+          <div role="tabpanel" id="panel-widgets" aria-labelledby="tab-widgets">
+            <WidgetsTab 
+              data={data}
+              transactions={transactions}
+              periodStart={selectedStart}
+              periodEnd={selectedEnd}
+              currentMonth={currentMonth}
+              currentYear={currentYear}
+            />
           </div>
-
-          {/* Transaction History - Expanded */}
-          <div className="bg-white rounded-lg shadow-md p-4 lg:col-span-3 flex flex-col min-h-0 lg:min-h-0">
-            <div className="flex items-center justify-between mb-3 flex-shrink-0">
-              <h3 className="text-sm font-semibold text-slate-800">{viewMode === 'week' ? '이번 주 거래' : t('nav.transactions')}</h3>
-              <input
-                type="text"
-                placeholder={t('placeholder.search')}
-                className="px-3 py-1.5 text-sm border border-slate-300 rounded-md w-48"
-              />
-            </div>
-            
-            <div className="space-y-2 flex-1 min-h-0 overflow-visible lg:overflow-y-auto lg:max-h-[50vh] touch-pan-y">
-              {recentTransactions.length > 0 ? (
-                <TransactionsList
-                  transactions={recentTransactions}
-                  accounts={accounts}
-                  categories={categories}
-                  onUpdate={updateTransaction}
-                  onDelete={handleDelete}
-                  onDeleteDirect={deleteTransaction}
-                />
-              ) : (
-                <div className="text-center py-8">
-                  <div className="w-8 h-8 mx-auto mb-2 rounded-full bg-slate-100 flex items-center justify-center">
-                    <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                    </svg>
-                  </div>
-                  <p className="text-slate-500 text-sm font-medium">No transactions yet.</p>
-                  <p className="text-xs text-slate-400 mt-1">Add a transaction to get started!</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Floating draggable toggle for form (mobile only) */}
@@ -442,7 +725,7 @@ const FloatingFormToggle: React.FC<{ onOpen: () => void }> = ({ onOpen }) => {
       }}
       onPointerDown={onPointerDown}
       className={
-        'fixed lg:hidden z-50 w-14 h-14 rounded-full shadow-lg border border-slate-200 flex items-center justify-center bg-indigo-600 text-white'
+        'fixed lg:hidden z-50 w-14 h-14 rounded-full shadow-lg border border-slate-200 flex items-center justify-center bg-indigo-600 hover:bg-indigo-500 text-white transition'
       }
       style={{ left: pos.x, top: pos.y, touchAction: 'none' }}
     >

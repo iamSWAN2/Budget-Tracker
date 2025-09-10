@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Button } from '../components/ui/Button';
 import { UseDataReturn } from '../hooks/useData';
 import { Category, TransactionType } from '../types';
 import { Modal } from '../components/ui/Modal';
@@ -508,17 +509,123 @@ const AppSettings: React.FC<{
   toggleDensity: () => void;
   density: string;
 }> = ({ toggle, lang, toggleDensity, density }) => {
+  const [titleColor, setTitleColor] = useState<string>('#4f46e5');
+  const [weekStart, setWeekStart] = useState<'mon' | 'sun'>('mon');
+
+  // Load saved settings from localStorage
+  useEffect(() => {
+    const savedColor = localStorage.getItem('app-title-color');
+    const savedWeekStart = localStorage.getItem('week-start');
+    
+    if (savedColor) {
+      setTitleColor(savedColor);
+    }
+    if (savedWeekStart) {
+      setWeekStart(savedWeekStart as 'mon' | 'sun');
+    }
+  }, []);
+
+  // Predefined color palette
+  const colorPalette = [
+    '#4f46e5', // indigo-600
+    '#dc2626', // red-600
+    '#059669', // emerald-600
+    '#d97706', // amber-600
+    '#7c3aed', // violet-600
+    '#db2777', // pink-600
+    '#0891b2', // cyan-600
+    '#65a30d', // lime-600
+    '#ea580c', // orange-600
+    '#374151', // gray-700
+  ];
+
+  const saveColor = (newColor: string) => {
+    setTitleColor(newColor);
+    localStorage.setItem('app-title-color', newColor);
+    // Trigger a custom event to update the title color immediately
+    window.dispatchEvent(new CustomEvent('title-color-changed', { detail: newColor }));
+  };
+
+  const saveWeekStart = (newWeekStart: 'mon' | 'sun') => {
+    setWeekStart(newWeekStart);
+    localStorage.setItem('week-start', newWeekStart);
+    // Trigger a custom event to update week start setting immediately
+    window.dispatchEvent(new CustomEvent('week-start-changed', { detail: newWeekStart }));
+  };
   return (
     <div className="space-y-6">
+      {/* 앱 외관 설정 */}
+      <div className="bg-slate-50 rounded-2xl p-6">
+        <h3 className="text-lg font-semibold text-slate-800 mb-4">앱 외관 설정</h3>
+        <div className="space-y-6">
+          {/* 제목 색상 설정 */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-slate-700">앱 제목 색상</label>
+            <div className="flex items-center gap-4">
+              <div className="grid grid-cols-5 gap-2">
+                {colorPalette.map((color) => (
+                  <button
+                    key={color}
+                    onClick={() => saveColor(color)}
+                    className={`w-8 h-8 rounded-full border-2 hover:scale-110 transition-transform ${
+                      color === titleColor ? 'border-gray-400 ring-2 ring-offset-2 ring-gray-300' : 'border-gray-200'
+                    }`}
+                    style={{ backgroundColor: color }}
+                    title={color}
+                  />
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={titleColor}
+                  onChange={(e) => saveColor(e.target.value)}
+                  className="w-8 h-8 rounded cursor-pointer"
+                  title="커스텀 색상 선택"
+                />
+                <span className="text-sm text-gray-600">커스텀</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 주 시작일 설정 - 버튼 형식 */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-slate-700">주 시작일</label>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant={weekStart === 'mon' ? 'primary' : 'secondary'}
+                size="sm"
+                aria-pressed={weekStart === 'mon'}
+                onClick={() => saveWeekStart('mon')}
+                className="flex-1 justify-center"
+              >
+                월요일 시작
+              </Button>
+              <Button
+                type="button"
+                variant={weekStart === 'sun' ? 'primary' : 'secondary'}
+                size="sm"
+                aria-pressed={weekStart === 'sun'}
+                onClick={() => saveWeekStart('sun')}
+                className="flex-1 justify-center"
+              >
+                일요일 시작
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* 언어 및 표시 설정 */}
-      <div className="bg-slate-50 rounded-lg p-6">
+      <div className="bg-slate-50 rounded-2xl p-6">
         <h3 className="text-lg font-semibold text-slate-800 mb-4">언어 및 표시 설정</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <label className="block text-sm font-medium text-slate-700">언어</label>
             <button
               onClick={toggle}
-              className="w-full px-4 py-3 rounded-lg text-sm border border-slate-300 text-slate-700 hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-700 flex items-center justify-between transition-all duration-200"
+              className="w-full px-4 py-3 rounded-2xl text-sm border border-slate-300 text-slate-700 hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-700 flex items-center justify-between transition-all duration-200"
             >
               <div className="flex items-center">
                 <span className="mr-2">🌐</span>
@@ -533,7 +640,7 @@ const AppSettings: React.FC<{
             <label className="block text-sm font-medium text-slate-700">UI 밀도</label>
             <button
               onClick={toggleDensity}
-              className="w-full px-4 py-3 rounded-lg text-sm border border-slate-300 text-slate-700 hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-700 flex items-center justify-between transition-all duration-200"
+              className="w-full px-4 py-3 rounded-2xl text-sm border border-slate-300 text-slate-700 hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-700 flex items-center justify-between transition-all duration-200"
             >
               <div className="flex items-center">
                 <span className="mr-2">{density === 'compact' ? '📏' : '📐'}</span>
@@ -548,7 +655,7 @@ const AppSettings: React.FC<{
       </div>
 
       {/* 앱 정보 */}
-      <div className="bg-slate-50 rounded-lg p-6">
+      <div className="bg-slate-50 rounded-2xl p-6">
         <h3 className="text-lg font-semibold text-slate-800 mb-4">앱 정보</h3>
         <div className="space-y-3 text-sm text-slate-600">
           <div className="flex justify-between">
@@ -594,47 +701,53 @@ export const SettingsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-slate-200 h-full flex flex-col mx-auto w-full max-w-3xl lg:max-w-4xl">
+    <div className="bg-white rounded-2xl shadow-lg border border-slate-200 h-full flex flex-col mx-auto w-full max-w-3xl lg:max-w-4xl">
       {/* 헤더 - 제목과 탭 */}
-      <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-t-xl border-b border-slate-200">
-        <div className="px-6 pt-6 pb-2">
+      <div className="bg-white rounded-t-2xl border-b border-slate-200">
+        <div className="px-6 pt-6 pb-4">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-2xl font-bold text-slate-900">설정</h2>
               <p className="text-sm text-slate-600 mt-1">앱 환경설정 및 데이터 관리</p>
             </div>
-            {/* 현재 탭 정보 표시 (모바일에서 유용) */}
-            <div className="hidden sm:block">
-              <div className="bg-white/80 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/50">
-                <span className="text-xs font-medium text-slate-700">
-                  {tabs.find(tab => tab.id === activeTab)?.icon} {tabs.find(tab => tab.id === activeTab)?.name}
-                </span>
-              </div>
-            </div>
           </div>
           
-          {/* 탭 네비게이션 */}
-          <nav className="flex space-x-1" role="tablist">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                role="tab"
-                aria-selected={activeTab === tab.id}
-                className={`flex items-center px-5 py-3 rounded-t-xl text-sm font-medium transition-all duration-200 relative ${
-                  activeTab === tab.id
-                    ? 'bg-white text-indigo-700 shadow-md border-t border-l border-r border-slate-200 -mb-px z-10'
-                    : 'text-slate-600 hover:text-slate-800 hover:bg-white/50 backdrop-blur-sm'
-                }`}
-              >
-                <span className="text-base mr-2">{tab.icon}</span>
-                <span>{tab.name}</span>
-                {/* 활성 탭 인디케이터 */}
-                {activeTab === tab.id && (
-                  <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-12 h-1 bg-indigo-600 rounded-t-full"></div>
-                )}
-              </button>
-            ))}
+          {/* 탭 네비게이션 - 슬라이딩 스타일 */}
+          <nav className="flex justify-center">
+            <div className="relative inline-flex rounded-2xl bg-slate-100 p-1 overflow-hidden">
+              {/* 슬라이딩 인디케이터 */}
+              <div 
+                className="absolute top-1 bottom-1 bg-indigo-600 rounded-xl shadow-sm transition-all duration-300 ease-out"
+                style={{
+                  width: 'calc(33.333% - 2px)',
+                  left: '2px',
+                  transform: `translateX(${
+                    activeTab === 'app' ? '0%' :
+                    activeTab === 'categories' ? '100%' :
+                    '200%'
+                  })`
+                }}
+              />
+              
+              {/* 탭 버튼들 */}
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  role="tab"
+                  aria-selected={activeTab === tab.id}
+                  className={`relative z-10 flex items-center px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap text-center ${
+                    activeTab === tab.id
+                      ? 'text-white'
+                      : 'text-slate-700 hover:text-slate-900'
+                  }`}
+                  style={{ minWidth: '120px' }}
+                >
+                  <span className="text-base mr-2">{tab.icon}</span>
+                  <span>{tab.name}</span>
+                </button>
+              ))}
+            </div>
           </nav>
         </div>
       </div>
