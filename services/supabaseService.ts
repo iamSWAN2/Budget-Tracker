@@ -249,22 +249,18 @@ export const deleteAccount = async (id: string): Promise<void> => {
     throw new Error('기본 계좌는 삭제할 수 없습니다');
   }
   
-  // First check if there are transactions associated with this account
-  const { data: transactions, error: transactionError } = await supabase
+  // Delete all transactions for this account first (to satisfy FK constraints)
+  const { error: deleteTransactionsError } = await supabase
     .from('transactions')
-    .select('id')
-    .eq('account_id', id)
-    .limit(1);
+    .delete()
+    .eq('account_id', id);
 
-  if (transactionError) {
-    console.error('Error checking transactions:', transactionError);
-    throw new Error(`Failed to check account transactions: ${transactionError.message}`);
+  if (deleteTransactionsError) {
+    console.error('Error deleting transactions for account:', deleteTransactionsError);
+    throw new Error(`Failed to delete account transactions: ${deleteTransactionsError.message}`);
   }
 
-  if (transactions && transactions.length > 0) {
-    throw new Error('거래 내역이 있는 계좌는 삭제할 수 없습니다');
-  }
-
+  // Then delete the account itself
   const { error } = await supabase
     .from('accounts')
     .delete()
@@ -274,6 +270,9 @@ export const deleteAccount = async (id: string): Promise<void> => {
     console.error('Error deleting account:', error);
     throw new Error(`Failed to delete account: ${error.message}`);
   }
+  
+  // Cleanup cached initial balance
+  accountInitialBalances.delete(id);
 };
 
 // Add a special flag to track if this is initial balance calculation
