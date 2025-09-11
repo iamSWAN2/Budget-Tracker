@@ -163,8 +163,8 @@ export const EditTransactionFormInline: React.FC<Props> = ({ transaction, accoun
         </div>
       )}
 
-      <div className="pt-2">
-        <Button type="submit" variant="primary" size="md" className="w-full justify-center">
+      <div className="pt-2 flex justify-end">
+        <Button type="submit" variant="primary" size="sm">
           {t('form.save') || '저장'}
         </Button>
       </div>
