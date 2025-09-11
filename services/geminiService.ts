@@ -39,35 +39,68 @@ const transactionSchema = {
 };
 
 export const analyzeTransactionsFromFile = async (file: File): Promise<AITransaction[]> => {
-  const base64Data = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve((reader.result as string).split(',')[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+  // CSV 파일인 경우 텍스트로 처리하여 토큰 사용량 최적화
+  const isCSV = file.name.toLowerCase().endsWith('.csv') || file.type === 'text/csv';
+  
+  let prompt: string;
+  let contentParts: any[];
 
-  const prompt = `
-    You are an expert financial data parser. Analyze the following data from an image of a bank statement or financial document. 
-    Extract all financial transactions. For each transaction, provide the date, description, amount, and classify it as 'INCOME' or 'EXPENSE'. 
-    If a transaction is a withdrawal or payment, it is an 'EXPENSE'. If it's a deposit, it is an 'INCOME'.
-    The current year is ${new Date().getFullYear()}. Use this to infer the year for dates like '07/25' or 'Jul 25'.
-    Format the output as a JSON array following the provided schema. Do not include any explanatory text, comments, or markdown formatting.
-    Just return the raw JSON array.
-  `;
+  if (isCSV) {
+    // CSV 파일을 텍스트로 읽어서 처리
+    const csvText = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsText(file);
+    });
+
+    prompt = `
+      You are an expert financial data parser. Analyze the following CSV data from a financial document.
+      Extract all financial transactions from this CSV content. For each transaction, provide the date, description, amount, and classify it as 'INCOME' or 'EXPENSE'.
+      If a transaction is a withdrawal or payment, it is an 'EXPENSE'. If it's a deposit, it is an 'INCOME'.
+      The current year is ${new Date().getFullYear()}. Use this to infer the year for dates like '07/25' or 'Jul 25'.
+      Format the output as a JSON array following the provided schema. Do not include any explanatory text, comments, or markdown formatting.
+      Just return the raw JSON array.
+      
+      CSV Data:
+      ${csvText}
+    `;
+    
+    contentParts = [{ text: prompt }];
+  } else {
+    // 이미지, PDF 등은 기존 방식으로 처리
+    const base64Data = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    prompt = `
+      You are an expert financial data parser. Analyze the following data from an image of a bank statement or financial document. 
+      Extract all financial transactions. For each transaction, provide the date, description, amount, and classify it as 'INCOME' or 'EXPENSE'. 
+      If a transaction is a withdrawal or payment, it is an 'EXPENSE'. If it's a deposit, it is an 'INCOME'.
+      The current year is ${new Date().getFullYear()}. Use this to infer the year for dates like '07/25' or 'Jul 25'.
+      Format the output as a JSON array following the provided schema. Do not include any explanatory text, comments, or markdown formatting.
+      Just return the raw JSON array.
+    `;
+    
+    contentParts = [
+      { text: prompt },
+      {
+        inlineData: {
+          mimeType: file.type,
+          data: base64Data,
+        },
+      },
+    ];
+  }
   
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: {
-        parts: [
-          { text: prompt },
-          {
-            inlineData: {
-              mimeType: file.type,
-              data: base64Data,
-            },
-          },
-        ],
+        parts: contentParts,
       },
       config: {
         responseMimeType: "application/json",
@@ -91,6 +124,20 @@ export const analyzeTransactionsFromFile = async (file: File): Promise<AITransac
 
   } catch (error) {
     console.error("Error analyzing transactions with Gemini API:", error);
-    throw new Error("Failed to analyze the file. Please try again or check the file format.");
+    
+    // 더 구체적인 오류 메시지 제공
+    if (error instanceof Error) {
+      if (error.message.includes('503') || error.message.includes('overloaded')) {
+        throw new Error("AI 서비스가 일시적으로 과부하 상태입니다. 잠시 후 다시 시도하거나 CSV 로컬 처리를 이용해주세요.");
+      } else if (error.message.includes('401') || error.message.includes('403')) {
+        throw new Error("API 키가 유효하지 않습니다. 환경설정을 확인해주세요.");
+      } else if (error.message.includes('429')) {
+        throw new Error("API 사용량 한도에 도달했습니다. 잠시 후 다시 시도해주세요.");
+      } else if (error.message.includes('400')) {
+        throw new Error("파일 형식이 지원되지 않거나 손상되었습니다. 다른 파일을 시도해주세요.");
+      }
+    }
+    
+    throw new Error("파일 분석에 실패했습니다. CSV 로컬 처리를 시도해보세요.");
   }
 };
