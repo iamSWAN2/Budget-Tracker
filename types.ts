@@ -66,4 +66,9 @@ export interface AITransaction {
   description: string;
   amount: number;
   type: 'INCOME' | 'EXPENSE';
+  category?: string;
+  account?: string;
+  reference?: string;
+  installmentMonths?: number;
+  isInterestFree?: boolean;
 }

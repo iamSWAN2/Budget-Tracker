@@ -1,23 +1,30 @@
 import { AITransaction, TransactionType } from '../types';
 
 export interface ColumnMapping {
-  date?: number;
-  description?: number;
-  amount?: number;
-  type?: number;
-  account?: number;
-  // 신규 HIGH 우선순위 필드들
-  reference?: number;    // 참조번호 - 중복 방지
-  category?: number;     // 카테고리 - 자동 분류
-  balance?: number;      // 잔액 - 거래 후 잔액
+  // 필수 필드 (REQUIRED)
+  date?: number;          // 거래 날짜
+  description?: number;   // 거래 설명
+  amount?: number;        // 거래 금액
+  
+  // 준필수 필드 (SEMI_REQUIRED) - 없으면 기본값 사용
+  type?: number;          // 거래 유형 (기본값: EXPENSE)
+  category?: number;      // 카테고리 (기본값: 'Uncategorized')
+  account?: number;       // 계좌 정보
+  
+  // 선택 필드 (OPTIONAL)
+  reference?: number;           // 참조번호
+  balance?: number;             // 잔액
+  installmentMonths?: number;   // 할부 개월수
+  isInterestFree?: number;      // 무이자 할부 여부
 }
 
 export interface ParsedColumn {
   index: number;
   name: string;
-  detectedType: 'date' | 'amount' | 'description' | 'type' | 'account' | 'reference' | 'category' | 'balance' | 'unknown';
+  detectedType: 'date' | 'amount' | 'description' | 'type' | 'account' | 'reference' | 'category' | 'balance' | 'installmentMonths' | 'isInterestFree' | 'unknown';
   confidence: number;
   samples: string[];
+  priority?: 'REQUIRED' | 'SEMI_REQUIRED' | 'OPTIONAL';
 }
 
 // 패턴 정의
@@ -55,6 +62,14 @@ const PATTERNS = {
   balance: [
     /잔액|balance|남은|remain/i,       // 잔액 키워드
     /^[\d,]+$/                        // 순수 숫자 (금액과 유사하지만 맥락으로 구분)
+  ],
+  installmentMonths: [
+    /할부|개월|month|installment/i,    // 할부 관련 키워드
+    /^\d{1,2}$/                       // 1-2자리 숫자 (개월수)
+  ],
+  isInterestFree: [
+    /무이자|interest.free|무상/i,      // 무이자 키워드
+    /^(true|false|y|n|예|아니오)$/i    // boolean 값
   ]
 };
 
@@ -68,7 +83,9 @@ const HEADER_KEYWORDS = {
   // 신규 헤더 키워드들
   reference: ['참조번호', 'reference', '거래번호', '승인번호', 'transaction_id', 'approval', 'ref_no'],
   category: ['카테고리', 'category', '분류', '업종', '가맹점', 'merchant', 'business_type'],
-  balance: ['잔액', 'balance', '잔고', '현재잔액', 'current_balance', 'remaining']
+  balance: ['잔액', 'balance', '잔고', '현재잔액', 'current_balance', 'remaining'],
+  installmentMonths: ['할부', '할부개월', '개월수', 'installment', 'months', 'term'],
+  isInterestFree: ['무이자', '무이자할부', 'interest_free', 'no_interest', '이자여부']
 };
 
 export class LocalCsvParser {
@@ -127,7 +144,7 @@ export class LocalCsvParser {
   }
 
   // 컬럼 타입 감지
-  static detectColumnType(header: string, samples: string[]): 'date' | 'amount' | 'description' | 'type' | 'account' | 'reference' | 'category' | 'balance' | 'unknown' {
+  static detectColumnType(header: string, samples: string[]): 'date' | 'amount' | 'description' | 'type' | 'account' | 'reference' | 'category' | 'balance' | 'installmentMonths' | 'isInterestFree' | 'unknown' {
     const headerLower = header.toLowerCase();
     
     // 헤더명으로 먼저 판단
@@ -169,6 +186,16 @@ export class LocalCsvParser {
     if (PATTERNS.balance.some(pattern => samples.some(sample => pattern.test(sample))) &&
         HEADER_KEYWORDS.balance.some(keyword => header.toLowerCase().includes(keyword.toLowerCase()))) {
       return 'balance';
+    }
+
+    // 할부 개월수 패턴 체크
+    if (PATTERNS.installmentMonths.some(pattern => samples.some(sample => pattern.test(sample)))) {
+      return 'installmentMonths';
+    }
+
+    // 무이자 여부 패턴 체크
+    if (PATTERNS.isInterestFree.some(pattern => samples.some(sample => pattern.test(sample)))) {
+      return 'isInterestFree';
     }
 
     // 계좌/카드 패턴 체크 (일반적으로 은행명/카드사명 포함)
@@ -253,16 +280,34 @@ export class LocalCsvParser {
     return TransactionType.EXPENSE; // 기본값
   }
 
+  // 필수 필드 검증
+  static validateRequiredFields(mapping: ColumnMapping): { isValid: boolean; missingFields: string[] } {
+    const requiredFields = ['date', 'description', 'amount'] as const;
+    const missingFields = requiredFields.filter(field => mapping[field] === undefined);
+    
+    return {
+      isValid: missingFields.length === 0,
+      missingFields
+    };
+  }
+
   // 컬럼 매핑으로 거래 데이터 변환
   static convertToTransactions(
     headers: string[], 
     rows: string[][], 
     mapping: ColumnMapping
   ): AITransaction[] {
+    // 필수 필드 검증
+    const validation = this.validateRequiredFields(mapping);
+    if (!validation.isValid) {
+      throw new Error(`필수 필드가 매핑되지 않았습니다: ${validation.missingFields.join(', ')}`);
+    }
+
     return rows
       .filter(row => row.length > 0 && row.some(cell => cell.trim()))
       .map((row, index) => {
         try {
+          // 필수 필드 처리
           const date = mapping.date !== undefined ? 
             this.normalizeDate(row[mapping.date] || '') : 
             new Date().toISOString().split('T')[0];
@@ -275,17 +320,22 @@ export class LocalCsvParser {
             this.normalizeAmount(row[mapping.amount] || '0') : 
             0;
 
-          const type = mapping.type !== undefined ? 
+          // 준필수 필드 처리 (기본값 사용)
+          const transactionType = mapping.type !== undefined ? 
             this.normalizeType(row[mapping.type] || 'expense') : 
             TransactionType.EXPENSE;
 
-          const aiType: AITransaction['type'] = type === TransactionType.EXPENSE ? 'EXPENSE' : 'INCOME';
-          return {
+          const aiType: AITransaction['type'] = transactionType === TransactionType.EXPENSE ? 'EXPENSE' : 'INCOME';
+          
+          // 기본 거래 객체 생성
+          const transaction: AITransaction = {
             date,
             description: description.trim(),
             amount,
             type: aiType,
           };
+
+          return transaction;
         } catch (error) {
           console.warn(`Row ${index + 1} parsing error:`, error);
           return {
@@ -297,5 +347,100 @@ export class LocalCsvParser {
         }
       })
       .filter(transaction => transaction.amount > 0); // 0원 거래 제외
+  }
+
+  // 확장된 거래 데이터로 변환 (Transaction 타입 사용)
+  static convertToFullTransactions(
+    headers: string[], 
+    rows: string[][], 
+    mapping: ColumnMapping,
+    accountId: string = 'default',
+    categoryDefault: string = 'Uncategorized'
+  ) {
+    // 필수 필드 검증
+    const validation = this.validateRequiredFields(mapping);
+    if (!validation.isValid) {
+      throw new Error(`필수 필드가 매핑되지 않았습니다: ${validation.missingFields.join(', ')}`);
+    }
+
+    return rows
+      .filter(row => row.length > 0 && row.some(cell => cell.trim()))
+      .map((row, index) => {
+        try {
+          // 필수 필드
+          const date = mapping.date !== undefined ? 
+            this.normalizeDate(row[mapping.date] || '') : 
+            new Date().toISOString().split('T')[0];
+
+          const description = mapping.description !== undefined ? 
+            (row[mapping.description] || `거래 ${index + 1}`) : 
+            `거래 ${index + 1}`;
+
+          const amount = mapping.amount !== undefined ? 
+            this.normalizeAmount(row[mapping.amount] || '0') : 
+            0;
+
+          // 준필수 필드 (기본값 사용)
+          const type = mapping.type !== undefined ? 
+            this.normalizeType(row[mapping.type] || 'expense') : 
+            TransactionType.EXPENSE;
+
+          const category = mapping.category !== undefined ? 
+            (row[mapping.category] || categoryDefault) : 
+            categoryDefault;
+
+          const finalAccountId = mapping.account !== undefined ? 
+            (row[mapping.account] || accountId) : 
+            accountId;
+
+          // 선택 필드
+          const installmentMonths = mapping.installmentMonths !== undefined ? 
+            parseInt(row[mapping.installmentMonths] || '1') || 1 : 
+            undefined;
+
+          const isInterestFree = mapping.isInterestFree !== undefined ? 
+            this.normalizeBoolean(row[mapping.isInterestFree] || '') : 
+            undefined;
+
+          return {
+            id: `csv_${Date.now()}_${index}`,
+            date,
+            description: description.trim(),
+            amount,
+            type,
+            category,
+            accountId: finalAccountId,
+            ...(installmentMonths && installmentMonths > 1 && { installmentMonths }),
+            ...(isInterestFree !== undefined && { isInterestFree })
+          };
+        } catch (error) {
+          console.warn(`Row ${index + 1} parsing error:`, error);
+          return {
+            id: `csv_error_${Date.now()}_${index}`,
+            date: new Date().toISOString().split('T')[0],
+            description: `오류 데이터 ${index + 1}`,
+            amount: 0,
+            type: TransactionType.EXPENSE,
+            category: categoryDefault,
+            accountId
+          };
+        }
+      })
+      .filter(transaction => transaction.amount > 0);
+  }
+
+  // Boolean 값 정규화
+  static normalizeBoolean(boolStr: string): boolean | undefined {
+    const cleaned = boolStr.toLowerCase().trim();
+    
+    if (['true', 'y', 'yes', '예', '1', '무이자', 'interest-free'].some(val => cleaned.includes(val))) {
+      return true;
+    }
+    
+    if (['false', 'n', 'no', '아니오', '0', '유이자', 'interest'].some(val => cleaned.includes(val))) {
+      return false;
+    }
+    
+    return undefined;
   }
 }

@@ -33,6 +33,26 @@ const transactionSchema = {
         type: Type.STRING,
         description: 'The type of transaction, either "INCOME" or "EXPENSE".',
       },
+      category: {
+        type: Type.STRING,
+        description: "Category of the transaction (e.g., Food, Transportation, Shopping, etc.). Use 'Uncategorized' if unclear.",
+      },
+      account: {
+        type: Type.STRING,
+        description: "Account or card name if available in the data (e.g., '우리카드 카드의정석', '신한은행', etc.). Leave empty if not specified.",
+      },
+      reference: {
+        type: Type.STRING,
+        description: "Transaction reference number or approval code if available. Leave empty if not found.",
+      },
+      installmentMonths: {
+        type: Type.NUMBER,
+        description: "Number of installment months if this is an installment purchase (e.g., 3, 6, 12). Use 1 for one-time payments.",
+      },
+      isInterestFree: {
+        type: Type.BOOLEAN,
+        description: "Whether this is an interest-free installment. Set to true if mentioned as '무이자할부' or 'interest-free'.",
+      },
     },
     required: ["date", "description", "amount", "type"],
   },
@@ -56,8 +76,18 @@ export const analyzeTransactionsFromFile = async (file: File): Promise<AITransac
 
     prompt = `
       You are an expert financial data parser. Analyze the following CSV data from a financial document.
-      Extract all financial transactions from this CSV content. For each transaction, provide the date, description, amount, and classify it as 'INCOME' or 'EXPENSE'.
-      If a transaction is a withdrawal or payment, it is an 'EXPENSE'. If it's a deposit, it is an 'INCOME'.
+      Extract all financial transactions from this CSV content. For each transaction, provide:
+      - date: Transaction date in YYYY-MM-DD format
+      - description: A concise description of the transaction
+      - amount: The transaction amount as a positive number
+      - type: Either "INCOME" or "EXPENSE" (withdrawals/payments are EXPENSE, deposits are INCOME)
+      - category: Categorize the transaction (Food, Transportation, Shopping, Entertainment, etc.)
+      - account: Extract account/card name if present in the data (e.g., '우리카드 카드의정석', '신한은행')
+      - reference: Transaction reference number or approval code if available
+      - installmentMonths: Number of installment months (default 1 for one-time payments)
+      - isInterestFree: Whether this is an interest-free installment (look for '무이자' keywords)
+      
+      Pay special attention to account/card information in column headers or data values.
       The current year is ${new Date().getFullYear()}. Use this to infer the year for dates like '07/25' or 'Jul 25'.
       Format the output as a JSON array following the provided schema. Do not include any explanatory text, comments, or markdown formatting.
       Just return the raw JSON array.
