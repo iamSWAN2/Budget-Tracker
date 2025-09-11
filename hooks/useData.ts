@@ -101,8 +101,10 @@ export const useData = () => {
           amount: t.amount,
           description: t.description,
           type: t.type === 'INCOME' ? TransactionType.INCOME : TransactionType.EXPENSE,
-          category: 'Uncategorized', // Default category for AI-added transactions
+          category: t.category || 'Uncategorized', // Use AI-detected category or default
           accountId,
+          ...(t.installmentMonths && t.installmentMonths > 1 && { installmentMonths: t.installmentMonths }),
+          ...(t.installmentMonths && t.installmentMonths > 1 && t.isInterestFree !== undefined && { isInterestFree: t.isInterestFree }),
       }));
 
       for (const trans of transactionsToAdd) {
@@ -112,6 +114,116 @@ export const useData = () => {
       await fetchData();
     } catch (err) {
       setError('Failed to add transactions from AI analysis.');
+      console.error(err);
+    }
+  };
+
+  const addMultipleFullTransactions = async (fullTransactions: Transaction[]) => {
+    try {
+      for (const transaction of fullTransactions) {
+        await apiAddTransaction(transaction);
+      }
+      // Refetch all data to get updated state
+      await fetchData();
+    } catch (err) {
+      setError('Failed to add full transactions from CSV.');
+      console.error(err);
+    }
+  };
+
+  const addMultipleTransactionsWithAccounts = async (newTransactions: AITransaction[]) => {
+    try {
+      // 거래에서 고유한 계좌명 추출
+      const uniqueAccountNames = [...new Set(newTransactions
+        .map(t => t.account)
+        .filter(account => account && account.trim() !== '')
+      )];
+
+      // 계좌명 기반 계좌 유형 추론 함수
+      const inferAccountPropensity = (accountName: string): import('../types').AccountPropensity => {
+        const name = accountName.toLowerCase();
+        if (name.includes('카드') || name.includes('card')) {
+          return import('../types').AccountPropensity.CREDIT_CARD;
+        } else if (name.includes('예금') || name.includes('적금') || name.includes('savings')) {
+          return import('../types').AccountPropensity.SAVINGS;
+        } else if (name.includes('투자') || name.includes('증권') || name.includes('investment')) {
+          return import('../types').AccountPropensity.INVESTMENT;
+        } else if (name.includes('현금') || name.includes('cash')) {
+          return import('../types').AccountPropensity.CASH;
+        } else if (name.includes('대출') || name.includes('loan')) {
+          return import('../types').AccountPropensity.LOAN;
+        } else {
+          return import('../types').AccountPropensity.CHECKING; // 기본값
+        }
+      };
+
+      // 계좌 매칭 및 생성 맵
+      const accountMap = new Map<string, string>(); // accountName -> accountId
+
+      for (const accountName of uniqueAccountNames) {
+        // 기존 계좌와 매칭 시도
+        const existingAccount = accounts.find(acc => 
+          acc.name.toLowerCase().includes(accountName.toLowerCase()) ||
+          accountName.toLowerCase().includes(acc.name.toLowerCase())
+        );
+
+        if (existingAccount) {
+          accountMap.set(accountName, existingAccount.id);
+        } else {
+          // 새 계좌 생성
+          const accountPropensity = inferAccountPropensity(accountName);
+          const newAccount = await apiAddAccount({
+            name: accountName,
+            balance: 0,
+            initialBalance: 0,
+            propensity: accountPropensity,
+            ...(accountPropensity === import('../types').AccountPropensity.CREDIT_CARD && { paymentDay: 25 })
+          });
+          
+          // 로컬 상태 업데이트
+          setAccounts(prev => [...prev, newAccount]);
+          accountMap.set(accountName, newAccount.id);
+        }
+      }
+
+      // 거래별로 적절한 계좌 ID 할당하여 거래 추가
+      for (const transaction of newTransactions) {
+        let accountId: string;
+        
+        if (transaction.account && accountMap.has(transaction.account)) {
+          accountId = accountMap.get(transaction.account)!;
+        } else {
+          // 계좌 정보가 없는 경우 기본 계좌 사용
+          accountId = accounts.length > 0 ? accounts[0].id : '';
+          if (!accountId) {
+            throw new Error('기본 계좌가 없습니다. 먼저 계좌를 생성해주세요.');
+          }
+        }
+
+        const transactionToAdd = {
+          ...transaction,
+          date: transaction.date,
+          amount: transaction.amount,
+          description: transaction.description,
+          type: transaction.type === 'INCOME' ? TransactionType.INCOME : TransactionType.EXPENSE,
+          category: transaction.category || 'Uncategorized',
+          accountId,
+          ...(transaction.installmentMonths && transaction.installmentMonths > 1 && { 
+            installmentMonths: transaction.installmentMonths 
+          }),
+          ...(transaction.installmentMonths && transaction.installmentMonths > 1 && 
+              transaction.isInterestFree !== undefined && { 
+            isInterestFree: transaction.isInterestFree 
+          }),
+        };
+
+        await apiAddTransaction(transactionToAdd);
+      }
+
+      // 모든 데이터 새로고침
+      await fetchData();
+    } catch (err) {
+      setError('Failed to add transactions with account processing.');
       console.error(err);
     }
   };
@@ -275,6 +387,8 @@ export const useData = () => {
     error,
     addTransaction,
     addMultipleTransactions,
+    addMultipleTransactionsWithAccounts,
+    addMultipleFullTransactions,
     updateTransaction,
     deleteTransaction,
     addAccount,

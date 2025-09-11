@@ -200,9 +200,9 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, a
       onTouchEnd={cancelPress}
       onTouchMove={cancelPress}
     >
-      <div className="flex items-start gap-4">
+      <div className="flex items-start gap-2 sm:gap-4">
         {/* Far Left: Type Symbol */}
-        <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-slate-50 ring-1 ring-slate-200`}>
+        <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center bg-slate-50 ring-1 ring-slate-200 flex-shrink-0`}>
           {editing === 'type' ? (
             <select
               autoFocus
@@ -254,63 +254,67 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, a
             </h4>
           )}
 
-          <div className="flex items-center gap-2 text-[12px] text-slate-600 flex-wrap">
-            {/* Date */}
-            {editing === 'date' ? (
-              <input
-                autoFocus
-                type="date"
-                value={draft.date}
-                onChange={(e) => setDraft(prev => ({ ...prev, date: e.target.value }))}
-                onBlur={() => handleCommit({ date: draft.date })}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleCommit({ date: draft.date });
-                  if (e.key === 'Escape') handleCancel();
-                }}
-                className="px-2 py-1 bg-white border border-slate-300 rounded"
-              />
-            ) : (
-              <button className="inline-flex items-center px-2 py-0.5 bg-slate-200 text-slate-700 rounded-md" onClick={() => setEditing('date')}>📅 {formatDateDisplay(draft.date)}</button>
-            )}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-[12px] text-slate-600">
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Date */}
+              {editing === 'date' ? (
+                <input
+                  autoFocus
+                  type="date"
+                  value={draft.date}
+                  onChange={(e) => setDraft(prev => ({ ...prev, date: e.target.value }))}
+                  onBlur={() => handleCommit({ date: draft.date })}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleCommit({ date: draft.date });
+                    if (e.key === 'Escape') handleCancel();
+                  }}
+                  className="px-2 py-1 bg-white border border-slate-300 rounded"
+                />
+              ) : (
+                <button className="inline-flex items-center px-1.5 py-0.5 bg-slate-200 text-slate-700 rounded-md text-xs" onClick={() => setEditing('date')}>📅 {formatDateDisplay(draft.date)}</button>
+              )}
 
-            {/* Category */}
-            {editing === 'category' ? (
-              <select
-                autoFocus
-                value={draft.category}
-                onBlur={() => setEditing(null)}
-                onChange={(e) => handleCommit({ category: e.target.value })}
-                className="px-2 py-1 bg-white border border-slate-300 rounded"
-              >
-                {filteredCategories.map(cat => (
-                  <option key={cat.id} value={cat.name}>{cat.name}</option>
-                ))}
-              </select>
-            ) : (
-              <button className="inline-flex items-center px-2 py-0.5 bg-slate-200 text-slate-700 rounded-md" onClick={() => setEditing('category')}>🏷️ {draft.category}</button>
-            )}
-
-            {/* Account */}
-            {editing === 'account' ? (
-              <select
-                autoFocus
-                value={draft.accountId}
-                onBlur={() => setEditing(null)}
-                onChange={(e) => handleCommit({ accountId: e.target.value })}
-                className="px-2 py-1 bg-white border border-slate-300 rounded"
-              >
-                {accounts.map(acc => (
-                  <option key={acc.id} value={acc.id}>{acc.name}</option>
-                ))}
-              </select>
-            ) : (
-              <button className="inline-flex items-center px-2 py-0.5 bg-slate-200 text-slate-700 rounded-md" onClick={() => setEditing('account')}>🏦 {accountName}</button>
-            )}
+              {/* Category */}
+              {editing === 'category' ? (
+                <select
+                  autoFocus
+                  value={draft.category}
+                  onBlur={() => setEditing(null)}
+                  onChange={(e) => handleCommit({ category: e.target.value })}
+                  className="px-2 py-1 bg-white border border-slate-300 rounded"
+                >
+                  {filteredCategories.map(cat => (
+                    <option key={cat.id} value={cat.name}>{cat.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <button className="inline-flex items-center px-1.5 py-0.5 bg-slate-200 text-slate-700 rounded-md text-xs truncate max-w-24 sm:max-w-none" onClick={() => setEditing('category')}>🏷️ {draft.category}</button>
+              )}
+            </div>
+            
+            {/* Account on second line on mobile */}
+            <div className="flex items-center">
+              {editing === 'account' ? (
+                <select
+                  autoFocus
+                  value={draft.accountId}
+                  onBlur={() => setEditing(null)}
+                  onChange={(e) => handleCommit({ accountId: e.target.value })}
+                  className="px-2 py-1 bg-white border border-slate-300 rounded"
+                >
+                  {accounts.map(acc => (
+                    <option key={acc.id} value={acc.id}>{acc.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <button className="inline-flex items-center px-1.5 py-0.5 bg-slate-200 text-slate-700 rounded-md text-xs truncate max-w-32 sm:max-w-none" onClick={() => setEditing('account')}>🏦 {accountName}</button>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Right: Amount with installment info integrated */}
-        <div className="text-right min-w-[10rem]">
+        <div className="text-right min-w-[8rem] sm:min-w-[10rem] flex-shrink-0">
           {isInstallment || editing === 'installment' ? (
             <div className="space-y-1">
               {editing === 'amount' ? (
@@ -325,20 +329,22 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, a
                     if (e.key === 'Enter') handleCommit({ amount: draft.amount });
                     if (e.key === 'Escape') handleCancel();
                   }}
-                  className="w-28 text-right font-extrabold text-xl border border-slate-300 rounded px-2 py-1"
+                  className="w-24 sm:w-28 text-right font-extrabold text-lg sm:text-xl border border-slate-300 rounded px-2 py-1"
                 />
               ) : (
-                <button className={`font-extrabold text-xl leading-none ${isIncome ? 'text-emerald-600' : 'text-rose-600'}`} onClick={() => setEditing('amount')}>
+                <button className={`font-extrabold text-lg sm:text-xl leading-none ${isIncome ? 'text-emerald-600' : 'text-rose-600'} break-all`} onClick={() => setEditing('amount')}>
                   {formatCurrency(getCurrentMonthPayment(draft.amount, draft.installmentMonths || 1, draft.isInterestFree || false, draft.date, draft.accountId))}
-                  <span className="text-sm text-slate-500 font-medium ml-1">{(draft.installmentMonths || 1) > 1 ? '/월' : ''}</span>
+                  <span className="text-xs sm:text-sm text-slate-500 font-medium ml-1">{(draft.installmentMonths || 1) > 1 ? '/월' : ''}</span>
                 </button>
               )}
               {/* installment editor */}
               {editing === 'installment' || (draft.installmentMonths && draft.installmentMonths > 1) ? (
-                <div className="text-xs text-slate-600 flex items-center justify-end gap-2">
-                  <span className="whitespace-nowrap">총액</span>
-                  <span className="font-medium">{formatCurrency(getTotalPaymentAmount(draft.amount, draft.installmentMonths || 1, draft.isInterestFree || false, draft.date, draft.accountId))}</span>
-                  <span className="text-slate-400">·</span>
+                <div className="text-xs text-slate-600 flex flex-col sm:flex-row sm:items-center justify-end gap-1 sm:gap-2">
+                  <div className="flex items-center justify-end gap-1">
+                    <span className="whitespace-nowrap">총액</span>
+                    <span className="font-medium">{formatCurrency(getTotalPaymentAmount(draft.amount, draft.installmentMonths || 1, draft.isInterestFree || false, draft.date, draft.accountId))}</span>
+                  </div>
+                  <span className="text-slate-400 hidden sm:inline">·</span>
                   {monthsEditing ? (
                     <div className="relative inline-block">
                       <input
@@ -368,20 +374,22 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, a
                       {(draft.installmentMonths || 1)}개월
                     </button>
                   )}
-                  {(draft.installmentMonths || 1) > 1 && (
-                    <label className="inline-flex items-center gap-1 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={!!draft.isInterestFree}
-                        onChange={(e) => handleToggleInterestFree(e.target.checked)}
-                      />
-                      무이자
-                    </label>
-                  )}
+                  <div className="flex items-center justify-end gap-2">
+                    {(draft.installmentMonths || 1) > 1 && (
+                      <label className="inline-flex items-center gap-1 cursor-pointer select-none text-xs">
+                        <input
+                          type="checkbox"
+                          checked={!!draft.isInterestFree}
+                          onChange={(e) => handleToggleInterestFree(e.target.checked)}
+                        />
+                        무이자
+                      </label>
+                    )}
+                  </div>
                 </div>
               ) : (
-                <button className="text-xs text-slate-500 font-medium" onClick={() => setEditing('installment')}>
-                  총액 {formatCurrency(getTotalPaymentAmount(draft.amount, draft.installmentMonths || 1, draft.isInterestFree || false, draft.date, draft.accountId))} · {(draft.installmentMonths || 1)}개월{draft.isInterestFree ? ' · 무이자' : ''}
+                <button className="text-xs text-slate-500 font-medium break-all" onClick={() => setEditing('installment')}>
+                  <span className="hidden sm:inline">총액 </span>{formatCurrency(getTotalPaymentAmount(draft.amount, draft.installmentMonths || 1, draft.isInterestFree || false, draft.date, draft.accountId))} · {(draft.installmentMonths || 1)}개월{draft.isInterestFree ? ' · 무이자' : ''}
                 </button>
               )}
             </div>
@@ -399,10 +407,10 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, a
                     if (e.key === 'Enter') handleCommit({ amount: draft.amount });
                     if (e.key === 'Escape') handleCancel();
                   }}
-                  className="w-28 text-right font-extrabold text-xl border border-slate-300 rounded px-2 py-1"
+                  className="w-24 sm:w-28 text-right font-extrabold text-lg sm:text-xl border border-slate-300 rounded px-2 py-1"
                 />
               ) : (
-                <button className={`font-extrabold text-xl ${isIncome ? 'text-emerald-600' : 'text-rose-600'}`} onClick={() => setEditing('amount')}>
+                <button className={`font-extrabold text-lg sm:text-xl break-all ${isIncome ? 'text-emerald-600' : 'text-rose-600'}`} onClick={() => setEditing('amount')}>
                   {formatCurrency(getCurrentMonthPayment(draft.amount, draft.installmentMonths || 1, draft.isInterestFree || false, draft.date, draft.accountId))}
                 </button>
               )}

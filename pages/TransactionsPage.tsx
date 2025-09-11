@@ -101,19 +101,19 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn; initialFilter?: {
     
     return (
         <div className="bg-white rounded-xl shadow-md p-6 h-full flex flex-col mx-auto w-full max-w-3xl lg:max-w-4xl">
-            <div className="flex justify-between items-center mb-2">
+            <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-2 gap-3">
                 <h3 className="text-lg font-semibold text-slate-700">{t('nav.transactions')}</h3>
-                <div className="flex items-center space-x-2">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2">
                   <input
                     value={qInput}
                     onChange={(e) => setQInput(e.target.value)}
                     placeholder={t('placeholder.search')}
-                    className="px-3 py-1.5 text-sm border border-slate-300 rounded-md w-40"
+                    className="px-3 py-1.5 text-sm border border-slate-300 rounded-md flex-1 sm:w-32 lg:w-40"
                   />
                   <select
                     value={category ?? ''}
                     onChange={(e) => setCategory(e.target.value || undefined)}
-                    className="px-2 py-1.5 text-sm border border-slate-300 rounded-md"
+                    className="px-2 py-1.5 text-sm border border-slate-300 rounded-md flex-1 sm:flex-none"
                     title="카테고리 선택"
                   >
                     <option value="">전체 카테고리</option>
@@ -124,7 +124,7 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn; initialFilter?: {
                   <select
                     value={accountId ?? ''}
                     onChange={(e) => setAccountId(e.target.value || undefined)}
-                    className="px-2 py-1.5 text-sm border border-slate-300 rounded-md"
+                    className="px-2 py-1.5 text-sm border border-slate-300 rounded-md flex-1 sm:flex-none"
                     title="계좌 선택"
                   >
                     <option value="">전체 계좌</option>
@@ -132,20 +132,22 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn; initialFilter?: {
                       <option key={a.id} value={a.id}>{a.name}</option>
                     ))}
                   </select>
-                  <React.Suspense fallback={<span className="text-xs text-slate-400">AI…</span>}>
-                    <AIAssist data={data} />
-                  </React.Suspense>
-                  <Button 
-                    onClick={handleAdd}
-                    disabled={accounts.length === 0}
-                    variant="primary"
-                    size="sm"
-                    aria-label={t('form.addTransaction')}
-                    title={t('form.addTransaction')}
-                    className="px-2.5 py-1.5"
-                  >
-                    <PlusIcon />
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <React.Suspense fallback={<span className="text-xs text-slate-400">AI…</span>}>
+                      <AIAssist data={data} />
+                    </React.Suspense>
+                    <Button 
+                      onClick={handleAdd}
+                      disabled={accounts.length === 0}
+                      variant="primary"
+                      size="sm"
+                      aria-label={t('form.addTransaction')}
+                      title={t('form.addTransaction')}
+                      className="px-2.5 py-1.5"
+                    >
+                      <PlusIcon />
+                    </Button>
+                  </div>
                 </div>
             </div>
             {/* Active Filters */}

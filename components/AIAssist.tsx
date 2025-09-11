@@ -14,7 +14,7 @@ import { TransactionPreview } from './ui/TransactionPreview';
 import { ProgressBar, ProgressStep } from './ui/ProgressBar';
 
 const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
-  const { accounts, addMultipleTransactions, addAccount } = data;
+  const { accounts, addMultipleTransactions, addMultipleTransactionsWithAccounts, addMultipleFullTransactions, addAccount } = data;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [step, setStep] = useState<'method' | 'upload' | 'mapping' | 'account' | 'confirm' | 'loading' | 'error' | 'new-account'>('method');
   const [analyzedTransactions, setAnalyzedTransactions] = useState<AITransaction[]>([]);
@@ -30,6 +30,8 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
     balance: ''
   });
   const [mappingPreview, setMappingPreview] = useState<AITransaction[]>([]);
+  const [extendedPreviewData, setExtendedPreviewData] = useState<any[]>([]);
+  const [fullTransactionData, setFullTransactionData] = useState<any[]>([]);
   
   // 진행률 관련 상태
   const [currentStep, setCurrentStep] = useState(1);
@@ -98,6 +100,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
     try {
       if (!csvData || !mapping.date || !mapping.description || !mapping.amount) {
         setMappingPreview([]);
+        setExtendedPreviewData([]);
         return;
       }
       
@@ -108,11 +111,142 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
         previewRows, 
         mapping
       );
+      
+      // 확장 데이터 생성 (추가 필드들)
+      const extendedData = previewRows.map(row => ({
+        type: mapping.type !== undefined ? 
+          LocalCsvParser.normalizeType(row[mapping.type] || 'expense') === 'INCOME' ? '수입' : '지출' : 
+          '지출',
+        category: mapping.category !== undefined ? 
+          (row[mapping.category] || '미분류') : '미분류',
+        account: mapping.account !== undefined ? 
+          (row[mapping.account] || '미지정') : '미지정',
+        reference: mapping.reference !== undefined ? 
+          (row[mapping.reference] || '') : '',
+        installmentMonths: mapping.installmentMonths !== undefined ? 
+          parseInt(row[mapping.installmentMonths] || '1') || 1 : 1,
+        isInterestFree: mapping.isInterestFree !== undefined ? 
+          LocalCsvParser.normalizeBoolean(row[mapping.isInterestFree] || '') : undefined
+      }));
+
       setMappingPreview(preview);
+      setExtendedPreviewData(extendedData);
     } catch (error) {
       console.warn('미리보기 생성 오류:', error);
       setMappingPreview([]);
+      setExtendedPreviewData([]);
     }
+  };
+
+  // CSV 데이터 완전 처리 함수
+  const processCSVData = async (csvData: { headers: string[], rows: string[][] }, mapping: ColumnMapping) => {
+    try {
+      // 1. 필요한 계좌들 수집 및 생성
+      const accountMapping = await processAccountsFromCSV(csvData, mapping);
+      
+      // 2. 확장된 거래 데이터 변환
+      const fullTransactions = LocalCsvParser.convertToFullTransactions(
+        csvData.headers,
+        csvData.rows,
+        mapping,
+        '', // accountId는 나중에 설정
+        'Uncategorized'
+      );
+      
+      // 3. 각 거래에 올바른 계좌 ID 할당
+      const processedTransactions = fullTransactions.map(transaction => ({
+        ...transaction,
+        accountId: accountMapping[transaction.accountId] || accountMapping['default'] || accounts[0]?.id || ''
+      }));
+      
+      // 4. AITransaction 형태로 변환 (미리보기용)
+      const aiTransactions: AITransaction[] = processedTransactions.map(t => ({
+        date: t.date,
+        description: t.description,
+        amount: t.amount,
+        type: t.type === 'INCOME' ? 'INCOME' : 'EXPENSE'
+      }));
+      
+      // 5. 확장 데이터 생성 (미리보기용)
+      const extendedData = processedTransactions.map(t => ({
+        type: t.type === 'INCOME' ? '수입' : '지출',
+        category: t.category,
+        account: accounts.find(acc => acc.id === t.accountId)?.name || '알 수 없는 계좌',
+        installmentMonths: t.installmentMonths,
+        isInterestFree: t.isInterestFree
+      }));
+      
+      setAnalyzedTransactions(aiTransactions);
+      setExtendedPreviewData(extendedData);
+      
+      // 전체 거래 정보를 상태로 저장 (실제 저장용)
+      setFullTransactionData(processedTransactions);
+      
+      setStep('confirm');
+    } catch (error) {
+      throw new Error(`CSV 데이터 처리 중 오류: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+    }
+  };
+
+  // CSV에서 계좌 정보 처리 및 자동 생성
+  const processAccountsFromCSV = async (csvData: { headers: string[], rows: string[][] }, mapping: ColumnMapping): Promise<Record<string, string>> => {
+    const accountMapping: Record<string, string> = {};
+    
+    if (mapping.account !== undefined) {
+      // CSV의 모든 고유한 계좌명 추출
+      const csvAccountNames = [...new Set(
+        csvData.rows
+          .map(row => row[mapping.account!]?.trim())
+          .filter(Boolean)
+      )];
+      
+      for (const csvAccountName of csvAccountNames) {
+        // 기존 계좌 매칭 시도
+        const matchingAccount = accounts.find(acc => 
+          acc.name.toLowerCase().includes(csvAccountName.toLowerCase()) ||
+          csvAccountName.toLowerCase().includes(acc.name.toLowerCase())
+        );
+        
+        if (matchingAccount) {
+          accountMapping[csvAccountName] = matchingAccount.id;
+        } else {
+          // 새 계좌 자동 생성
+          try {
+            const newAccount = {
+              name: csvAccountName,
+              propensity: AccountPropensity.CHECKING,
+              balance: 0,
+              initialBalance: 0
+            };
+            await addAccount(newAccount);
+            
+            // 계좌 생성 후 데이터 새로고침을 위한 약간의 지연
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            // 새로 생성된 계좌 찾기
+            const createdAccount = data.accounts.find(acc => acc.name === csvAccountName);
+            if (createdAccount) {
+              accountMapping[csvAccountName] = createdAccount.id;
+            } else {
+              // 계좌를 찾을 수 없는 경우 기본 계좌 사용
+              accountMapping[csvAccountName] = accounts[0]?.id || '';
+            }
+            
+          } catch (error) {
+            console.warn(`계좌 생성 실패: ${csvAccountName}`, error);
+            // 기본 계좌 사용
+            accountMapping[csvAccountName] = accounts[0]?.id || '';
+          }
+        }
+      }
+    }
+    
+    // 기본 계좌 설정
+    if (accounts.length > 0) {
+      accountMapping['default'] = accounts[0].id;
+    }
+    
+    return accountMapping;
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -145,7 +279,19 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
         await new Promise(resolve => setTimeout(resolve, 500));
         
         setAnalyzedTransactions(results);
-        setStep('account'); // AI 분석 후 계좌 선택 단계로
+        
+        // AI 분석 결과를 위한 확장 데이터 생성 - 개별 계좌 정보 보존
+        const extendedData = results.map(t => ({
+          type: t.type === 'INCOME' ? '수입' : '지출',
+          category: t.category || '미분류',
+          account: t.account || '미지정', // AI가 인식한 개별 계좌 정보 그대로 사용
+          reference: t.reference || '',
+          installmentMonths: t.installmentMonths || 1,
+          isInterestFree: t.isInterestFree || false
+        }));
+        
+        setExtendedPreviewData(extendedData);
+        setStep('confirm'); // AI 분석 후 바로 confirm 단계로
       } else {
         // 로컬 파싱
         if (!file.name.toLowerCase().endsWith('.csv')) {
@@ -200,8 +346,17 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
               case 'category':
                 if (!autoMapping.category) autoMapping.category = index;
                 break;
+              case 'account':
+                if (!autoMapping.account) autoMapping.account = index;
+                break;
               case 'balance':
                 if (!autoMapping.balance) autoMapping.balance = index;
+                break;
+              case 'installmentMonths':
+                if (!autoMapping.installmentMonths) autoMapping.installmentMonths = index;
+                break;
+              case 'isInterestFree':
+                if (!autoMapping.isInterestFree) autoMapping.isInterestFree = index;
                 break;
             }
           }
@@ -216,6 +371,15 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                 break;
               case 'balance':
                 if (!autoMapping.balance) autoMapping.balance = index;
+                break;
+              case 'account':
+                if (!autoMapping.account) autoMapping.account = index;
+                break;
+              case 'installmentMonths':
+                if (!autoMapping.installmentMonths) autoMapping.installmentMonths = index;
+                break;
+              case 'isInterestFree':
+                if (!autoMapping.isInterestFree) autoMapping.isInterestFree = index;
                 break;
             }
           }
@@ -235,17 +399,20 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
     }
   };
 
-  const handleMappingConfirm = () => {
+  const handleMappingConfirm = async () => {
     if (!csvData) return;
     
     try {
-      const transactions = LocalCsvParser.convertToTransactions(
-        csvData.headers, 
-        csvData.rows, 
-        columnMapping
-      );
-      setAnalyzedTransactions(transactions);
-      setStep('confirm');
+      // 필수 필드 검증
+      const validation = LocalCsvParser.validateRequiredFields(columnMapping);
+      if (!validation.isValid) {
+        setErrorMessage(`필수 필드가 매핑되지 않았습니다: ${validation.missingFields.join(', ')}`);
+        setStep('error');
+        return;
+      }
+
+      // CSV에서 모든 정보를 완전 처리하여 바로 confirm 단계로 이동
+      await processCSVData(csvData, columnMapping);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "데이터 변환 중 오류가 발생했습니다.");
       setStep('error');
@@ -253,25 +420,20 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
   };
 
   const handleConfirm = async () => {
-    if (!selectedAccountId) {
-        setErrorMessage("계좌을 선택해주세요.");
-        setStep('error');
-        return;
-    }
-    
-    if (selectedAccountId === 'no-account') {
-        setErrorMessage("계좌 정보 없음을 선택하셨습니다. 기존 계좌를 선택하거나 새 계좌를 생성해주세요.");
-        setStep('error');
-        return;
-    }
-    
     setStep('loading');
     try {
-        await addMultipleTransactions(analyzedTransactions, selectedAccountId);
-        handleClose();
+      if (parseMode === 'local') {
+        // CSV 모드: 완전한 거래 데이터를 직접 저장
+        await addMultipleFullTransactions(fullTransactionData);
+      } else {
+        // AI 모드: 개별 계좌 정보를 고려한 거래 추가
+        await addMultipleTransactionsWithAccounts(analyzedTransactions);
+      }
+      
+      handleClose();
     } catch (error) {
-        setErrorMessage("거래 내역 저장에 실패했습니다.");
-        setStep('error');
+      setErrorMessage("거래 내역 저장에 실패했습니다.");
+      setStep('error');
     }
   };
 
@@ -318,6 +480,8 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
         setParseMode('ai');
         setSelectedAccountId('');
         setMappingPreview([]);
+        setExtendedPreviewData([]);
+        setFullTransactionData([]);
         setCurrentStep(1);
         setProgress(0);
         setNewAccountForm({ name: '', propensity: AccountPropensity.CHECKING, balance: '' });
@@ -475,6 +639,19 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
               />
             </div>
             
+            {/* CSV 계좌 매핑 정보 표시 */}
+            {csvData && columnMapping.account !== undefined && csvData.rows.length > 0 && (
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <div className="text-sm font-medium text-blue-800 mb-1">📋 CSV에서 발견된 계좌 정보:</div>
+                <div className="text-sm text-blue-700">
+                  "{csvData.rows[0][columnMapping.account]?.trim() || '정보 없음'}"
+                  {selectedAccountId && accounts.find(acc => acc.id === selectedAccountId) && (
+                    <span className="ml-2 text-green-600">✅ 자동 매칭됨</span>
+                  )}
+                </div>
+              </div>
+            )}
+
             {accounts.length > 0 ? (
               <div className="mb-6">
                 <legend className={modalFormStyles.label}>계좌 선택:</legend>
@@ -632,24 +809,30 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
             
             <div className="space-y-3 mb-6">
               {[
-                { key: 'date', label: '날짜', required: true, description: '거래 발생 일자' },
-                { key: 'description', label: '설명', required: true, description: '거래 내역 또는 가맹점명' },
-                { key: 'amount', label: '금액', required: true, description: '거래 금액 (양수/음수 구분)' },
-                { key: 'type', label: '거래 유형', required: false, description: '입금/출금/이체 구분' },
-                { key: 'reference', label: '참조번호', required: false, description: '거래 고유번호 또는 승인번호' },
-                { key: 'category', label: '카테고리', required: false, description: '거래 카테고리 (자동 분류용)' },
-                { key: 'balance', label: '잔액', required: false, description: '거래 후 계좌 잔액' }
-              ].map(({ key, label, required, description }) => (
+                { key: 'date', label: '날짜', required: true, priority: 'REQUIRED', description: '거래 발생 일자' },
+                { key: 'description', label: '설명', required: true, priority: 'REQUIRED', description: '거래 내역 또는 가맹점명' },
+                { key: 'amount', label: '금액', required: true, priority: 'REQUIRED', description: '거래 금액 (양수/음수 구분)' },
+                { key: 'type', label: '거래 유형', required: false, priority: 'SEMI_REQUIRED', description: '입금/출금/이체 구분 (기본값: 지출)' },
+                { key: 'category', label: '카테고리', required: false, priority: 'SEMI_REQUIRED', description: '거래 카테고리 (기본값: 미분류)' },
+                { key: 'account', label: '계좌', required: false, priority: 'SEMI_REQUIRED', description: '계좌 정보 (별도 선택 가능)' },
+                { key: 'reference', label: '참조번호', required: false, priority: 'OPTIONAL', description: '거래 고유번호 또는 승인번호' },
+                { key: 'balance', label: '잔액', required: false, priority: 'OPTIONAL', description: '거래 후 계좌 잔액' },
+                { key: 'installmentMonths', label: '할부 개월수', required: false, priority: 'OPTIONAL', description: '할부 개월수 (신용카드 할부용)' },
+                { key: 'isInterestFree', label: '무이자 할부', required: false, priority: 'OPTIONAL', description: '무이자 할부 여부' }
+              ].map(({ key, label, required, priority, description }) => (
                 <div key={key} className={`rounded-lg border p-4 ${
-                  required 
+                  priority === 'REQUIRED' 
                     ? 'border-red-200 bg-red-50/30' 
+                    : priority === 'SEMI_REQUIRED'
+                    ? 'border-yellow-200 bg-yellow-50/30'
                     : 'border-slate-200 bg-slate-50/30'
                 }`}>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
                     <div className="space-y-1">
                       <label className="block text-sm font-semibold text-slate-700">
-                        {required ? '🔴' : '🔵'} {label}
+                        {priority === 'REQUIRED' ? '🔴' : priority === 'SEMI_REQUIRED' ? '🟡' : '🔵'} {label}
                         {required && <span className="text-red-500 ml-1">*</span>}
+                        {priority === 'SEMI_REQUIRED' && <span className="text-yellow-600 ml-1 text-xs">(기본값 사용)</span>}
                       </label>
                       <p className="text-xs text-slate-500 leading-tight">{description}</p>
                     </div>
@@ -727,6 +910,8 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                   transactions={mappingPreview} 
                   maxHeight="max-h-40"
                   showSummary={false}
+                  showExtendedFields={true}
+                  extendedData={extendedPreviewData}
                 />
               </div>
             </div>
@@ -741,17 +926,8 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
               </Button>
               <Button 
                 type="button" 
-                onClick={() => {
-                  console.log('Debug - columnMapping:', columnMapping);
-                  console.log('Debug - parsedColumns:', parsedColumns);
-                  console.log('Debug - Button enabled conditions:', {
-                    hasDate: !!columnMapping.date,
-                    hasDescription: !!columnMapping.description,
-                    hasAmount: !!columnMapping.amount
-                  });
-                  handleMappingConfirm();
-                }}
-                disabled={columnMapping.date === undefined || columnMapping.description === undefined || columnMapping.amount === undefined}
+                onClick={handleMappingConfirm}
+                disabled={!LocalCsvParser.validateRequiredFields(columnMapping).isValid}
                 variant="primary"
               >
                 다음
@@ -764,49 +940,43 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
           <div className={modalFormStyles.section}>
             <h3 className="text-lg font-medium text-slate-900 mb-4">거래 내역 확인</h3>
             <p className="text-slate-600 mb-4">발견된 거래 내역을 검토하고 확인하여 추가하세요.</p>
-            <div className="mb-4">
-              <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-md">
-                <span className={modalFormStyles.label}>대상 계좌: </span>
-                <span className="text-slate-900 font-medium">
-                  {selectedAccountId === 'no-account' 
-                    ? '❓ 계좌 정보 없음 (기존 계좌 선택 또는 새 계좌 생성 필요)'
-                    : accounts.find(acc => acc.id === selectedAccountId)?.name || '알 수 없는 계좌'
-                  }
-                </span>
+            {/* AI 모드의 경우 자동 선택된 계좌 정보 표시 */}
+            {parseMode !== 'local' && (
+              <div className="mb-4">
+                <div className="bg-blue-50 border border-blue-200 p-3 rounded-md">
+                  <span className={modalFormStyles.label}>대상 계좌: </span>
+                  <span className="text-slate-900 font-medium">
+                    {accounts.find(acc => acc.id === selectedAccountId)?.name || '알 수 없는 계좌'}
+                  </span>
+                  <span className="ml-2 text-blue-600 text-sm">
+                    {extendedPreviewData.some(d => d.account && d.account !== '미지정') ? '🔍 AI 인식됨' : '✨ 자동 선택됨'}
+                  </span>
+                </div>
               </div>
-            </div>
-            <div className="max-h-64 overflow-y-auto border rounded-md p-2 bg-slate-50 relative">
-              <table className="w-full text-sm">
-                <thead className="sticky top-0 z-10 bg-slate-50">
-                  <tr className="text-left text-slate-600">
-                    <th className="p-2 bg-slate-50">날짜</th>
-                    <th className="p-2 bg-slate-50">설명</th>
-                    <th className="p-2 bg-slate-50">금액</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {analyzedTransactions.map((t, i) => (
-                    <tr key={i} className="border-t">
-                      <td className="p-2">{t.date}</td>
-                      <td className="p-2">{t.description}</td>
-                      <td className={`p-2 font-semibold ${t.type === 'INCOME' ? 'text-green-600' : 'text-red-600'}`}>
-                        {t.type === 'INCOME' ? '+' : '-'}
-                        {formatCurrency(t.amount)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            )}
+            
+            {/* 확장된 미리보기 사용 (AI 모드에서도 확장 정보 표시) */}
+            <TransactionPreview 
+              transactions={analyzedTransactions}
+              maxHeight="max-h-64"
+              showSummary={true}
+              showExtendedFields={true}
+              extendedData={extendedPreviewData}
+            />
             <div className={modalFormStyles.actions}>
-                <Button type="button" onClick={() => setStep('account')} variant="secondary">이전: 계좌 변경</Button>
+                <Button 
+                  type="button" 
+                  onClick={() => setStep(parseMode === 'local' ? 'mapping' : 'upload')} 
+                  variant="secondary"
+                >
+                  {parseMode === 'local' ? '이전: 매핑 수정' : '이전: 파일 변경'}
+                </Button>
                 <Button 
                   type="button" 
                   onClick={handleConfirm} 
-                  disabled={selectedAccountId === 'no-account'}
                   variant="primary"
                 >
-                  {selectedAccountId === 'no-account' ? '계좌 선택 필요' : '확인 및 추가'}
+                  확인 및 추가
                 </Button>
             </div>
           </div>
