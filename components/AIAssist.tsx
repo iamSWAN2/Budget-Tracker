@@ -250,7 +250,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
               <button
                 type="button"
                 onClick={() => setStep('new-account')}
-                className="w-full p-3 border-2 border-dashed border-slate-300 rounded-md text-slate-600 hover:border-indigo-500 hover:text-indigo-600 transition-colors"
+                className="w-full p-3 border-2 border-dashed border-slate-400 rounded-md text-slate-600 hover:border-indigo-500 hover:text-indigo-600 transition-colors"
               >
                 + 새 계좌 생성
               </button>
@@ -304,7 +304,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
               }
             </p>
             
-            <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center">
+            <div className="border-2 border-dashed border-slate-400 rounded-lg p-8 text-center">
               <label htmlFor="file-upload" className="cursor-pointer text-indigo-600 font-semibold">
 파일 선택
               </label>
@@ -361,7 +361,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                           ...prev,
                           [key]: e.target.value ? parseInt(e.target.value) : undefined
                         }))}
-                        className="w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                        className="w-full rounded-md border-slate-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
                       >
                         <option value="">{required ? '⚠️ 필수 선택' : '📋 선택 안함'}</option>
                         {parsedColumns.map((col, index) => (
@@ -494,7 +494,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                   value={newAccountForm.name} 
                   onChange={(e) => setNewAccountForm(prev => ({ ...prev, name: e.target.value }))}
                   required 
-                  className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" 
+                  className="mt-1 block w-full rounded-md border-slate-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" 
                 />
               </div>
               <div>
@@ -503,7 +503,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                   id="ai-account-type"
                   value={newAccountForm.propensity} 
                   onChange={(e) => setNewAccountForm(prev => ({ ...prev, propensity: e.target.value as AccountPropensity }))}
-                  className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-slate-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                 >
                   {Object.values(AccountPropensity).map(type => 
                     <option key={type} value={type}>{type}</option>
@@ -519,7 +519,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                   onChange={(e) => setNewAccountForm(prev => ({ ...prev, balance: e.target.value }))}
                   step="0.01" 
                   placeholder="초기 잔액을 입력하세요" 
-                  className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" 
+                  className="mt-1 block w-full rounded-md border-slate-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" 
                 />
               </div>
             </div>

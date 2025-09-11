@@ -6,6 +6,7 @@ import { Account, AccountPropensity, TransactionType } from '../types';
 import { Modal } from '../components/ui/Modal';
 import { formatCurrency } from '../utils/format';
 import { useI18n } from '../i18n/I18nProvider';
+import { modalFormStyles } from '../components/ui/FormStyles';
 
 // 계좌 유형별 분류 함수
 const getAccountCategory = (propensity: AccountPropensity): string => {
@@ -377,14 +378,14 @@ const AccountForm: React.FC<{
 
             {/* 탭 컨텐츠 */}
             {activeTab === 'single' && (
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className={modalFormStyles.section}>
                     <div>
-                        <label htmlFor="account-name" className="block text-sm font-medium text-slate-700">계좌명</label>
-                        <input id="account-name" type="text" name="name" value={formData.name} onChange={handleChange} required className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                        <label htmlFor="account-name" className={modalFormStyles.label}>계좌명</label>
+                        <input id="account-name" type="text" name="name" value={formData.name} onChange={handleChange} required className={modalFormStyles.input} />
                     </div>
                     <div>
-                        <label htmlFor="account-propensity" className="block text-sm font-medium text-slate-700">계좌 유형</label>
-                        <select id="account-propensity" name="propensity" value={formData.propensity} onChange={handleChange} className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        <label htmlFor="account-propensity" className={modalFormStyles.label}>계좌 유형</label>
+                        <select id="account-propensity" name="propensity" value={formData.propensity} onChange={handleChange} className={modalFormStyles.select}>
                             <optgroup label="계좌">
                                 <option value={AccountPropensity.CHECKING}>{AccountPropensity.CHECKING}</option>
                                 <option value={AccountPropensity.SAVINGS}>{AccountPropensity.SAVINGS}</option>
@@ -398,7 +399,7 @@ const AccountForm: React.FC<{
                         </select>
                     </div>
                     <div>
-                        <label htmlFor="account-initialBalance" className="block text-sm font-medium text-slate-700">초기 잔액 (오프닝 밸런스)</label>
+                        <label htmlFor="account-initialBalance" className={modalFormStyles.label}>초기 잔액 (오프닝 밸런스)</label>
                         <input 
                             id="account-initialBalance"
                             type="number" 
@@ -407,7 +408,7 @@ const AccountForm: React.FC<{
                             onChange={handleChange} 
                             step="0.01" 
                             placeholder={account ? `현재: ${formatCurrency(account.initialBalance ?? 0)}` : "초기 잔액을 입력하세요"} 
-                            className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" 
+                            className={modalFormStyles.input} 
                         />
                         <p className="mt-1 text-xs text-slate-500">
                             이 계좌의 시작 잔액입니다. 거래 내역과 별도로 관리됩니다.
@@ -415,7 +416,7 @@ const AccountForm: React.FC<{
                     </div>
                     {account && (
                         <div>
-                            <label htmlFor="account-balance" className="block text-sm font-medium text-slate-700">현재 잔액</label>
+                            <label htmlFor="account-balance" className={modalFormStyles.label}>현재 잔액</label>
                             <input 
                                 id="account-balance"
                                 type="number" 
@@ -424,7 +425,7 @@ const AccountForm: React.FC<{
                                 onChange={handleChange} 
                                 step="0.01" 
                                 placeholder={`현재: ${formatCurrency(account.balance)}`} 
-                                className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" 
+                                className={modalFormStyles.input} 
                             />
                             <p className="mt-1 text-xs text-slate-500">
                                 실제 현재 잔액입니다. 초기 잔액 + 거래 내역 = 현재 잔액
@@ -433,13 +434,13 @@ const AccountForm: React.FC<{
                     )}
                     {formData.propensity === AccountPropensity.CREDIT_CARD && (
                         <div>
-                            <label htmlFor="account-paymentDay" className="block text-sm font-medium text-slate-700">결제일</label>
+                            <label htmlFor="account-paymentDay" className={modalFormStyles.label}>결제일</label>
                             <select
                                 id="account-paymentDay"
                                 name="paymentDay"
                                 value={formData.paymentDay}
                                 onChange={handleChange}
-                                className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                className={modalFormStyles.select}
                             >
                                 {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
                                     <option key={day} value={day}>{day}일</option>
@@ -447,7 +448,7 @@ const AccountForm: React.FC<{
                             </select>
                         </div>
                     )}
-                    <div className="flex justify-end pt-4 space-x-2">
+                    <div className={modalFormStyles.actions}>
                         <Button type="button" onClick={onClose} variant="secondary" size="sm">취소</Button>
                         <Button type="submit" variant="primary" size="sm">계좌 저장</Button>
                     </div>
@@ -469,7 +470,7 @@ const AccountForm: React.FC<{
                             onChange={(e) => handleBulkTextChange(e.target.value)}
                             rows={8}
                             placeholder="신한은행 주계좌 Checking 1500000 1000000&#10;삼성카드 Credit Card -200000 0 14&#10;적금계좌 Savings 5000000 3000000"
-                            className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                            className="mt-1 block w-full rounded-md border-slate-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                         />
                     </div>
 
@@ -489,7 +490,7 @@ const AccountForm: React.FC<{
                                         type="checkbox"
                                         checked={removeDuplicates}
                                         onChange={(e) => handleDuplicateToggle(e.target.checked)}
-                                        className="mr-2 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded"
+                                        className="mr-2 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-400 rounded"
                                     />
                                     중복 제거
                                 </label>
@@ -587,7 +588,7 @@ const AccountForm: React.FC<{
                                     <select
                                         value={columnMapping.name ?? ''}
                                         onChange={(e) => handleColumnMappingChange('name', e.target.value ? parseInt(e.target.value) : null)}
-                                        className="w-full text-xs border border-slate-300 rounded px-2 py-1"
+                                        className="w-full text-xs border border-slate-400 rounded px-2 py-1"
                                     >
                                         <option value="">선택 안함</option>
                                         {csvHeaders.map((header, index) => (
@@ -600,7 +601,7 @@ const AccountForm: React.FC<{
                                     <select
                                         value={columnMapping.propensity ?? ''}
                                         onChange={(e) => handleColumnMappingChange('propensity', e.target.value ? parseInt(e.target.value) : null)}
-                                        className="w-full text-xs border border-slate-300 rounded px-2 py-1"
+                                        className="w-full text-xs border border-slate-400 rounded px-2 py-1"
                                     >
                                         <option value="">선택 안함</option>
                                         {csvHeaders.map((header, index) => (
@@ -613,7 +614,7 @@ const AccountForm: React.FC<{
                                     <select
                                         value={columnMapping.balance ?? ''}
                                         onChange={(e) => handleColumnMappingChange('balance', e.target.value ? parseInt(e.target.value) : null)}
-                                        className="w-full text-xs border border-slate-300 rounded px-2 py-1"
+                                        className="w-full text-xs border border-slate-400 rounded px-2 py-1"
                                     >
                                         <option value="">선택 안함</option>
                                         {csvHeaders.map((header, index) => (
@@ -626,7 +627,7 @@ const AccountForm: React.FC<{
                                     <select
                                         value={columnMapping.initialBalance ?? ''}
                                         onChange={(e) => handleColumnMappingChange('initialBalance', e.target.value ? parseInt(e.target.value) : null)}
-                                        className="w-full text-xs border border-slate-300 rounded px-2 py-1"
+                                        className="w-full text-xs border border-slate-400 rounded px-2 py-1"
                                     >
                                         <option value="">선택 안함</option>
                                         {csvHeaders.map((header, index) => (
@@ -639,7 +640,7 @@ const AccountForm: React.FC<{
                                     <select
                                         value={columnMapping.paymentDay ?? ''}
                                         onChange={(e) => handleColumnMappingChange('paymentDay', e.target.value ? parseInt(e.target.value) : null)}
-                                        className="w-full text-xs border border-slate-300 rounded px-2 py-1"
+                                        className="w-full text-xs border border-slate-400 rounded px-2 py-1"
                                     >
                                         <option value="">선택 안함</option>
                                         {csvHeaders.map((header, index) => (
@@ -667,7 +668,7 @@ const AccountForm: React.FC<{
                                         type="checkbox"
                                         checked={removeDuplicates}
                                         onChange={(e) => handleDuplicateToggle(e.target.checked)}
-                                        className="mr-2 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded"
+                                        className="mr-2 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-400 rounded"
                                     />
                                     중복 제거
                                 </label>

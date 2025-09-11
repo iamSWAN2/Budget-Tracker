@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '../ui/Button';
 import { Transaction, TransactionType, Account, Category } from '../../types';
+import { modalFormStyles } from '../ui/FormStyles';
 
 interface TransactionFormProps {
     transaction: Partial<Transaction> | null;
@@ -69,9 +70,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className={modalFormStyles.section}>
             <div>
-                <label htmlFor="transaction-description" className="block text-sm font-medium text-slate-700">설명</label>
+                <label htmlFor="transaction-description" className={modalFormStyles.label}>설명</label>
                 <input 
                     id="transaction-description" 
                     type="text" 
@@ -80,12 +81,12 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                     onChange={handleChange} 
                     required 
                     autoComplete="off" 
-                    className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" 
+                    className="mt-1 block w-full rounded-md border-slate-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-2 sm:text-sm px-3 py-2.5 bg-white text-slate-900" 
                 />
             </div>
             <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label htmlFor="transaction-amount" className="block text-sm font-medium text-slate-700">금액</label>
+                    <label htmlFor="transaction-amount" className={modalFormStyles.label}>금액</label>
                     <input 
                         id="transaction-amount" 
                         type="number" 
@@ -94,11 +95,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                         onChange={handleChange} 
                         required 
                         autoComplete="off" 
-                        className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" 
+                        className="mt-1 block w-full rounded-md border-slate-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-2 sm:text-sm px-3 py-2.5 bg-white text-slate-900" 
                     />
                 </div>
                 <div>
-                    <label htmlFor="transaction-date" className="block text-sm font-medium text-slate-700">날짜</label>
+                    <label htmlFor="transaction-date" className={modalFormStyles.label}>날짜</label>
                     <input 
                         id="transaction-date" 
                         type="date" 
@@ -107,20 +108,20 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                         onChange={handleChange} 
                         required 
                         autoComplete="off" 
-                        className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" 
+                        className="mt-1 block w-full rounded-md border-slate-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-2 sm:text-sm px-3 py-2.5 bg-white text-slate-900" 
                     />
                 </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label htmlFor="transaction-type" className="block text-sm font-medium text-slate-700">타입</label>
+                    <label htmlFor="transaction-type" className={modalFormStyles.label}>타입</label>
                     <select 
                         id="transaction-type" 
                         name="type" 
                         value={formData.type} 
                         onChange={handleChange} 
                         autoComplete="off" 
-                        className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        className="mt-1 block w-full rounded-md border-slate-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-2 sm:text-sm px-3 py-2.5 bg-white text-slate-900"
                     >
                         {Object.values(TransactionType).map(type => (
                             <option key={type} value={type}>
@@ -130,7 +131,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                     </select>
                 </div>
                 <div>
-                    <label htmlFor="transaction-account" className="block text-sm font-medium text-slate-700">계좌</label>
+                    <label htmlFor="transaction-account" className={modalFormStyles.label}>계좌</label>
                     <select 
                         id="transaction-account" 
                         name="accountId" 
@@ -138,14 +139,14 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                         onChange={handleChange} 
                         required 
                         autoComplete="off" 
-                        className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                        className="mt-1 block w-full rounded-md border-slate-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-2 sm:text-sm px-3 py-2.5 bg-white text-slate-900"
                     >
                         {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
                     </select>
                 </div>
             </div>
             <div>
-                <label htmlFor="transaction-category" className="block text-sm font-medium text-slate-700">카테고리</label>
+                <label htmlFor="transaction-category" className={modalFormStyles.label}>카테고리</label>
                 <select 
                     id="transaction-category" 
                     name="category" 
@@ -153,7 +154,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                     onChange={handleChange} 
                     required 
                     autoComplete="off" 
-                    className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    className="mt-1 block w-full rounded-md border-slate-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-2 sm:text-sm px-3 py-2.5 bg-white text-slate-900"
                 >
                     <option value="">카테고리를 선택하세요</option>
                     {(() => {
@@ -187,7 +188,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
              {formData.type === TransactionType.EXPENSE && (
                 <div className="space-y-4">
                     <div>
-                        <label htmlFor="transaction-installments" className="block text-sm font-medium text-slate-700">할부 개월 (1: 일시불)</label>
+                        <label htmlFor="transaction-installments" className={modalFormStyles.label}>할부 개월 (1: 일시불)</label>
                         <input 
                             id="transaction-installments" 
                             type="number" 
@@ -197,7 +198,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                             value={formData.installmentMonths} 
                             onChange={handleChange} 
                             autoComplete="off" 
-                            className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" 
+                            className="mt-1 block w-full rounded-md border-slate-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-2 sm:text-sm px-3 py-2.5 bg-white text-slate-900" 
                         />
                     </div>
                     
@@ -210,7 +211,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                                     name="isInterestFree" 
                                     checked={formData.isInterestFree}
                                     onChange={handleChange} 
-                                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded"
+                                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-400 rounded"
                                 />
                                 <label htmlFor="transaction-interest-free" className="ml-2 block text-sm text-slate-700">
                                     무이자 할부
@@ -247,7 +248,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                     )}
                 </div>
             )}
-            <div className="flex justify-end pt-4 space-x-2">
+            <div className={modalFormStyles.actions}>
                 <Button type="button" onClick={onClose} variant="secondary" size="sm">취소</Button>
                 <Button type="submit" variant="primary" size="sm">저장</Button>
             </div>

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Account, Category, Transaction, TransactionType } from '../../types';
 import { useI18n } from '../../i18n/I18nProvider';
 import { formatCurrency } from '../../utils/format';
+import { inlineFormStyles } from '../ui/FormStyles';
+import { Button } from '../ui/Button';
 
 type Props = {
   transaction: Transaction;
@@ -52,31 +54,31 @@ export const EditTransactionFormInline: React.FC<Props> = ({ transaction, accoun
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-2">
+    <form onSubmit={handleSubmit} className={inlineFormStyles.section}>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-medium text-slate-700 mb-1">{t('form.type')}</label>
-          <div className="inline-flex rounded-md overflow-hidden border border-slate-300">
-            <button type="button" onClick={() => setTransactionType(TransactionType.INCOME)} className={`px-3 py-1.5 text-xs ${transactionType === TransactionType.INCOME ? 'bg-green-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300'}`}>{t('form.income')}</button>
-            <button type="button" onClick={() => setTransactionType(TransactionType.EXPENSE)} className={`px-3 py-1.5 text-xs border-l ${transactionType === TransactionType.EXPENSE ? 'bg-red-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300'}`}>{t('form.expense')}</button>
-            <button type="button" onClick={() => setTransactionType(TransactionType.TRANSFER)} className={`px-3 py-1.5 text-xs border-l ${transactionType === TransactionType.TRANSFER ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300'}`}>기타</button>
+          <label className={inlineFormStyles.label}>{t('form.type')}</label>
+          <div className="inline-flex rounded-md overflow-hidden border border-slate-400">
+            <button type="button" onClick={() => setTransactionType(TransactionType.INCOME)} className={`px-3 py-1.5 text-xs ${transactionType === TransactionType.INCOME ? 'bg-green-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-400'}`}>{t('form.income')}</button>
+            <button type="button" onClick={() => setTransactionType(TransactionType.EXPENSE)} className={`px-3 py-1.5 text-xs border-l ${transactionType === TransactionType.EXPENSE ? 'bg-red-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-400'}`}>{t('form.expense')}</button>
+            <button type="button" onClick={() => setTransactionType(TransactionType.TRANSFER)} className={`px-3 py-1.5 text-xs border-l ${transactionType === TransactionType.TRANSFER ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-400'}`}>기타</button>
           </div>
         </div>
         <div>
-          <label className="block text-xs font-medium text-slate-700 mb-1">{t('form.date')}</label>
-          <input type="date" name="date" value={formData.date} onChange={handleFormChange} className="w-full px-2.5 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" required />
+          <label className={inlineFormStyles.label}>{t('form.date')}</label>
+          <input type="date" name="date" value={formData.date} onChange={handleFormChange} className="block w-full rounded-md border-slate-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-2 text-sm px-2.5 py-1.5 bg-white text-slate-900" required />
         </div>
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-slate-700 mb-1">{t('form.description')}</label>
-        <input type="text" name="description" value={formData.description} onChange={handleFormChange} placeholder={t('form.description')} className="w-full px-2.5 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" required />
+        <label className={inlineFormStyles.label}>{t('form.description')}</label>
+        <input type="text" name="description" value={formData.description} onChange={handleFormChange} placeholder={t('form.description')} className="block w-full rounded-md border-slate-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-2 text-sm px-2.5 py-1.5 bg-white text-slate-900" required />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-medium text-slate-700 mb-1">{t('form.account')}</label>
-          <select name="accountId" value={formData.accountId} onChange={handleFormChange} className="w-full px-2.5 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" required>
+          <label className={inlineFormStyles.label}>{t('form.account')}</label>
+          <select name="accountId" value={formData.accountId} onChange={handleFormChange} className="block w-full rounded-md border-slate-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-2 text-sm px-2.5 py-1.5 bg-white text-slate-900" required>
             <option value="" disabled>계좌를 선택하세요</option>
             {accounts.map(account => (
               <option key={account.id} value={account.id}>{account.name} ({account.propensity})</option>
@@ -84,8 +86,8 @@ export const EditTransactionFormInline: React.FC<Props> = ({ transaction, accoun
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-slate-700 mb-1">{t('form.category')}</label>
-          <select name="category" value={formData.category} onChange={handleFormChange} className="w-full px-2.5 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" required>
+          <label className={inlineFormStyles.label}>{t('form.category')}</label>
+          <select name="category" value={formData.category} onChange={handleFormChange} className="block w-full rounded-md border-slate-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-2 text-sm px-2.5 py-1.5 bg-white text-slate-900" required>
             <option value="" disabled>카테고리 선택</option>
             {(() => {
               const typeFiltered = categories.filter(c => c.type === transactionType && c.isActive);
@@ -111,8 +113,8 @@ export const EditTransactionFormInline: React.FC<Props> = ({ transaction, accoun
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-medium text-slate-700 mb-1">{t('form.amount')}</label>
-          <input type="number" name="amount" value={formData.amount} onChange={handleFormChange} placeholder="0" step="1" className="w-full px-2.5 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" required />
+          <label className={inlineFormStyles.label}>{t('form.amount')}</label>
+          <input type="number" name="amount" value={formData.amount} onChange={handleFormChange} placeholder="0" step="1" className="block w-full rounded-md border-slate-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-2 text-sm px-2.5 py-1.5 bg-white text-slate-900" required />
         </div>
         {transactionType === TransactionType.EXPENSE && (() => {
           const selectedAccount = accounts.find(acc => acc.id === formData.accountId);
@@ -121,17 +123,17 @@ export const EditTransactionFormInline: React.FC<Props> = ({ transaction, accoun
           return (
             <div className="flex items-end gap-3">
               <div className={formData.installmentMonths > 1 && isInstallmentAvailable ? 'flex-shrink-0 w-20' : 'flex-1'}>
-                <label className="block text-xs font-medium text-slate-700 mb-1">
+                <label className={inlineFormStyles.label}>
                   할부 개월
                   {!isInstallmentAvailable && formData.accountId && (
                     <span className="text-xs text-slate-400 ml-1">(신용카드만)</span>
                   )}
                 </label>
-                <input type="number" name="installmentMonths" min={1} step={1} value={isInstallmentAvailable ? formData.installmentMonths : 1} onChange={handleFormChange} disabled={!isInstallmentAvailable} className={`w-full px-2.5 py-1.5 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 ${!isInstallmentAvailable ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : ''}`} />
+                <input type="number" name="installmentMonths" min={1} step={1} value={isInstallmentAvailable ? formData.installmentMonths : 1} onChange={handleFormChange} disabled={!isInstallmentAvailable} className={`block w-full rounded-md border-slate-400 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-2 text-sm px-2.5 py-1.5 bg-white text-slate-900 ${!isInstallmentAvailable ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : ''}`} />
               </div>
               {isInstallmentAvailable && formData.installmentMonths > 1 && (
                 <div className="flex items-center gap-2">
-                  <input type="checkbox" id="isInterestFreeEdit" name="isInterestFree" checked={formData.isInterestFree} onChange={handleFormChange} className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-300 rounded" />
+                  <input type="checkbox" id="isInterestFreeEdit" name="isInterestFree" checked={formData.isInterestFree} onChange={handleFormChange} className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-slate-400 rounded" />
                   <label htmlFor="isInterestFreeEdit" className="text-xs text-slate-700">무이자</label>
                 </div>
               )}
@@ -162,9 +164,9 @@ export const EditTransactionFormInline: React.FC<Props> = ({ transaction, accoun
       )}
 
       <div className="pt-2">
-        <button type="submit" className="w-full bg-indigo-600 text-white py-3 px-4 rounded-md hover:bg-indigo-700 font-medium text-sm">
+        <Button type="submit" variant="primary" size="md" className="w-full justify-center">
           {t('form.save') || '저장'}
-        </button>
+        </Button>
       </div>
     </form>
   );

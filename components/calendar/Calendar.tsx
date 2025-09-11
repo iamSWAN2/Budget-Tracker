@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useRef } from 'react';
 import { Button } from '../ui/Button';
 import { PlusIcon } from '../icons/Icons';
 
@@ -38,37 +38,62 @@ export const Calendar: React.FC<CalendarProps> = ({ visibleDate, onVisibleDateCh
 
   const label = `${visibleDate.getFullYear()}년 ${visibleDate.getMonth() + 1}월`;
 
-  const handlePrev = () => {
+  const handlePrev = useCallback(() => {
     const d = new Date(visibleDate);
     d.setMonth(d.getMonth() - 1);
     onVisibleDateChange(d);
     // 월을 바꾸면 기본값(월 전체)로 복귀
     onSelectedRangeChange(null);
-  };
-  const handleNext = () => {
+  }, [visibleDate, onVisibleDateChange, onSelectedRangeChange]);
+  
+  const handleNext = useCallback(() => {
     const d = new Date(visibleDate);
     d.setMonth(d.getMonth() + 1);
     onVisibleDateChange(d);
     onSelectedRangeChange(null);
-  };
+  }, [visibleDate, onVisibleDateChange, onSelectedRangeChange]);
 
-  const beginDrag = (date: Date) => {
+  const beginDrag = useCallback((date: Date) => {
     setDragging({ start: date, end: date });
     onSelectedRangeChange({ start: date, end: date });
-  };
-  const extendDrag = (date: Date) => {
+  }, [onSelectedRangeChange]);
+  
+  const extendDrag = useCallback((date: Date) => {
     setDragging(prev => {
       if (!prev) return prev;
-      const start = prev.start < date ? prev.start : date;
-      const end = prev.start < date ? date : prev.start;
-      onSelectedRangeChange({ start, end });
-      return { start: prev.start, end: date };
+      const newRange = { start: prev.start, end: date };
+      
+      // 즉시 선택 범위 업데이트 (드래그 중 실시간 피드백)
+      setTimeout(() => {
+        const start = newRange.start < newRange.end ? newRange.start : newRange.end;
+        const end = newRange.start < newRange.end ? newRange.end : newRange.start;
+        onSelectedRangeChange({ start, end });
+      }, 0);
+      
+      return newRange;
     });
-  };
-  const endDrag = () => setDragging(null);
+    isInitialDrag.current = false;
+  }, [onSelectedRangeChange]);
+  
+  const endDrag = useCallback(() => setDragging(null), []);
 
+  const handleDateClick = useCallback((date: Date) => {
+    if (!dragging) {
+      onSelectedRangeChange({ start: date, end: date });
+    }
+  }, [dragging, onSelectedRangeChange]);
+
+  const handleResetRange = useCallback(() => {
+    onSelectedRangeChange(null);
+  }, [onSelectedRangeChange]);
+
+  const isInitialDrag = useRef(true);
+  
   React.useEffect(() => {
-    const up = () => setDragging(null);
+    const up = () => {
+      setDragging(null);
+      isInitialDrag.current = true;
+    };
     window.addEventListener('pointerup', up);
     return () => window.removeEventListener('pointerup', up);
   }, []);
@@ -136,7 +161,7 @@ export const Calendar: React.FC<CalendarProps> = ({ visibleDate, onVisibleDateCh
               <button
                 onPointerDown={() => beginDrag(d)}
                 onPointerEnter={() => dragging && extendDrag(d)}
-                onClick={() => onSelectedRangeChange({ start: d, end: d })}
+                onClick={() => handleDateClick(d)}
                 className={`w-full h-full rounded-md text-sm relative transition
                   ${isStart(d) || isEnd(d) ? 'bg-indigo-600 text-white' : inSelected(d) ? 'bg-indigo-100 text-indigo-700' : 'hover:bg-slate-100'}
                   ${sameDay(d, cur) ? 'ring-1 ring-indigo-400' : ''}
@@ -156,7 +181,7 @@ export const Calendar: React.FC<CalendarProps> = ({ visibleDate, onVisibleDateCh
 
       {/* Footer helpers */}
       <div className="mt-2 flex items-center justify-between">
-        <button className="text-[11px] text-slate-500 hover:text-slate-700" onClick={() => onSelectedRangeChange(null)}>이 달 전체</button>
+        <button className="text-[11px] text-slate-500 hover:text-slate-700" onClick={handleResetRange}>이 달 전체</button>
         {selectedRange ? (
           <div className="text-[11px] text-slate-500">
             {`${selectedRange.start.getMonth()+1}/${selectedRange.start.getDate()} – ${selectedRange.end.getMonth()+1}/${selectedRange.end.getDate()}`}
