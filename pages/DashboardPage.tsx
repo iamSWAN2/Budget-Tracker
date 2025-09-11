@@ -18,6 +18,8 @@ import { SimplePieChart } from '../components/charts/SimplePieChart';
 import { MonthlyTrendDisplay } from '../components/charts/MonthlyTrendDisplay';
 import { Calendar } from '../components/calendar/Calendar';
 const AIAssist = React.lazy(() => import('../components/AIAssist'));
+import { FloatingActionMenu } from '../components/ui/FloatingActionMenu';
+import { AIIcon } from '../components/icons/Icons';
 
 // 개요 탭 컴포넌트
 const OverviewTab: React.FC<{
@@ -382,6 +384,8 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   // Edit modal state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  // AI modal state
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
 
   // Responsive: form collapsed on mobile, open on desktop
@@ -626,10 +630,14 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
 
       {/* Floating draggable toggle for form (mobile only) */}
       {!isDesktop && !isEditModalOpen && (
-        <FloatingFormToggle onOpen={() => {
-          setEditingTransaction(null);
-          setIsEditModalOpen(true);
-        }} />
+        <FloatingFormToggle 
+          data={data}
+          onOpen={() => {
+            setEditingTransaction(null);
+            setIsEditModalOpen(true);
+          }} 
+          onOpenAI={() => setIsAIModalOpen(true)}
+        />
       )}
 
       {/* Edit Transaction Modal */}
@@ -661,12 +669,23 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
           />
         )}
       </Modal>
+
+      {/* AI Modal */}
+      <Modal 
+        isOpen={isAIModalOpen} 
+        onClose={() => setIsAIModalOpen(false)} 
+        title="AI 거래 분석"
+      >
+        <React.Suspense fallback={<div className="text-center py-8">AI 로딩 중...</div>}>
+          <AIAssist data={data} />
+        </React.Suspense>
+      </Modal>
     </div>
   );
 };
 
-// Floating draggable round toggle button (mobile only)
-const FloatingFormToggle: React.FC<{ onOpen: () => void }> = ({ onOpen }) => {
+// Floating draggable menu button (mobile only)
+const FloatingFormToggle: React.FC<{ onOpen: () => void; onOpenAI: () => void; data: UseDataReturn }> = ({ onOpen, onOpenAI, data }) => {
   const [pos, setPos] = React.useState<{ x: number; y: number }>({ x: 16, y: 16 });
   const dragging = React.useRef(false);
   const moved = React.useRef(false);
@@ -710,28 +729,55 @@ const FloatingFormToggle: React.FC<{ onOpen: () => void }> = ({ onOpen }) => {
     offset.current = { x: e.clientX - pos.x, y: e.clientY - pos.y };
   };
 
+  // 메뉴 심볼 아이콘
+  const menuIcon = (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01" />
+    </svg>
+  );
+
   return (
-    <button
-      aria-label={'거래 폼 열기'}
-      onClick={(ev) => {
-        // 드래그 직후 클릭 방지
-        if (dragging.current || moved.current) {
-          ev.preventDefault();
-          ev.stopPropagation();
-          moved.current = false;
-          return;
-        }
-        onOpen();
-      }}
-      onPointerDown={onPointerDown}
-      className={
-        'fixed lg:hidden z-50 w-14 h-14 rounded-full shadow-lg border border-slate-200 flex items-center justify-center bg-indigo-600 hover:bg-indigo-500 text-white transition'
-      }
+    <div 
+      className="fixed lg:hidden z-50"
       style={{ left: pos.x, top: pos.y, touchAction: 'none' }}
+      onPointerDown={onPointerDown}
     >
-      <svg className={'w-6 h-6'} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
-      </svg>
-    </button>
+      <FloatingActionMenu 
+        triggerIcon={menuIcon}
+        position="left"
+        className="w-14 h-14 rounded-full shadow-lg border border-slate-400 bg-white hover:bg-slate-50 transition-all duration-200"
+      >
+        <>
+          {/* 거래 추가 버튼 */}
+          <button
+            onClick={(ev) => {
+              // 드래그 직후 클릭 방지
+              if (dragging.current || moved.current) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                moved.current = false;
+                return;
+              }
+              onOpen();
+            }}
+            aria-label="거래 추가"
+            className="w-14 h-14 rounded-full bg-indigo-600 hover:bg-indigo-500 focus:bg-indigo-700 text-white flex items-center justify-center shadow-lg border-2 border-white transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+          >
+            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
+            </svg>
+          </button>
+          
+          {/* AI 어시스트 버튼 */}
+          <button
+            onClick={() => onOpenAI()}
+            aria-label="AI 거래 분석"
+            className="w-14 h-14 rounded-full bg-purple-600 hover:bg-purple-500 focus:bg-purple-700 text-white flex items-center justify-center shadow-lg border-2 border-white transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+          >
+            <AIIcon />
+          </button>
+        </>
+      </FloatingActionMenu>
+    </div>
   );
 };

@@ -27,9 +27,10 @@ function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ');
 }
 
-export const Button: React.FC<ButtonProps> = ({ variant = 'primary', size = 'sm', className, children, ...rest }) => {
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({ variant = 'primary', size = 'sm', className, children, ...rest }, ref) => {
   return (
     <button
+      ref={ref}
       className={cn(
         'inline-flex items-center gap-2 transition focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed',
         variantClasses[variant],
@@ -41,6 +42,8 @@ export const Button: React.FC<ButtonProps> = ({ variant = 'primary', size = 'sm'
       {children}
     </button>
   );
-};
+});
+
+Button.displayName = 'Button';
 
 export default Button;

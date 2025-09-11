@@ -35,14 +35,14 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
 
   return (
     <div
-      className="fixed inset-0 z-50 flex justify-center items-end sm:items-center bg-slate-900/40 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex justify-center items-center bg-slate-900/40 backdrop-blur-sm"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label={title}
     >
       <div 
-        className="bg-white rounded-t-lg sm:rounded-lg shadow-2xl border border-slate-200 w-full max-w-lg relative max-h-[90vh] flex flex-col" 
+        className="bg-white rounded-lg shadow-2xl border border-slate-200 w-full max-w-lg relative max-h-[90vh] flex flex-col mx-4" 
         onClick={e => e.stopPropagation()}
       >
         <div className="flex justify-between items-center p-4 sm:p-6 pb-4 border-b bg-white flex-shrink-0">

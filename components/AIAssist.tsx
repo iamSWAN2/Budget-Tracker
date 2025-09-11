@@ -490,7 +490,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
 
   return (
     <>
-      <Button onClick={() => setIsModalOpen(true)} title="AI 가져오기" aria-label="AI 가져오기" variant="accent" size="sm" className="px-2.5 py-1.5">
+      <Button onClick={() => setIsModalOpen(true)} title="AI 가져오기" aria-label="AI 가져오기" variant="accent" size="icon" className="rounded-full w-full h-full">
         <AIIcon />
       </Button>
 
