@@ -74,35 +74,31 @@ export const FloatingActionMenu: React.FC<Props> = ({
 
   return (
     <div className={`relative ${className}`}>
-      {/* 트리거 버튼 (메뉴 닫혔을 때만 표시) */}
-      {!isOpen && (
-        <button
-          ref={triggerRef}
-          onClick={toggleMenu}
-          aria-label="더보기 메뉴"
-          aria-expanded={isOpen}
-          aria-haspopup="true"
-          className="w-full h-full rounded-full bg-white border border-slate-400 text-slate-600 hover:bg-slate-50 flex items-center justify-center shadow-lg transition-all duration-300 ease-out"
-        >
-          <div className="transform transition-transform duration-200">
-            {triggerIcon}
-          </div>
-        </button>
-      )}
+      {/* 트리거 버튼 */}
+      <button
+        ref={triggerRef}
+        onClick={toggleMenu}
+        aria-label="더보기 메뉴"
+        aria-expanded={isOpen}
+        aria-haspopup="true"
+        className={`w-full h-full rounded-full bg-gradient-to-br from-slate-100 to-slate-200 text-slate-700 hover:from-slate-200 hover:to-slate-300 active:from-slate-300 active:to-slate-400 flex items-center justify-center shadow-xl hover:shadow-2xl active:shadow-lg transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 ${isOpen ? 'hidden' : 'visible opacity-100 scale-100'}`}
+      >
+        <div className="transform transition-transform duration-200">
+          {triggerIcon}
+        </div>
+      </button>
 
       {/* 확장 메뉴 (세로 배치) */}
-      {isOpen && (
-        <div 
-          ref={menuRef}
-          className="absolute bottom-0 left-0 z-50"
-          role="menu"
-          aria-orientation="vertical"
-        >
-          <div className={`flex flex-col gap-3 transform transition-all duration-300 ease-out ${isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}>
-            {children}
-          </div>
+      <div 
+        ref={menuRef}
+        className={`absolute bottom-0 left-0 z-50 transition-all duration-300 ease-out ${isOpen ? 'visible scale-100 opacity-100 pointer-events-auto' : 'invisible scale-95 opacity-0 pointer-events-none'}`}
+        role="menu"
+        aria-orientation="vertical"
+      >
+        <div className="flex flex-col gap-3">
+          {children}
         </div>
-      )}
+      </div>
     </div>
   );
 };

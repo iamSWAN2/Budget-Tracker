@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Account, Category, Transaction, TransactionType } from '../../types';
 import { formatCurrency, formatDateDisplay } from '../../utils/format';
-import { IncomeSketch, ExpenseSketch, TransferSketch, DeleteIcon } from '../icons/Icons';
+import { DeleteIcon } from '../icons/Icons';
 
 interface TransactionItemProps {
   transaction: Transaction;
@@ -14,10 +14,10 @@ interface TransactionItemProps {
   categories: Category[];
 }
 
-// Use directional symbols to represent type explicitly
-// INCOME: ↑, EXPENSE: ↓, TRANSFER: ⇄
-const typeSymbol = (type: TransactionType) =>
-  type === TransactionType.INCOME ? '↑' : type === TransactionType.EXPENSE ? '↓' : '⇄';
+// Use emoji icons to represent type explicitly  
+// INCOME: 💰, EXPENSE: 💸, TRANSFER: 📋
+const typeEmoji = (type: TransactionType) =>
+  type === TransactionType.INCOME ? '💰' : type === TransactionType.EXPENSE ? '💸' : '📋';
 
 const typeCircleClasses = (type: TransactionType) =>
   type === TransactionType.INCOME
@@ -216,14 +216,8 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, a
               <option value={TransactionType.TRANSFER}>기타</option>
             </select>
           ) : (
-            <button className="w-full h-full flex items-center justify-center" onClick={() => setEditing('type')}>
-              {transaction.type === TransactionType.INCOME ? (
-                <IncomeSketch />
-              ) : transaction.type === TransactionType.EXPENSE ? (
-                <ExpenseSketch />
-              ) : (
-                <TransferSketch />
-              )}
+            <button className="w-full h-full flex items-center justify-center text-lg" onClick={() => setEditing('type')}>
+              {typeEmoji(transaction.type)}
             </button>
           )}
         </div>

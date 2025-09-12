@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, forwardRef, useImperativeHandle } from 'react';
 import { Modal } from './ui/Modal';
 import { AIIcon } from './icons/Icons';
 import { Spinner } from './ui/Spinner';
@@ -13,7 +13,11 @@ import { modalFormStyles } from './ui/FormStyles';
 import { TransactionPreview } from './ui/TransactionPreview';
 import { ProgressBar, ProgressStep } from './ui/ProgressBar';
 
-const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
+export interface AIAssistRef {
+  openModal: () => void;
+}
+
+const AIAssist = forwardRef<AIAssistRef, {data: UseDataReturn}>(({ data }, ref) => {
   const { accounts, addMultipleTransactions, addMultipleTransactionsWithAccounts, addMultipleFullTransactions, addAccount } = data;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [step, setStep] = useState<'method' | 'upload' | 'mapping' | 'account' | 'confirm' | 'loading' | 'error' | 'new-account'>('method');
@@ -36,6 +40,11 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
   // 진행률 관련 상태
   const [currentStep, setCurrentStep] = useState(1);
   const [progress, setProgress] = useState(0);
+
+  // 부모 컴포넌트에서 모달을 열 수 있도록 ref 노출
+  useImperativeHandle(ref, () => ({
+    openModal: () => setIsModalOpen(true)
+  }));
 
   // AI 처리 단계 정의
   const aiSteps: ProgressStep[] = [
@@ -490,10 +499,6 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
 
   return (
     <>
-      <Button onClick={() => setIsModalOpen(true)} title="AI 가져오기" aria-label="AI 가져오기" variant="accent" size="icon" className="rounded-full w-full h-full">
-        <AIIcon />
-      </Button>
-
       <Modal isOpen={isModalOpen} onClose={handleClose} title="거래 내역 가져오기">
         {step === 'method' && (
           <div className={modalFormStyles.section}>
@@ -1044,6 +1049,8 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
       </Modal>
     </>
   );
-};
+});
+
+AIAssist.displayName = 'AIAssist';
 
 export default AIAssist;

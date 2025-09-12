@@ -1,4 +1,4 @@
-import React, { useMemo, useState, Suspense } from 'react';
+import React, { useMemo, useState, Suspense, useRef } from 'react';
 import { UseDataReturn } from '../hooks/useData';
 import { TransactionType, Transaction } from '../types';
 import { Modal } from '../components/ui/Modal';
@@ -18,6 +18,7 @@ import { SimplePieChart } from '../components/charts/SimplePieChart';
 import { MonthlyTrendDisplay } from '../components/charts/MonthlyTrendDisplay';
 import { Calendar } from '../components/calendar/Calendar';
 const AIAssist = React.lazy(() => import('../components/AIAssist'));
+import { AIAssistRef } from '../components/AIAssist';
 import { FloatingActionMenu } from '../components/ui/FloatingActionMenu';
 import { AIIcon } from '../components/icons/Icons';
 
@@ -385,8 +386,8 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   // AI modal state
-  const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
+  const aiAssistRef = useRef<AIAssistRef>(null);
 
   // Responsive: form collapsed on mobile, open on desktop
   React.useEffect(() => {
@@ -636,7 +637,7 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
             setEditingTransaction(null);
             setIsEditModalOpen(true);
           }} 
-          onOpenAI={() => setIsAIModalOpen(true)}
+          onOpenAI={() => aiAssistRef.current?.openModal()}
         />
       )}
 
@@ -670,16 +671,10 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
         )}
       </Modal>
 
-      {/* AI Modal */}
-      <Modal 
-        isOpen={isAIModalOpen} 
-        onClose={() => setIsAIModalOpen(false)} 
-        title="AI 거래 분석"
-      >
-        <React.Suspense fallback={<div className="text-center py-8">AI 로딩 중...</div>}>
-          <AIAssist data={data} />
-        </React.Suspense>
-      </Modal>
+      {/* AIAssist 컴포넌트 - ref로 모달 제어 */}
+      <React.Suspense fallback={<div className="hidden">AI 로딩 중...</div>}>
+        <AIAssist ref={aiAssistRef} data={data} />
+      </React.Suspense>
     </div>
   );
 };
@@ -745,7 +740,7 @@ const FloatingFormToggle: React.FC<{ onOpen: () => void; onOpenAI: () => void; d
       <FloatingActionMenu 
         triggerIcon={menuIcon}
         position="left"
-        className="w-14 h-14 rounded-full shadow-lg border border-slate-400 bg-white hover:bg-slate-50 transition-all duration-200"
+        className="w-14 h-14"
       >
         <>
           {/* 거래 추가 버튼 */}
@@ -761,7 +756,7 @@ const FloatingFormToggle: React.FC<{ onOpen: () => void; onOpenAI: () => void; d
               onOpen();
             }}
             aria-label="거래 추가"
-            className="w-14 h-14 rounded-full bg-indigo-600 hover:bg-indigo-500 focus:bg-indigo-700 text-white flex items-center justify-center shadow-lg border-2 border-white transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-700 hover:from-indigo-400 hover:to-indigo-600 active:from-indigo-600 active:to-indigo-800 text-white flex items-center justify-center shadow-xl hover:shadow-2xl active:shadow-lg transition-all duration-300 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2"
           >
             <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
@@ -772,7 +767,7 @@ const FloatingFormToggle: React.FC<{ onOpen: () => void; onOpenAI: () => void; d
           <button
             onClick={() => onOpenAI()}
             aria-label="AI 거래 분석"
-            className="w-14 h-14 rounded-full bg-purple-600 hover:bg-purple-500 focus:bg-purple-700 text-white flex items-center justify-center shadow-lg border-2 border-white transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+            className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 hover:from-purple-400 hover:to-purple-600 active:from-purple-600 active:to-purple-800 text-white flex items-center justify-center shadow-xl hover:shadow-2xl active:shadow-lg transition-all duration-300 transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2"
           >
             <AIIcon />
           </button>
