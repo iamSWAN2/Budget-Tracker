@@ -31,7 +31,7 @@ const transactionSchema = {
       },
       type: {
         type: Type.STRING,
-        description: 'The type of transaction, either "INCOME" or "EXPENSE".',
+        description: 'The type of transaction: "INCOME" for deposits/earnings, "EXPENSE" for withdrawals/payments, or "TRANSFER" for account transfers/card payments/other movements.',
       },
       category: {
         type: Type.STRING,
@@ -80,7 +80,7 @@ export const analyzeTransactionsFromFile = async (file: File): Promise<AITransac
       - date: Transaction date in YYYY-MM-DD format
       - description: A concise description of the transaction
       - amount: The transaction amount as a positive number
-      - type: Either "INCOME" or "EXPENSE" (withdrawals/payments are EXPENSE, deposits are INCOME)
+      - type: "INCOME" for deposits/earnings, "EXPENSE" for withdrawals/payments, or "TRANSFER" for account transfers/card payments/other movements
       - category: Categorize the transaction (Food, Transportation, Shopping, Entertainment, etc.)
       - account: Extract account/card name if present in the data (e.g., '우리카드 카드의정석', '신한은행')
       - reference: Transaction reference number or approval code if available
@@ -108,8 +108,10 @@ export const analyzeTransactionsFromFile = async (file: File): Promise<AITransac
 
     prompt = `
       You are an expert financial data parser. Analyze the following data from an image of a bank statement or financial document. 
-      Extract all financial transactions. For each transaction, provide the date, description, amount, and classify it as 'INCOME' or 'EXPENSE'. 
-      If a transaction is a withdrawal or payment, it is an 'EXPENSE'. If it's a deposit, it is an 'INCOME'.
+      Extract all financial transactions. For each transaction, provide the date, description, amount, and classify it as 'INCOME', 'EXPENSE', or 'TRANSFER'. 
+      - Use 'INCOME' for deposits, earnings, or money coming in
+      - Use 'EXPENSE' for withdrawals, purchases, or money going out
+      - Use 'TRANSFER' for account transfers, card payments, or other internal movements
       The current year is ${new Date().getFullYear()}. Use this to infer the year for dates like '07/25' or 'Jul 25'.
       Format the output as a JSON array following the provided schema. Do not include any explanatory text, comments, or markdown formatting.
       Just return the raw JSON array.

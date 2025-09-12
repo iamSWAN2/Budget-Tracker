@@ -164,7 +164,7 @@ export interface AITransaction {
   date: string; // YYYY-MM-DD
   description: string;
   amount: number;
-  type: 'INCOME' | 'EXPENSE';
+  type: 'INCOME' | 'EXPENSE' | 'TRANSFER';
   category?: string;
   account?: string;
   reference?: string;

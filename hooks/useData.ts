@@ -166,7 +166,8 @@ export const useData = () => {
           date: t.date,
           amount: t.amount,
           description: t.description,
-          type: t.type === 'INCOME' ? TransactionType.INCOME : TransactionType.EXPENSE,
+          type: t.type === 'INCOME' ? TransactionType.INCOME : 
+                t.type === 'EXPENSE' ? TransactionType.EXPENSE : TransactionType.TRANSFER,
           category: getCategoryIdByName(t.category || 'Uncategorized', categories), // 카테고리 이름을 UUID로 변환
           accountId,
           ...(t.installmentMonths && t.installmentMonths > 1 && { installmentMonths: t.installmentMonths }),

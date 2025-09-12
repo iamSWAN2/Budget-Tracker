@@ -305,9 +305,14 @@ export class LocalCsvParser {
       cleaned.includes(keyword))) {
       return TransactionType.INCOME;
     }
+    
+    if (['이체', '기타', '카드대금', '전송', 'transfer', 'other'].some(keyword => 
+      cleaned.includes(keyword))) {
+      return TransactionType.TRANSFER;
+    }
 
-    // 금액이 음수면 지출, 양수면 수입으로 추론
-    return TransactionType.EXPENSE; // 기본값
+    // 기본값
+    return TransactionType.EXPENSE;
   }
 
   // 필수 필드 검증
@@ -355,7 +360,9 @@ export class LocalCsvParser {
             this.normalizeType(row[mapping.type] || 'expense') : 
             TransactionType.EXPENSE;
 
-          const aiType: AITransaction['type'] = transactionType === TransactionType.EXPENSE ? 'EXPENSE' : 'INCOME';
+          const aiType: AITransaction['type'] = 
+            transactionType === TransactionType.EXPENSE ? 'EXPENSE' : 
+            transactionType === TransactionType.INCOME ? 'INCOME' : 'TRANSFER';
           
           // 기본 거래 객체 생성
           const transaction: AITransaction = {
