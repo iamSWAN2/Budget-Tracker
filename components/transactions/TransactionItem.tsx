@@ -12,6 +12,7 @@ interface TransactionItemProps {
   onUpdate: (t: Transaction) => void;
   accounts: Account[];
   categories: Category[];
+  index?: number; // 넘버링을 위한 인덱스
 }
 
 // Use emoji icons to represent type explicitly  
@@ -26,7 +27,7 @@ const typeCircleClasses = (type: TransactionType) =>
     ? 'bg-red-100 text-red-700 ring-2 ring-red-200'
     : 'bg-slate-200 text-slate-700 ring-2 ring-slate-300';
 
-export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, accountName, categoryLabel, onDelete, onDeleteDirect, onUpdate, accounts, categories }) => {
+export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, accountName, categoryLabel, onDelete, onDeleteDirect, onUpdate, accounts, categories, index }) => {
   const isInstallment = !!transaction.installmentMonths && transaction.installmentMonths > 1;
   const isIncome = transaction.type === TransactionType.INCOME;
   
@@ -201,7 +202,14 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, a
       onTouchMove={cancelPress}
     >
       <div className="flex items-start gap-2 sm:gap-4">
-        {/* Far Left: Type Symbol */}
+        {/* Far Left: Number */}
+        {index !== undefined && (
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-xs sm:text-sm font-medium flex-shrink-0 mt-1">
+            {index + 1}
+          </div>
+        )}
+
+        {/* Type Symbol */}
         <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center bg-slate-50 ring-1 ring-slate-200 flex-shrink-0`}>
           {editing === 'type' ? (
             <select

@@ -93,7 +93,7 @@ export class LocalCsvParser {
   // CSV 파일 읽기
   static async parseFile(file: File): Promise<{ headers: string[], rows: string[][] }> {
     const text = await file.text();
-    const lines = text.split('\n').filter(line => line.trim());
+    const lines = this.splitCsvLines(text);
     
     if (lines.length === 0) {
       throw new Error('CSV 파일이 비어있습니다.');
@@ -103,6 +103,36 @@ export class LocalCsvParser {
     const rows = lines.slice(1).map(line => this.parseCsvLine(line));
     
     return { headers, rows };
+  }
+
+  // CSV 텍스트를 올바른 행으로 분할 (따옴표 내 개행문자 고려)
+  static splitCsvLines(text: string): string[] {
+    const lines: string[] = [];
+    let currentLine = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      
+      if (char === '"') {
+        inQuotes = !inQuotes;
+        currentLine += char;
+      } else if (char === '\n' && !inQuotes) {
+        if (currentLine.trim()) {
+          lines.push(currentLine);
+        }
+        currentLine = '';
+      } else if (char !== '\r') { // \r 문자는 무시
+        currentLine += char;
+      }
+    }
+    
+    // 마지막 줄 처리
+    if (currentLine.trim()) {
+      lines.push(currentLine);
+    }
+    
+    return lines;
   }
 
   // CSV 라인 파싱 (콤마, 따옴표 처리)

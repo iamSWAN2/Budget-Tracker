@@ -31,7 +31,7 @@ export const TransactionsList: React.FC<Props> = ({
 
   return (
     <div className={className}>
-      {transactions.map((transaction) => (
+      {transactions.map((transaction, index) => (
         <TransactionItem
           key={transaction.id}
           transaction={transaction}
@@ -42,6 +42,7 @@ export const TransactionsList: React.FC<Props> = ({
           onUpdate={onUpdate}
           accounts={accounts}
           categories={categories}
+          index={index}
         />
       ))}
     </div>
