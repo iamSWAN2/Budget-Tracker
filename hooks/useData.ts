@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { Account, Transaction, Category, Installment, AITransaction, TransactionType, AccountType, getAccountType } from '../types';
+import { Account, Transaction, Category, Installment, AITransaction, TransactionType, AccountType, getAccountType, isCardPayment } from '../types';
 import { 
   getAccounts, 
   getTransactions, 
@@ -31,10 +31,17 @@ export const useData = () => {
   // 신용카드 사용액 계산 함수 (부채 관점)
   const calculateCreditCardUsage = useCallback((transactions: Transaction[]): number => {
     return transactions.reduce((usage, transaction) => {
-      // 신용카드에서는 지출이 사용액 증가, 수입(결제)이 사용액 감소
-      return transaction.type === TransactionType.EXPENSE 
-        ? usage + transaction.amount 
-        : usage - transaction.amount;
+      if (transaction.type === TransactionType.EXPENSE) {
+        // 카드 대금 결제인 경우 사용액에서 차감
+        if (isCardPayment(transaction)) {
+          return usage - transaction.amount;
+        }
+        // 일반 지출은 사용액 증가
+        return usage + transaction.amount;
+      } else {
+        // 수입은 사용액 감소
+        return usage - transaction.amount;
+      }
     }, 0);
   }, []);
 
