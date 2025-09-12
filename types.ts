@@ -118,7 +118,9 @@ export const isCreditCard = (account: Account): boolean => {
 
 // 카드 대금 결제 거래인지 확인하는 함수
 export const isCardPayment = (transaction: Transaction): boolean => {
-  return transaction.category === 'cat-card-loan';
+  return transaction.category === 'cat-card-loan' || 
+         transaction.category === '카드 대금' ||
+         transaction.description?.includes('카드 대금');
 };
 
 export interface AITransaction {

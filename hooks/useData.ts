@@ -55,7 +55,19 @@ export const useData = () => {
       
       if (accountType === AccountType.CREDIT) {
         // 신용카드: 사용액 계산 (양수 = 빚)
-        balance = calculateCreditCardUsage(accountTransactions);
+        // 해당 신용카드 계좌의 거래 + 전체 거래에서 카드 대금 찾아 차감
+        const creditCardUsage = calculateCreditCardUsage(accountTransactions);
+        
+        // 전체 거래에서 카드 대금 결제 찾기 (다른 계좌에서 결제된 경우 대비)
+        const allCardPayments = transactionsList.filter(t => 
+          t.accountId !== account.id && // 다른 계좌에서
+          isCardPayment(t) && // 카드 대금이며
+          t.type === TransactionType.TRANSFER // TRANSFER 유형
+        );
+        
+        // 카드 대금 총액 차감
+        const totalCardPayments = allCardPayments.reduce((sum, t) => sum + t.amount, 0);
+        balance = creditCardUsage - totalCardPayments;
       } else if (accountType === AccountType.LIABILITY) {
         // 부채 계좌: 대출 잔액 계산 (양수 = 빚)
         balance = accountTransactions.reduce((acc, transaction) => {
