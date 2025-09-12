@@ -213,7 +213,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, a
             >
               <option value={TransactionType.INCOME}>수입</option>
               <option value={TransactionType.EXPENSE}>지출</option>
-              <option value={TransactionType.TRANSFER}>이체</option>
+              <option value={TransactionType.TRANSFER}>기타</option>
             </select>
           ) : (
             <button className="w-full h-full flex items-center justify-center" onClick={() => setEditing('type')}>

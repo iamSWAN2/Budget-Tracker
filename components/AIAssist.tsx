@@ -812,7 +812,7 @@ const AIAssist: React.FC<{data: UseDataReturn}> = ({ data }) => {
                 { key: 'date', label: '날짜', required: true, priority: 'REQUIRED', description: '거래 발생 일자' },
                 { key: 'description', label: '설명', required: true, priority: 'REQUIRED', description: '거래 내역 또는 가맹점명' },
                 { key: 'amount', label: '금액', required: true, priority: 'REQUIRED', description: '거래 금액 (양수/음수 구분)' },
-                { key: 'type', label: '거래 유형', required: false, priority: 'SEMI_REQUIRED', description: '입금/출금/이체 구분 (기본값: 지출)' },
+                { key: 'type', label: '거래 유형', required: false, priority: 'SEMI_REQUIRED', description: '입금/출금/기타 구분 (기본값: 지출)' },
                 { key: 'category', label: '카테고리', required: false, priority: 'SEMI_REQUIRED', description: '거래 카테고리 (기본값: 미분류)' },
                 { key: 'account', label: '계좌', required: false, priority: 'SEMI_REQUIRED', description: '계좌 정보 (별도 선택 가능)' },
                 { key: 'reference', label: '참조번호', required: false, priority: 'OPTIONAL', description: '거래 고유번호 또는 승인번호' },

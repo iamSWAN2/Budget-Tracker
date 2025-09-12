@@ -28,6 +28,20 @@ export const useData = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // 클라이언트 사이드 잔액 계산 함수
+  const calculateAccountBalances = useCallback((accountsList: Account[], transactionsList: Transaction[]) => {
+    return accountsList.map(account => {
+      const accountTransactions = transactionsList.filter(t => t.accountId === account.id);
+      const balance = accountTransactions.reduce((acc, transaction) => {
+        return transaction.type === TransactionType.INCOME 
+          ? acc + transaction.amount 
+          : acc - transaction.amount;
+      }, account.initialBalance || 0);
+      
+      return { ...account, balance };
+    });
+  }, []);
+
   const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -37,7 +51,11 @@ export const useData = () => {
         getTransactions(), 
         getCategories()
       ]);
-      setAccounts(fetchedAccounts);
+      
+      // 클라이언트에서 잔액 계산
+      const accountsWithBalance = calculateAccountBalances(fetchedAccounts, fetchedTransactions);
+      
+      setAccounts(accountsWithBalance);
       setTransactions(fetchedTransactions);
       setCategories(fetchedCategories);
     } catch (err) {
@@ -46,7 +64,7 @@ export const useData = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [calculateAccountBalances]);
 
   useEffect(() => {
     fetchData();
@@ -84,9 +102,11 @@ export const useData = () => {
   const addTransaction = async (transaction: Omit<Transaction, 'id'>) => {
     try {
       const newTransaction = await apiAddTransaction(transaction);
-      setTransactions(prev => [newTransaction, ...prev]);
-      // Refetch all data to ensure balances are correct
-      await fetchData();
+      const updatedTransactions = [newTransaction, ...transactions];
+      
+      // 트랜잭션과 계좌 잔액 동시 업데이트
+      setTransactions(updatedTransactions);
+      setAccounts(prev => calculateAccountBalances(prev, updatedTransactions));
     } catch (err) {
       setError('Failed to add transaction.');
       console.error(err);
@@ -107,11 +127,15 @@ export const useData = () => {
           ...(t.installmentMonths && t.installmentMonths > 1 && t.isInterestFree !== undefined && { isInterestFree: t.isInterestFree }),
       }));
 
+      const addedTransactions = [];
       for (const trans of transactionsToAdd) {
-        await apiAddTransaction(trans);
+        const addedTransaction = await apiAddTransaction(trans);
+        addedTransactions.push(addedTransaction);
       }
-      // Refetch all data to get updated state
-      await fetchData();
+      
+      const updatedTransactions = [...addedTransactions, ...transactions];
+      setTransactions(updatedTransactions);
+      setAccounts(prev => calculateAccountBalances(prev, updatedTransactions));
     } catch (err) {
       setError('Failed to add transactions from AI analysis.');
       console.error(err);
@@ -120,11 +144,15 @@ export const useData = () => {
 
   const addMultipleFullTransactions = async (fullTransactions: Transaction[]) => {
     try {
+      const addedTransactions = [];
       for (const transaction of fullTransactions) {
-        await apiAddTransaction(transaction);
+        const addedTransaction = await apiAddTransaction(transaction);
+        addedTransactions.push(addedTransaction);
       }
-      // Refetch all data to get updated state
-      await fetchData();
+      
+      const updatedTransactions = [...addedTransactions, ...transactions];
+      setTransactions(updatedTransactions);
+      setAccounts(prev => calculateAccountBalances(prev, updatedTransactions));
     } catch (err) {
       setError('Failed to add full transactions from CSV.');
       console.error(err);
@@ -187,6 +215,7 @@ export const useData = () => {
       }
 
       // 거래별로 적절한 계좌 ID 할당하여 거래 추가
+      const addedTransactions = [];
       for (const transaction of newTransactions) {
         let accountId: string;
         
@@ -217,11 +246,14 @@ export const useData = () => {
           }),
         };
 
-        await apiAddTransaction(transactionToAdd);
+        const addedTransaction = await apiAddTransaction(transactionToAdd);
+        addedTransactions.push(addedTransaction);
       }
 
-      // 모든 데이터 새로고침
-      await fetchData();
+      // 로컬 상태 업데이트
+      const updatedTransactions = [...addedTransactions, ...transactions];
+      setTransactions(updatedTransactions);
+      setAccounts(prev => calculateAccountBalances(prev, updatedTransactions));
     } catch (err) {
       setError('Failed to add transactions with account processing.');
       console.error(err);
@@ -232,8 +264,10 @@ export const useData = () => {
   const updateTransaction = async (transaction: Transaction) => {
     try {
       const updatedTransaction = await apiUpdateTransaction(transaction);
-      setTransactions(prev => prev.map(t => t.id === updatedTransaction.id ? updatedTransaction : t));
-      await fetchData();
+      const updatedTransactions = transactions.map(t => t.id === updatedTransaction.id ? updatedTransaction : t);
+      
+      setTransactions(updatedTransactions);
+      setAccounts(prev => calculateAccountBalances(prev, updatedTransactions));
     } catch (err) {
       setError('Failed to update transaction.');
       console.error(err);
@@ -243,8 +277,10 @@ export const useData = () => {
   const deleteTransaction = async (id: string) => {
     try {
       await apiDeleteTransaction(id);
-      setTransactions(prev => prev.filter(t => t.id !== id));
-      await fetchData();
+      const updatedTransactions = transactions.filter(t => t.id !== id);
+      
+      setTransactions(updatedTransactions);
+      setAccounts(prev => calculateAccountBalances(prev, updatedTransactions));
     } catch (err) {
       setError('Failed to delete transaction.');
       console.error(err);
@@ -275,7 +311,9 @@ export const useData = () => {
       try {
           await apiDeleteAccount(id);
           setAccounts(prev => prev.filter(a => a.id !== id));
-          await fetchData();
+          // 삭제된 계좌의 트랜잭션도 제거
+          const updatedTransactions = transactions.filter(t => t.accountId !== id);
+          setTransactions(updatedTransactions);
       } catch (err) {
           // 예상되는 비즈니스 로직 에러는 정보 레벨로 처리
           if (err instanceof Error && (
@@ -341,7 +379,19 @@ export const useData = () => {
   const clearData = async (options: import('../services/supabaseService').ClearDataOptions) => {
     try {
       await apiClearData(options);
-      await fetchData();
+      
+      // 선택적으로 로컬 상태 업데이트
+      if (options.clearTransactions) {
+        setTransactions([]);
+        setAccounts(prev => calculateAccountBalances(prev, []));
+      }
+      if (options.clearAccounts) {
+        setAccounts([]);
+        setTransactions([]);
+      }
+      if (options.clearCategories) {
+        setCategories([]);
+      }
     } catch (err) {
       setError('Failed to clear selected data.');
       console.error(err);
