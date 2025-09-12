@@ -51,6 +51,34 @@ export const formatDateDisplay = (isoDate: string): string => {
   return `${y}. ${m.padStart(2, '0')}. ${d.padStart(2, '0')}`;
 };
 
+// 현재 시간을 포함한 날짜-시간 표시 (거래 내역용)
+export const formatDateTimeDisplay = (isoDate: string): string => {
+  if (!isoDate) return '';
+  
+  // 날짜만 있는 경우 (YYYY-MM-DD) - 현재 시간 추가
+  if (isoDate.length === 10) {
+    const now = new Date();
+    const timeStr = now.toTimeString().slice(0, 5); // HH:MM
+    return `${formatDateDisplay(isoDate)}. ${timeStr}`;
+  }
+  
+  // 이미 시간이 포함된 경우 (ISO datetime)
+  try {
+    const date = new Date(isoDate);
+    if (isNaN(date.getTime())) return isoDate;
+    
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    const h = String(date.getHours()).padStart(2, '0');
+    const min = String(date.getMinutes()).padStart(2, '0');
+    
+    return `${y}. ${m}. ${d}. ${h}:${min}`;
+  } catch {
+    return isoDate;
+  }
+};
+
 // 월 텍스트(한국어 기본): 2025년 9월
 export const formatMonthKo = (month: number, year: number): string => {
   const date = new Date(year, month);

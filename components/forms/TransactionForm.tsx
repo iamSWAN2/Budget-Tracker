@@ -19,7 +19,21 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     onClose 
 }) => {
     const [formData, setFormData] = useState({
-        date: transaction?.date || new Date().toISOString().split('T')[0],
+        date: (() => {
+            if (transaction?.date) {
+                try {
+                    const date = new Date(transaction.date);
+                    if (!isNaN(date.getTime())) {
+                        return date.toISOString().slice(0, 16);
+                    }
+                } catch {}
+                if (transaction.date.length === 10) {
+                    return `${transaction.date}T12:00`;
+                }
+                return transaction.date.slice(0, 16);
+            }
+            return new Date().toISOString().slice(0, 16);
+        })(),
         description: transaction?.description || '',
         amount: transaction?.amount ? transaction.amount.toString() : '',
         type: transaction?.type || TransactionType.EXPENSE,
@@ -49,6 +63,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         
         if (type === 'checkbox') {
             setFormData(prev => ({ ...prev, [name]: checked }));
+        } else if (name === 'date' && type === 'datetime-local') {
+            // datetime-local 값을 ISO datetime으로 변환
+            const isoDateTime = value ? `${value}:00.000Z` : '';
+            setFormData(prev => ({ ...prev, [name]: isoDateTime }));
         } else {
             setFormData(prev => ({ ...prev, [name]: value }));
         }
@@ -99,12 +117,23 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                     />
                 </div>
                 <div>
-                    <label htmlFor="transaction-date" className={modalFormStyles.label}>날짜</label>
+                    <label htmlFor="transaction-date" className={modalFormStyles.label}>날짜와 시간</label>
                     <input 
                         id="transaction-date" 
-                        type="date" 
+                        type="datetime-local" 
                         name="date" 
-                        value={formData.date} 
+                        value={(() => {
+                            try {
+                                const date = new Date(formData.date);
+                                if (!isNaN(date.getTime())) {
+                                    return date.toISOString().slice(0, 16);
+                                }
+                            } catch {}
+                            if (formData.date.length === 10) {
+                                return `${formData.date}T12:00`;
+                            }
+                            return formData.date.slice(0, 16);
+                        })()} 
                         onChange={handleChange} 
                         required 
                         autoComplete="off" 

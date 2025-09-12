@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Account, Category, Transaction, TransactionType } from '../../types';
-import { formatCurrency, formatDateDisplay } from '../../utils/format';
+import { Account, Category, Transaction, TransactionType, getCategoryPath } from '../../types';
+import { formatCurrency, formatDateDisplay, formatDateTimeDisplay } from '../../utils/format';
 import { DeleteIcon } from '../icons/Icons';
 
 interface TransactionItemProps {
@@ -262,9 +262,27 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, a
               {editing === 'date' ? (
                 <input
                   autoFocus
-                  type="date"
-                  value={draft.date}
-                  onChange={(e) => setDraft(prev => ({ ...prev, date: e.target.value }))}
+                  type="datetime-local"
+                  value={(() => {
+                    // Convert ISO datetime to datetime-local format (YYYY-MM-DDTHH:MM)
+                    try {
+                      const date = new Date(draft.date);
+                      if (!isNaN(date.getTime())) {
+                        return date.toISOString().slice(0, 16);
+                      }
+                    } catch {}
+                    // Fallback for date-only format
+                    if (draft.date.length === 10) {
+                      return `${draft.date}T12:00`;
+                    }
+                    return draft.date.slice(0, 16);
+                  })()}
+                  onChange={(e) => {
+                    // Convert datetime-local format to ISO datetime
+                    const localDateTime = e.target.value; // YYYY-MM-DDTHH:MM
+                    const isoDateTime = localDateTime ? `${localDateTime}:00.000Z` : '';
+                    setDraft(prev => ({ ...prev, date: isoDateTime }));
+                  }}
                   onBlur={() => handleCommit({ date: draft.date })}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleCommit({ date: draft.date });
@@ -273,7 +291,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, a
                   className="px-2 py-1 bg-white border border-slate-300 rounded"
                 />
               ) : (
-                <button className="inline-flex items-center px-1.5 py-0.5 bg-slate-200 text-slate-700 rounded-md text-xs" onClick={() => setEditing('date')}>📅 {formatDateDisplay(draft.date)}</button>
+                <button className="inline-flex items-center px-1.5 py-0.5 bg-slate-200 text-slate-700 rounded-md text-xs" onClick={() => setEditing('date')}>📅 {formatDateTimeDisplay(draft.date)}</button>
               )}
 
               {/* Category */}
@@ -286,11 +304,11 @@ export const TransactionItem: React.FC<TransactionItemProps> = ({ transaction, a
                   className="px-2 py-1 bg-white border border-slate-300 rounded"
                 >
                   {filteredCategories.map(cat => (
-                    <option key={cat.id} value={cat.name}>{cat.name}</option>
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
                   ))}
                 </select>
               ) : (
-                <button className="inline-flex items-center px-1.5 py-0.5 bg-slate-200 text-slate-700 rounded-md text-xs truncate max-w-24 sm:max-w-none" onClick={() => setEditing('category')}>🏷️ {draft.category}</button>
+                <button className="inline-flex items-center px-1.5 py-0.5 bg-slate-200 text-slate-700 rounded-md text-xs truncate max-w-24 sm:max-w-none" onClick={() => setEditing('category')}>🏷️ {getCategoryPath(draft.category, categories)}</button>
               )}
             </div>
             

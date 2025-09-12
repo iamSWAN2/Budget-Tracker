@@ -1,5 +1,5 @@
 import React from 'react';
-import { Account, Category, Transaction } from '../../types';
+import { Account, Category, Transaction, getCategoryPath } from '../../types';
 import { TransactionItem } from './TransactionItem';
 
 type Props = {
@@ -22,12 +22,6 @@ export const TransactionsList: React.FC<Props> = ({
   className = 'space-y-2'
 }) => {
   const getAccountName = (accountId: string) => accounts.find(a => a.id === accountId)?.name || 'N/A';
-  const getCategoryPath = (categoryName: string) => {
-    const cat = categories.find(c => c.name === categoryName);
-    if (!cat) return categoryName;
-    const parent = cat.parentId ? categories.find(c => c.id === cat.parentId) : null;
-    return parent ? `${parent.name} > ${cat.name}` : cat.name;
-  };
 
   return (
     <div className={className}>
@@ -36,7 +30,7 @@ export const TransactionsList: React.FC<Props> = ({
           key={transaction.id}
           transaction={transaction}
           accountName={getAccountName(transaction.accountId)}
-          categoryLabel={getCategoryPath(transaction.category)}
+          categoryLabel={getCategoryPath(transaction.category, categories)}
           onDelete={onDelete}
           onDeleteDirect={onDeleteDirect}
           onUpdate={onUpdate}

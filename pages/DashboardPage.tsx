@@ -1,6 +1,6 @@
 import React, { useMemo, useState, Suspense, useRef } from 'react';
 import { UseDataReturn } from '../hooks/useData';
-import { TransactionType, Transaction } from '../types';
+import { TransactionType, Transaction, getCategoryPath } from '../types';
 import { Modal } from '../components/ui/Modal';
 import { TransactionForm } from '../components/forms/TransactionForm';
 import { AddTransactionFormInline } from '../components/forms/AddTransactionFormInline';
@@ -332,6 +332,7 @@ const WidgetsTab: React.FC<{
         <div className="md:col-span-2">
           <OutliersWidget
             transactions={transactions}
+            categories={categories}
             periodStart={periodStart}
             periodEnd={periodEnd}
             currentMonth={currentMonth}
@@ -503,12 +504,6 @@ export const DashboardPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   };
 
   const getAccountName = (accountId: string) => accounts.find(a => a.id === accountId)?.name || 'N/A';
-  const getCategoryPath = (categoryName: string) => {
-    const cat = categories.find(c => c.name === categoryName);
-    if (!cat) return categoryName;
-    const parent = cat.parentId ? categories.find(c => c.id === cat.parentId) : null;
-    return parent ? `${parent.name} > ${cat.name}` : cat.name;
-  };
 
   // 탭 정의
   const dashboardTabs = [

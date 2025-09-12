@@ -23,7 +23,7 @@ interface AIAssistProps {
 }
 
 const AIAssist = forwardRef<AIAssistRef, AIAssistProps>(({ data, showTrigger = true }, ref) => {
-  const { accounts, addMultipleTransactions, addMultipleTransactionsWithAccounts, addMultipleFullTransactions, addAccount } = data;
+  const { accounts, categories, addMultipleTransactions, addMultipleTransactionsWithAccounts, addMultipleFullTransactions, addAccount } = data;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [step, setStep] = useState<'method' | 'upload' | 'mapping' | 'account' | 'confirm' | 'loading' | 'error' | 'new-account'>('method');
   const [analyzedTransactions, setAnalyzedTransactions] = useState<AITransaction[]>([]);
@@ -129,7 +129,11 @@ const AIAssist = forwardRef<AIAssistRef, AIAssistProps>(({ data, showTrigger = t
       // 확장 데이터 생성 (추가 필드들)
       const extendedData = previewRows.map(row => ({
         type: mapping.type !== undefined ? 
-          LocalCsvParser.normalizeType(row[mapping.type] || 'expense') === 'INCOME' ? '수입' : '지출' : 
+          (() => {
+            const normalizedType = LocalCsvParser.normalizeType(row[mapping.type] || 'expense');
+            return normalizedType === 'INCOME' ? '수입' : 
+                   normalizedType === 'TRANSFER' ? '기타' : '지출';
+          })() : 
           '지출',
         category: mapping.category !== undefined ? 
           (row[mapping.category] || '미분류') : '미분류',
@@ -164,7 +168,8 @@ const AIAssist = forwardRef<AIAssistRef, AIAssistProps>(({ data, showTrigger = t
         csvData.rows,
         mapping,
         '', // accountId는 나중에 설정
-        'Uncategorized'
+        'Uncategorized',
+        categories
       );
       
       // 3. 각 거래에 올바른 계좌 ID 할당
@@ -178,12 +183,14 @@ const AIAssist = forwardRef<AIAssistRef, AIAssistProps>(({ data, showTrigger = t
         date: t.date,
         description: t.description,
         amount: t.amount,
-        type: t.type === 'INCOME' ? 'INCOME' : 'EXPENSE'
+        type: t.type === 'INCOME' ? 'INCOME' : 
+              t.type === 'TRANSFER' ? 'TRANSFER' : 'EXPENSE'
       }));
       
       // 5. 확장 데이터 생성 (미리보기용)
       const extendedData = processedTransactions.map(t => ({
-        type: t.type === 'INCOME' ? '수입' : '지출',
+        type: t.type === 'INCOME' ? '수입' : 
+              t.type === 'TRANSFER' ? '기타' : '지출',
         category: t.category,
         account: accounts.find(acc => acc.id === t.accountId)?.name || '알 수 없는 계좌',
         installmentMonths: t.installmentMonths,

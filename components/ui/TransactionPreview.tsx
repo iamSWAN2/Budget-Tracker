@@ -1,6 +1,6 @@
 import React from 'react';
 import { AITransaction } from '../../types';
-import { formatCurrency } from '../../utils/format';
+import { formatCurrency, formatDateTimeDisplay } from '../../utils/format';
 
 interface TransactionPreviewProps {
   transactions: AITransaction[];
@@ -26,11 +26,15 @@ export const TransactionPreview: React.FC<TransactionPreviewProps> = ({
 }) => {
   const incomeCount = transactions.filter(t => t.type === 'INCOME').length;
   const expenseCount = transactions.filter(t => t.type === 'EXPENSE').length;
+  const transferCount = transactions.filter(t => t.type === 'TRANSFER').length;
   const totalIncome = transactions
     .filter(t => t.type === 'INCOME')
     .reduce((sum, t) => sum + t.amount, 0);
   const totalExpense = transactions
     .filter(t => t.type === 'EXPENSE')
+    .reduce((sum, t) => sum + t.amount, 0);
+  const totalTransfer = transactions
+    .filter(t => t.type === 'TRANSFER')
     .reduce((sum, t) => sum + t.amount, 0);
 
   if (transactions.length === 0) {
@@ -45,7 +49,7 @@ export const TransactionPreview: React.FC<TransactionPreviewProps> = ({
   return (
     <div className="space-y-3">
       {showSummary && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
           <div className="bg-slate-50 border rounded-md p-3 text-center">
             <div className="font-semibold text-slate-700 mb-1">총 거래</div>
             <div className="text-base font-bold text-slate-900 mb-1">{transactions.length}건</div>
@@ -60,6 +64,11 @@ export const TransactionPreview: React.FC<TransactionPreviewProps> = ({
             <div className="font-semibold text-red-700 mb-1">지출</div>
             <div className="text-base font-bold text-red-800 mb-1">{expenseCount}건</div>
             <div className="text-xs text-red-600">{formatCurrency(totalExpense)}</div>
+          </div>
+          <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-center">
+            <div className="font-semibold text-blue-700 mb-1">기타</div>
+            <div className="text-base font-bold text-blue-800 mb-1">{transferCount}건</div>
+            <div className="text-xs text-blue-600">{formatCurrency(totalTransfer)}</div>
           </div>
         </div>
       )}
@@ -93,7 +102,7 @@ export const TransactionPreview: React.FC<TransactionPreviewProps> = ({
                   }`}
                 >
                   <td className="p-3 text-slate-700 font-mono text-xs whitespace-nowrap">
-                    {transaction.date}
+                    {formatDateTimeDisplay(transaction.date)}
                   </td>
                   <td className="p-3 text-slate-900">
                     <div className="max-w-48 truncate" title={transaction.description}>
@@ -105,10 +114,13 @@ export const TransactionPreview: React.FC<TransactionPreviewProps> = ({
                       className={`font-semibold ${
                         transaction.type === 'INCOME' 
                           ? 'text-green-600' 
+                          : transaction.type === 'TRANSFER'
+                          ? 'text-blue-600'
                           : 'text-red-600'
                       }`}
                     >
-                      {transaction.type === 'INCOME' ? '+' : '-'}
+                      {transaction.type === 'INCOME' ? '+' : 
+                       transaction.type === 'TRANSFER' ? '↔' : '-'}
                       {formatCurrency(transaction.amount)}
                     </span>
                   </td>
@@ -118,9 +130,12 @@ export const TransactionPreview: React.FC<TransactionPreviewProps> = ({
                         <span className={`px-2 py-1 rounded-full text-xs whitespace-nowrap ${
                           transaction.type === 'INCOME' 
                             ? 'bg-green-100 text-green-700' 
+                            : transaction.type === 'TRANSFER'
+                            ? 'bg-blue-100 text-blue-700'
                             : 'bg-red-100 text-red-700'
                         }`}>
-                          {transaction.type === 'INCOME' ? '수입' : '지출'}
+                          {transaction.type === 'INCOME' ? '수입' : 
+                           transaction.type === 'TRANSFER' ? '기타' : '지출'}
                         </span>
                       </td>
                       <td className="p-3 text-slate-600 text-xs whitespace-nowrap">

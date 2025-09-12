@@ -21,7 +21,7 @@ export const AddTransactionFormInline: React.FC<Props> = ({ accounts, categories
     amount: '',
     accountId: accounts[0]?.id || '',
     category: '',
-    date: new Date().toISOString().split('T')[0],
+    date: new Date().toISOString().slice(0, 16),
     installmentMonths: 1,
     isInterestFree: false
   });
@@ -30,6 +30,10 @@ export const AddTransactionFormInline: React.FC<Props> = ({ accounts, categories
     const { name, value, type, checked } = e.target as HTMLInputElement;
     if (type === 'checkbox') {
       setFormData(prev => ({ ...prev, [name]: checked }));
+    } else if (name === 'date' && type === 'datetime-local') {
+      // datetime-local 값을 ISO datetime으로 변환
+      const isoDateTime = value ? `${value}:00.000Z` : '';
+      setFormData(prev => ({ ...prev, [name]: isoDateTime }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -66,7 +70,25 @@ export const AddTransactionFormInline: React.FC<Props> = ({ accounts, categories
         </div>
         <div>
           <label className={inlineFormStyles.label}>{t('form.date')}</label>
-          <input type="date" name="date" value={formData.date} onChange={handleFormChange} className={inlineFormStyles.input} required />
+          <input 
+            type="datetime-local" 
+            name="date" 
+            value={(() => {
+              try {
+                const date = new Date(formData.date);
+                if (!isNaN(date.getTime())) {
+                  return date.toISOString().slice(0, 16);
+                }
+              } catch {}
+              if (formData.date.length === 10) {
+                return `${formData.date}T12:00`;
+              }
+              return formData.date.slice(0, 16);
+            })()} 
+            onChange={handleFormChange} 
+            className={inlineFormStyles.input} 
+            required 
+          />
         </div>
       </div>
 

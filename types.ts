@@ -38,7 +38,7 @@ export interface Account {
 
 export interface Transaction {
   id: string;
-  date: string; // YYYY-MM-DD
+  date: string; // ISO datetime string (YYYY-MM-DDTHH:mm:ss.sssZ)
   description: string;
   amount: number;
   type: TransactionType;
@@ -116,6 +116,21 @@ export const isCreditCard = (account: Account): boolean => {
   return getAccountType(account) === AccountType.CREDIT;
 };
 
+// 카테고리 이름을 ID로 가져오는 함수 (UUID 기반)
+export const getCategoryNameById = (categoryId: string, categories: Category[]): string => {
+  const category = categories.find(c => c.id === categoryId);
+  return category?.name || categoryId;
+};
+
+// 카테고리 경로를 가져오는 함수 (부모 > 자식 형태)
+export const getCategoryPath = (categoryId: string, categories: Category[]): string => {
+  const category = categories.find(c => c.id === categoryId);
+  if (!category) return categoryId;
+  
+  const parent = category.parentId ? categories.find(c => c.id === category.parentId) : null;
+  return parent ? `${parent.name} > ${category.name}` : category.name;
+};
+
 // 카테고리 이름으로 ID 찾기 함수
 export const findCategoryByName = (name: string, categories: Category[]): Category | null => {
   return categories.find(cat => cat.name === name) || null;
@@ -144,24 +159,30 @@ export const isCardPayment = (transaction: Transaction, categories: Category[]):
 
 // 카테고리 이름을 ID로 변환하는 함수
 export const getCategoryIdByName = (name: string, categories: Category[]): string => {
+  console.log(`[DEBUG] getCategoryIdByName: name="${name}", categories length=${categories.length}`);
+  
   // 빈 이름이거나 'Uncategorized'인 경우 기타 카테고리 반환
   if (!name || name === 'Uncategorized') {
     const otherCategory = categories.find(cat => cat.name === '기타');
+    console.log(`[DEBUG] Using 기타 category:`, otherCategory?.id);
     return otherCategory?.id || name;
   }
   
   const category = findCategoryByName(name, categories);
   if (category) {
+    console.log(`[DEBUG] Found category for "${name}":`, category.id);
     return category.id;
   }
   
   // 매칭되지 않은 경우 기타 카테고리로 분류
   const otherCategory = categories.find(cat => cat.name === '기타');
+  console.log(`[DEBUG] No match for "${name}", using 기타:`, otherCategory?.id);
+  console.log(`[DEBUG] Available categories:`, categories.map(c => c.name));
   return otherCategory?.id || name;
 };
 
 export interface AITransaction {
-  date: string; // YYYY-MM-DD
+  date: string; // ISO datetime string or YYYY-MM-DD (converted to datetime)
   description: string;
   amount: number;
   type: 'INCOME' | 'EXPENSE' | 'TRANSFER';

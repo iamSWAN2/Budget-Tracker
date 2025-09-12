@@ -90,8 +90,34 @@ export const getTransactions = async (): Promise<Transaction[]> => {
 export const addTransaction = async (transaction: Omit<Transaction, 'id'>): Promise<Transaction> => {
   console.log("Supabase: Adding transaction", transaction);
   
+  // Ensure date is in datetime format
+  let dateValue = transaction.date;
+  if (dateValue && dateValue.length === 10) {
+    // If it's just a date (YYYY-MM-DD), add current time
+    const now = new Date();
+    const timeStr = now.toTimeString().slice(0, 8); // HH:MM:SS
+    dateValue = `${dateValue}T${timeStr}.000Z`;
+  } else if (dateValue && !dateValue.includes('T')) {
+    // Try to parse Korean date format: "2025/1/04 오전 2:00"
+    const koreanDateMatch = dateValue.match(/(\d{4})\/(\d{1,2})\/(\d{1,2})\s*(오전|오후)?\s*(\d{1,2}):(\d{2})/);
+    if (koreanDateMatch) {
+      const [, year, month, day, ampm, hour, minute] = koreanDateMatch;
+      let hour24 = parseInt(hour);
+      if (ampm === '오후' && hour24 !== 12) hour24 += 12;
+      else if (ampm === '오전' && hour24 === 12) hour24 = 0;
+      
+      const isoDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), hour24, parseInt(minute));
+      dateValue = isoDate.toISOString();
+    } else {
+      // If no time info, add current time
+      const now = new Date();
+      const timeStr = now.toTimeString().slice(0, 8); // HH:MM:SS
+      dateValue = `${dateValue}T${timeStr}.000Z`;
+    }
+  }
+  
   const dbTransaction = {
-    date: transaction.date,
+    date: dateValue,
     description: transaction.description,
     amount: transaction.amount,
     type: transaction.type,
@@ -130,8 +156,34 @@ export const updateTransaction = async (transaction: Transaction): Promise<Trans
   
   const oldAccountId = oldTransaction?.account_id;
   
+  // Ensure date is in datetime format
+  let dateValue = transaction.date;
+  if (dateValue && dateValue.length === 10) {
+    // If it's just a date (YYYY-MM-DD), add current time
+    const now = new Date();
+    const timeStr = now.toTimeString().slice(0, 8); // HH:MM:SS
+    dateValue = `${dateValue}T${timeStr}.000Z`;
+  } else if (dateValue && !dateValue.includes('T')) {
+    // Try to parse Korean date format: "2025/1/04 오전 2:00"
+    const koreanDateMatch = dateValue.match(/(\d{4})\/(\d{1,2})\/(\d{1,2})\s*(오전|오후)?\s*(\d{1,2}):(\d{2})/);
+    if (koreanDateMatch) {
+      const [, year, month, day, ampm, hour, minute] = koreanDateMatch;
+      let hour24 = parseInt(hour);
+      if (ampm === '오후' && hour24 !== 12) hour24 += 12;
+      else if (ampm === '오전' && hour24 === 12) hour24 = 0;
+      
+      const isoDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), hour24, parseInt(minute));
+      dateValue = isoDate.toISOString();
+    } else {
+      // If no time info, add current time
+      const now = new Date();
+      const timeStr = now.toTimeString().slice(0, 8); // HH:MM:SS
+      dateValue = `${dateValue}T${timeStr}.000Z`;
+    }
+  }
+  
   const dbTransaction = {
-    date: transaction.date,
+    date: dateValue,
     description: transaction.description,
     amount: transaction.amount,
     type: transaction.type,
@@ -525,10 +577,31 @@ export const clearData = async (options: ClearDataOptions): Promise<void> => {
 export const getCategories = async (): Promise<Category[]> => {
   console.log("Supabase: Fetching categories");
   
-  // FORCE REINITIALIZE - Update existing categories with latest constants
-  console.log("Force updating categories from constants...");
-  await initializeDefaultCategories(); // This will upsert the latest data
-  return DEFAULT_CATEGORIES;
+  // 실제 데이터베이스에서 카테고리 가져오기
+  const { data, error } = await supabase
+    .from('categories')
+    .select('*')
+    .eq('is_active', true)
+    .order('name');
+
+  if (error) {
+    console.error('Error fetching categories:', error);
+    return [];
+  }
+
+  const categories: Category[] = data.map(cat => ({
+    id: cat.id,
+    name: cat.name,
+    type: cat.type,
+    icon: cat.icon,
+    color: cat.color,
+    parentId: cat.parent_id,
+    isDefault: cat.is_default,
+    isActive: cat.is_active,
+  }));
+
+  console.log(`Supabase: Fetched ${categories.length} categories`, categories.map(c => c.name));
+  return categories;
 };
 
 export const addCategory = async (category: Omit<Category, 'id'>): Promise<Category> => {

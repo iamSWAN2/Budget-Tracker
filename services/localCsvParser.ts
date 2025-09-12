@@ -1,4 +1,4 @@
-import { AITransaction, TransactionType } from '../types';
+import { AITransaction, TransactionType, getCategoryIdByName, Category } from '../types';
 
 export interface ColumnMapping {
   // 필수 필드 (REQUIRED)
@@ -306,7 +306,7 @@ export class LocalCsvParser {
       return TransactionType.INCOME;
     }
     
-    if (['이체', '기타', '카드대금', '전송', 'transfer', 'other'].some(keyword => 
+    if (['이체', '기타', '카드대금', '카드 대금', '송금', '계좌이체', '전송', '대금결제', 'transfer', 'other', 'wire', 'card payment'].some(keyword => 
       cleaned.includes(keyword))) {
       return TransactionType.TRANSFER;
     }
@@ -392,7 +392,8 @@ export class LocalCsvParser {
     rows: string[][], 
     mapping: ColumnMapping,
     accountId: string = 'default',
-    categoryDefault: string = 'Uncategorized'
+    categoryDefault: string = 'Uncategorized',
+    categories: Category[] = []
   ) {
     // 필수 필드 검증
     const validation = this.validateRequiredFields(mapping);
@@ -422,9 +423,13 @@ export class LocalCsvParser {
             this.normalizeType(row[mapping.type] || 'expense') : 
             TransactionType.EXPENSE;
 
-          const category = mapping.category !== undefined ? 
+          const categoryName = mapping.category !== undefined ? 
             (row[mapping.category] || categoryDefault) : 
             categoryDefault;
+          
+          console.log(`[DEBUG CSV] Converting category "${categoryName}" with ${categories.length} available categories`);
+          const category = getCategoryIdByName(categoryName, categories);
+          console.log(`[DEBUG CSV] Category "${categoryName}" converted to UUID: "${category}"`);
 
           const finalAccountId = mapping.account !== undefined ? 
             (row[mapping.account] || accountId) : 

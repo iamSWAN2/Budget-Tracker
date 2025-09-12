@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
-import { Transaction, TransactionType } from '../../types';
+import { Transaction, TransactionType, Category, getCategoryPath } from '../../types';
 import { isWithinRange } from '../../utils/dateRange';
 import { formatCurrency } from '../../utils/format';
 
 type Props = {
   transactions: Transaction[];
+  categories: Category[];
   periodStart: Date;
   periodEnd: Date;
   currentMonth: number;
@@ -12,7 +13,7 @@ type Props = {
   factor?: number; // threshold multiplier, default 2x
 };
 
-export const OutliersWidget: React.FC<Props> = ({ transactions, periodStart, periodEnd, currentMonth, currentYear, factor = 2 }) => {
+export const OutliersWidget: React.FC<Props> = ({ transactions, categories, periodStart, periodEnd, currentMonth, currentYear, factor = 2 }) => {
   const start = periodStart;
   const end = periodEnd;
 
@@ -28,7 +29,7 @@ export const OutliersWidget: React.FC<Props> = ({ transactions, periodStart, per
       if (t.type !== TransactionType.EXPENSE) continue;
       const d = new Date(t.date);
       if (d < from || d > now) continue;
-      const key = (t.category || '기타');
+      const key = t.category; // Use UUID as key
       const cur = baselineMap.get(key) || { sum: 0, cnt: 0 };
       cur.sum += t.amount || 0;
       cur.cnt += 1;
@@ -46,7 +47,7 @@ export const OutliersWidget: React.FC<Props> = ({ transactions, periodStart, per
 
     const sum = flagged.reduce((s, t) => s + t.amount, 0);
     return { outliers: flagged, total: sum };
-  }, [transactions, start, end, factor]);
+  }, [transactions, categories, start, end, factor]);
 
   return (
     <div className="bg-white rounded-lg shadow-md p-3 md:p-4">
@@ -63,7 +64,7 @@ export const OutliersWidget: React.FC<Props> = ({ transactions, periodStart, per
             <button
               key={tx.id}
               className="w-full flex items-center justify-between text-left text-xs border rounded-md px-2 py-1.5 hover:bg-rose-50/50"
-              title={tx.category}
+              title={getCategoryPath(tx.category, categories)}
               onClick={() => {
                 window.dispatchEvent(new CustomEvent('app:navigate', { detail: { page: 'transactions', filter: { q: tx.description, start: start.toISOString(), end: end.toISOString(), category: tx.category, accountId: tx.accountId } } }));
               }}

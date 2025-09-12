@@ -161,21 +161,59 @@ export const useData = () => {
 
   const addMultipleTransactions = async (newTransactions: AITransaction[], accountId: string) => {
     try {
-      const transactionsToAdd = newTransactions.map(t => ({
+      console.log(`[DEBUG] addMultipleTransactions: starting with ${newTransactions.length} transactions`);
+      console.log(`[DEBUG] Available categories:`, categories.map(c => ({ id: c.id, name: c.name })));
+      
+      const transactionsToAdd = newTransactions.map(t => {
+        console.log(`[DEBUG] Processing transaction:`, t);
+        const categoryId = getCategoryIdByName(t.category || 'Uncategorized', categories);
+        console.log(`[DEBUG] Category "${t.category}" converted to UUID:`, categoryId);
+        
+        // Convert date to datetime if needed
+        let dateValue = t.date;
+        if (dateValue && dateValue.length === 10) {
+          // If it's just a date (YYYY-MM-DD), add current time
+          const now = new Date();
+          const timeStr = now.toTimeString().slice(0, 8); // HH:MM:SS
+          dateValue = `${dateValue}T${timeStr}.000Z`;
+        } else if (dateValue && !dateValue.includes('T')) {
+          // Try to parse Korean date format: "2025/1/04 오전 2:00"
+          const koreanDateMatch = dateValue.match(/(\d{4})\/(\d{1,2})\/(\d{1,2})\s*(오전|오후)?\s*(\d{1,2}):(\d{2})/);
+          if (koreanDateMatch) {
+            const [, year, month, day, ampm, hour, minute] = koreanDateMatch;
+            let hour24 = parseInt(hour);
+            if (ampm === '오후' && hour24 !== 12) hour24 += 12;
+            else if (ampm === '오전' && hour24 === 12) hour24 = 0;
+            
+            const isoDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), hour24, parseInt(minute));
+            dateValue = isoDate.toISOString();
+          } else {
+            // If no time info, add current time
+            const now = new Date();
+            const timeStr = now.toTimeString().slice(0, 8); // HH:MM:SS
+            dateValue = `${dateValue}T${timeStr}.000Z`;
+          }
+        }
+        
+        return {
           ...t,
-          date: t.date,
+          date: dateValue,
           amount: t.amount,
           description: t.description,
           type: t.type === 'INCOME' ? TransactionType.INCOME : 
                 t.type === 'EXPENSE' ? TransactionType.EXPENSE : TransactionType.TRANSFER,
-          category: getCategoryIdByName(t.category || 'Uncategorized', categories), // 카테고리 이름을 UUID로 변환
+          category: categoryId,
           accountId,
           ...(t.installmentMonths && t.installmentMonths > 1 && { installmentMonths: t.installmentMonths }),
           ...(t.installmentMonths && t.installmentMonths > 1 && t.isInterestFree !== undefined && { isInterestFree: t.isInterestFree }),
-      }));
+        };
+      });
 
+      console.log(`[DEBUG] Final transactions to add:`, transactionsToAdd);
+      
       const addedTransactions = [];
       for (const trans of transactionsToAdd) {
+        console.log(`[DEBUG] Adding transaction to database:`, trans);
         const addedTransaction = await apiAddTransaction(trans);
         addedTransactions.push(addedTransaction);
       }

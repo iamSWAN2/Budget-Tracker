@@ -1,7 +1,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { UseDataReturn } from '../hooks/useData';
-import { Transaction, TransactionType } from '../types';
+import { Transaction, TransactionType, getCategoryPath } from '../types';
 import { PlusIcon } from '../components/icons/Icons';
 import { Modal } from '../components/ui/Modal';
 import { TransactionForm } from '../components/forms/TransactionForm';
@@ -75,7 +75,8 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn; initialFilter?: {
       const startDate = range.start ? new Date(range.start) : null;
       const endDate = range.end ? new Date(range.end) : null;
       return transactions.filter(t => {
-        const matchesQuery = !query || (t.description || '').toLowerCase().includes(query) || (t.category || '').toLowerCase().includes(query);
+        const categoryName = getCategoryPath(t.category, categories);
+        const matchesQuery = !query || (t.description || '').toLowerCase().includes(query) || categoryName.toLowerCase().includes(query);
         const matchesCategory = !category || t.category === category;
         const matchesAccount = !accountId || t.accountId === accountId;
         const d = new Date(t.date);
@@ -109,12 +110,6 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn; initialFilter?: {
     };
 
     const getAccountName = (accountId: string) => accounts.find(a => a.id === accountId)?.name || 'N/A';
-    const getCategoryPath = (categoryName: string) => {
-        const cat = categories.find(c => c.name === categoryName);
-        if (!cat) return categoryName;
-        const parent = cat.parentId ? categories.find(c => c.id === cat.parentId) : null;
-        return parent ? `${parent.name} > ${cat.name}` : cat.name;
-    };
     
     return (
         <div className="bg-white rounded-xl shadow-md p-6 h-full flex flex-col mx-auto w-full max-w-3xl lg:max-w-4xl">
@@ -135,7 +130,7 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn; initialFilter?: {
                   >
                     <option value="">전체 카테고리</option>
                     {categories.map(c => (
-                      <option key={c.id} value={c.name}>{c.name}</option>
+                      <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
                   <select
@@ -184,7 +179,7 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn; initialFilter?: {
                 )}
                 {category && (
                   <span className="inline-flex items-center gap-2 bg-slate-100 text-slate-700 px-2 py-1 rounded">
-                    카테고리: {category}
+                    카테고리: {getCategoryPath(category, categories)}
                     <button className="text-slate-500 hover:text-slate-800" onClick={() => setCategory(undefined)}>×</button>
                   </span>
                 )}
