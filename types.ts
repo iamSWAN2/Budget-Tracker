@@ -19,7 +19,8 @@ export enum AccountPropensity {
 export enum AccountType {
   DEBIT = 'DEBIT',     // 일반 예금/적금 계좌
   CREDIT = 'CREDIT',   // 신용카드
-  CASH = 'CASH'        // 현금
+  CASH = 'CASH',       // 현금
+  LIABILITY = 'LIABILITY' // 부채 (대출)
 }
 
 export interface Account {
@@ -79,10 +80,11 @@ export const getAccountTypeFromPropensity = (propensity: AccountPropensity): Acc
       return AccountType.CASH;
     case AccountPropensity.CREDIT_CARD:
       return AccountType.CREDIT;
+    case AccountPropensity.LOAN:
+      return AccountType.LIABILITY;
     case AccountPropensity.CHECKING:
     case AccountPropensity.SAVINGS:
     case AccountPropensity.INVESTMENT:
-    case AccountPropensity.LOAN:
     default:
       return AccountType.DEBIT;
   }

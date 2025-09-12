@@ -49,8 +49,15 @@ export const useData = () => {
       if (accountType === AccountType.CREDIT) {
         // 신용카드: 사용액 계산 (양수 = 빚)
         balance = calculateCreditCardUsage(accountTransactions);
+      } else if (accountType === AccountType.LIABILITY) {
+        // 부채 계좌: 대출 잔액 계산 (양수 = 빚)
+        balance = accountTransactions.reduce((acc, transaction) => {
+          return transaction.type === TransactionType.EXPENSE 
+            ? acc + transaction.amount  // 대출 증가
+            : acc - transaction.amount; // 대출 상환
+        }, account.initialBalance || 0);
       } else {
-        // 일반 계좌: 기존 로직
+        // 일반 계좌: 기존 로직 (DEBIT, CASH)
         balance = accountTransactions.reduce((acc, transaction) => {
           return transaction.type === TransactionType.INCOME 
             ? acc + transaction.amount 
