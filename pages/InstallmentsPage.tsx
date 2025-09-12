@@ -1,12 +1,30 @@
 
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { UseDataReturn } from '../hooks/useData';
 import { Card } from '../components/ui/Card';
 import { Installment } from '../types';
 import { formatCurrency } from '../utils/format';
+const AIAssist = React.lazy(() => import('../components/AIAssist'));
+import { AIAssistRef } from '../components/AIAssist';
+import { FloatingActionToggle } from '../components/ui/FloatingActionToggle';
 
 export const InstallmentsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   const { installments, accounts } = data;
+  const [isDesktop, setIsDesktop] = useState(false);
+  const aiAssistRef = useRef<AIAssistRef>(null);
+
+  // 데스크톱 감지
+  useEffect(() => {
+    const mql = window.matchMedia('(min-width: 1024px)');
+    const listener = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    setIsDesktop(mql.matches);
+    if (mql.addEventListener) mql.addEventListener('change', listener);
+    else if (mql.addListener) mql.addListener(listener as any);
+    return () => {
+      if (mql.removeEventListener) mql.removeEventListener('change', listener);
+      else if (mql.removeListener) mql.removeListener(listener as any);
+    };
+  }, []);
 
   const getAccountName = (accountId: string) => accounts.find(a => a.id === accountId)?.name || 'N/A';
 
@@ -57,6 +75,23 @@ export const InstallmentsPage: React.FC<{ data: UseDataReturn }> = ({ data }) =>
           ))}
         </div>
       )}
+
+      {/* Mobile Floating Action Button */}
+      {!isDesktop && (
+        <FloatingActionToggle 
+          data={data}
+          onOpen={() => {
+            // InstallmentsPage에서는 거래 추가 기능을 TransactionsPage로 연결
+            window.location.hash = '#/transactions';
+          }} 
+          onOpenAI={() => aiAssistRef.current?.openModal()}
+        />
+      )}
+
+      {/* AIAssist 컴포넌트 - ref로 모달 제어 */}
+      <React.Suspense fallback={<div className="hidden">AI 로딩 중...</div>}>
+        <AIAssist ref={aiAssistRef} data={data} showTrigger={false} />
+      </React.Suspense>
     </div>
   );
 };

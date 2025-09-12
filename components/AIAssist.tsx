@@ -17,7 +17,12 @@ export interface AIAssistRef {
   openModal: () => void;
 }
 
-const AIAssist = forwardRef<AIAssistRef, {data: UseDataReturn}>(({ data }, ref) => {
+interface AIAssistProps {
+  data: UseDataReturn;
+  showTrigger?: boolean;
+}
+
+const AIAssist = forwardRef<AIAssistRef, AIAssistProps>(({ data, showTrigger = true }, ref) => {
   const { accounts, addMultipleTransactions, addMultipleTransactionsWithAccounts, addMultipleFullTransactions, addAccount } = data;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [step, setStep] = useState<'method' | 'upload' | 'mapping' | 'account' | 'confirm' | 'loading' | 'error' | 'new-account'>('method');
@@ -499,6 +504,12 @@ const AIAssist = forwardRef<AIAssistRef, {data: UseDataReturn}>(({ data }, ref) 
 
   return (
     <>
+      {showTrigger && (
+        <Button onClick={() => setIsModalOpen(true)} title="AI 가져오기" aria-label="AI 가져오기" variant="accent" size="sm" className="px-2.5 py-1.5">
+          <AIIcon />
+        </Button>
+      )}
+
       <Modal isOpen={isModalOpen} onClose={handleClose} title="거래 내역 가져오기">
         {step === 'method' && (
           <div className={modalFormStyles.section}>

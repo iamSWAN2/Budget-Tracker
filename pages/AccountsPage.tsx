@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Button } from '../components/ui/Button';
 import { UseDataReturn } from '../hooks/useData';
 import { Account, AccountPropensity, TransactionType } from '../types';
@@ -7,6 +7,9 @@ import { Modal } from '../components/ui/Modal';
 import { formatCurrency } from '../utils/format';
 import { useI18n } from '../i18n/I18nProvider';
 import { modalFormStyles } from '../components/ui/FormStyles';
+const AIAssist = React.lazy(() => import('../components/AIAssist'));
+import { AIAssistRef } from '../components/AIAssist';
+import { FloatingActionToggle } from '../components/ui/FloatingActionToggle';
 
 // 계좌 유형별 분류 함수
 const getAccountCategory = (propensity: AccountPropensity): string => {
@@ -734,6 +737,21 @@ export const AccountsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
     const { t } = useI18n();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+    const [isDesktop, setIsDesktop] = useState(false);
+    const aiAssistRef = useRef<AIAssistRef>(null);
+
+    // 데스크톱 감지
+    useEffect(() => {
+      const mql = window.matchMedia('(min-width: 1024px)');
+      const listener = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+      setIsDesktop(mql.matches);
+      if (mql.addEventListener) mql.addEventListener('change', listener);
+      else if (mql.addListener) mql.addListener(listener as any);
+      return () => {
+        if (mql.removeEventListener) mql.removeEventListener('change', listener);
+        else if (mql.removeListener) mql.removeListener(listener as any);
+      };
+    }, []);
 
     const accountsWithStats = useMemo(() => {
         const accountsWithData = accounts.map(account => {
@@ -910,6 +928,23 @@ export const AccountsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                     onClose={() => setIsModalOpen(false)}
                 />
             </Modal>
+
+            {/* Mobile Floating Action Button */}
+            {!isDesktop && !isModalOpen && (
+              <FloatingActionToggle 
+                data={data}
+                onOpen={() => {
+                  setEditingAccount(null);
+                  setIsModalOpen(true);
+                }} 
+                onOpenAI={() => aiAssistRef.current?.openModal()}
+              />
+            )}
+
+            {/* AIAssist 컴포넌트 - ref로 모달 제어 */}
+            <React.Suspense fallback={<div className="hidden">AI 로딩 중...</div>}>
+              <AIAssist ref={aiAssistRef} data={data} showTrigger={false} />
+            </React.Suspense>
         </div>
     );
 };

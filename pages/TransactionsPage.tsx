@@ -10,6 +10,8 @@ import { Button } from '../components/ui/Button';
 import { EditTransactionFormInline } from '../components/forms/EditTransactionFormInline';
 import { AddTransactionFormInline } from '../components/forms/AddTransactionFormInline';
 const AIAssist = React.lazy(() => import('../components/AIAssist'));
+import { AIAssistRef } from '../components/AIAssist';
+import { FloatingActionToggle } from '../components/ui/FloatingActionToggle';
 import { formatDateDisplay } from '../utils/format';
 import { useI18n } from '../i18n/I18nProvider';
 import { useUISettings } from '../ui/UISettingsProvider';
@@ -28,7 +30,22 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn; initialFilter?: {
     const [range, setRange] = useState<{ start?: string; end?: string }>({ start: initialFilter?.start, end: initialFilter?.end });
     const [category, setCategory] = useState<string | undefined>(initialFilter?.category);
     const [accountId, setAccountId] = useState<string | undefined>(initialFilter?.accountId);
+    const [isDesktop, setIsDesktop] = useState(false);
+    const aiAssistRef = useRef<AIAssistRef>(null);
     const debounceRef = useRef<number | null>(null);
+
+    // 데스크톱 감지
+    useEffect(() => {
+      const mql = window.matchMedia('(min-width: 1024px)');
+      const listener = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+      setIsDesktop(mql.matches);
+      if (mql.addEventListener) mql.addEventListener('change', listener);
+      else if (mql.addListener) mql.addListener(listener as any);
+      return () => {
+        if (mql.removeEventListener) mql.removeEventListener('change', listener);
+        else if (mql.removeListener) mql.removeListener(listener as any);
+      };
+    }, []);
 
     useEffect(() => {
       if (initialFilter?.q !== undefined) {
@@ -134,7 +151,7 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn; initialFilter?: {
                   </select>
                   <div className="flex items-center gap-2">
                     <React.Suspense fallback={<span className="text-xs text-slate-400">AI…</span>}>
-                      <AIAssist data={data} />
+                      <AIAssist data={data} showTrigger={true} />
                     </React.Suspense>
                     <Button 
                       onClick={handleAdd}
@@ -237,6 +254,23 @@ export const TransactionsPage: React.FC<{ data: UseDataReturn; initialFilter?: {
                   />
                 )}
             </Modal>
+
+            {/* Mobile Floating Action Button */}
+            {!isDesktop && !isModalOpen && (
+              <FloatingActionToggle 
+                data={data}
+                onOpen={() => {
+                  setEditingTransaction(null);
+                  setIsModalOpen(true);
+                }} 
+                onOpenAI={() => aiAssistRef.current?.openModal()}
+              />
+            )}
+
+            {/* AIAssist 컴포넌트 - ref로 모달 제어 */}
+            <React.Suspense fallback={<div className="hidden">AI 로딩 중...</div>}>
+              <AIAssist ref={aiAssistRef} data={data} showTrigger={false} />
+            </React.Suspense>
         </div>
     );
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '../components/ui/Button';
 import { UseDataReturn } from '../hooks/useData';
 import { Category, TransactionType } from '../types';
@@ -6,6 +6,9 @@ import { Modal } from '../components/ui/Modal';
 import { EditIcon, DeleteIcon, PlusIcon } from '../components/icons/Icons';
 import { useUISettings } from '../ui/UISettingsProvider';
 import { useI18n } from '../i18n/I18nProvider';
+const AIAssist = React.lazy(() => import('../components/AIAssist'));
+import { AIAssistRef } from '../components/AIAssist';
+import { FloatingActionToggle } from '../components/ui/FloatingActionToggle';
 
 type CategoryFormState = {
   name: string;
@@ -788,6 +791,21 @@ export const SettingsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
   const [activeTab, setActiveTab] = useState<TabType>('app');
   const { toggle, lang } = useI18n();
   const { toggleDensity, density } = useUISettings();
+  const [isDesktop, setIsDesktop] = useState(false);
+  const aiAssistRef = useRef<AIAssistRef>(null);
+
+  // 데스크톱 감지
+  useEffect(() => {
+    const mql = window.matchMedia('(min-width: 1024px)');
+    const listener = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    setIsDesktop(mql.matches);
+    if (mql.addEventListener) mql.addEventListener('change', listener);
+    else if (mql.addListener) mql.addListener(listener as any);
+    return () => {
+      if (mql.removeEventListener) mql.removeEventListener('change', listener);
+      else if (mql.removeListener) mql.removeListener(listener as any);
+    };
+  }, []);
 
   const tabs = [
     { id: 'app' as TabType, name: '앱 설정', icon: '⚙️' },
@@ -866,6 +884,23 @@ export const SettingsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
           {renderTabContent()}
         </div>
       </div>
+
+      {/* Mobile Floating Action Button */}
+      {!isDesktop && (
+        <FloatingActionToggle 
+          data={data}
+          onOpen={() => {
+            // SettingsPage에서는 거래 추가 기능을 TransactionsPage로 연결
+            window.location.hash = '#/transactions';
+          }} 
+          onOpenAI={() => aiAssistRef.current?.openModal()}
+        />
+      )}
+
+      {/* AIAssist 컴포넌트 - ref로 모달 제어 */}
+      <React.Suspense fallback={<div className="hidden">AI 로딩 중...</div>}>
+        <AIAssist ref={aiAssistRef} data={data} showTrigger={false} />
+      </React.Suspense>
     </div>
   );
 };
