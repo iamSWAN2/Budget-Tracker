@@ -116,11 +116,48 @@ export const isCreditCard = (account: Account): boolean => {
   return getAccountType(account) === AccountType.CREDIT;
 };
 
-// 카드 대금 결제 거래인지 확인하는 함수
-export const isCardPayment = (transaction: Transaction): boolean => {
-  return transaction.category === 'cat-card-loan' || 
-         transaction.category === '카드 대금' ||
-         transaction.description?.includes('카드 대금');
+// 카테고리 이름으로 ID 찾기 함수
+export const findCategoryByName = (name: string, categories: Category[]): Category | null => {
+  return categories.find(cat => cat.name === name) || null;
+};
+
+// 카드 대금 결제 거래인지 확인하는 함수 (이름 기반)
+export const isCardPayment = (transaction: Transaction, categories: Category[]): boolean => {
+  // 직접 카테고리 이름 매칭
+  if (transaction.category === '카드 대금') {
+    return true;
+  }
+  
+  // UUID인 경우 카테고리 목록에서 검색
+  const category = categories.find(cat => cat.id === transaction.category);
+  if (category && category.name === '카드 대금') {
+    return true;
+  }
+  
+  // 설명에서 검색
+  if (transaction.description?.includes('카드 대금')) {
+    return true;
+  }
+  
+  return false;
+};
+
+// 카테고리 이름을 ID로 변환하는 함수
+export const getCategoryIdByName = (name: string, categories: Category[]): string => {
+  // 빈 이름이거나 'Uncategorized'인 경우 기타 카테고리 반환
+  if (!name || name === 'Uncategorized') {
+    const otherCategory = categories.find(cat => cat.name === '기타');
+    return otherCategory?.id || name;
+  }
+  
+  const category = findCategoryByName(name, categories);
+  if (category) {
+    return category.id;
+  }
+  
+  // 매칭되지 않은 경우 기타 카테고리로 분류
+  const otherCategory = categories.find(cat => cat.name === '기타');
+  return otherCategory?.id || name;
 };
 
 export interface AITransaction {

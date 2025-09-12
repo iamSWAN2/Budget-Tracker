@@ -61,7 +61,7 @@ export const useData = () => {
         // 전체 거래에서 카드 대금 결제 찾기 (다른 계좌에서 결제된 경우 대비)
         const allCardPayments = transactionsList.filter(t => 
           t.accountId !== account.id && // 다른 계좌에서
-          isCardPayment(t) && // 카드 대금이며
+          isCardPayment(t, categories) && // 카드 대금이며
           t.type === TransactionType.TRANSFER // TRANSFER 유형
         );
         
@@ -167,7 +167,7 @@ export const useData = () => {
           amount: t.amount,
           description: t.description,
           type: t.type === 'INCOME' ? TransactionType.INCOME : TransactionType.EXPENSE,
-          category: t.category || 'Uncategorized', // Use AI-detected category or default
+          category: getCategoryIdByName(t.category || 'Uncategorized', categories), // 카테고리 이름을 UUID로 변환
           accountId,
           ...(t.installmentMonths && t.installmentMonths > 1 && { installmentMonths: t.installmentMonths }),
           ...(t.installmentMonths && t.installmentMonths > 1 && t.isInterestFree !== undefined && { isInterestFree: t.isInterestFree }),
