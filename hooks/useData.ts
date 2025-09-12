@@ -32,16 +32,16 @@ export const useData = () => {
   const calculateCreditCardUsage = useCallback((transactions: Transaction[]): number => {
     return transactions.reduce((usage, transaction) => {
       if (transaction.type === TransactionType.EXPENSE) {
-        // 카드 대금 결제인 경우 사용액에서 차감
-        if (isCardPayment(transaction)) {
-          return usage - transaction.amount;
-        }
         // 일반 지출은 사용액 증가
         return usage + transaction.amount;
-      } else {
+      } else if (transaction.type === TransactionType.INCOME) {
         // 수입은 사용액 감소
         return usage - transaction.amount;
+      } else if (transaction.type === TransactionType.TRANSFER && isCardPayment(transaction)) {
+        // 카드 대금 결제 (TRANSFER 유형)는 사용액에서 차감
+        return usage - transaction.amount;
       }
+      return usage;
     }, 0);
   }, []);
 
