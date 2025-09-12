@@ -15,6 +15,13 @@ export enum AccountPropensity {
   LOAN = 'Loan',
 }
 
+// 새로운 계좌 유형 enum (신용카드 구분을 위함)
+export enum AccountType {
+  DEBIT = 'DEBIT',     // 일반 예금/적금 계좌
+  CREDIT = 'CREDIT',   // 신용카드
+  CASH = 'CASH'        // 현금
+}
+
 export interface Account {
   id: string;
   name: string;
@@ -22,6 +29,10 @@ export interface Account {
   initialBalance: number; // 초기 잔액 (오프닝 밸런스)
   propensity: AccountPropensity;
   paymentDay?: number; // 신용카드 결제일 (1-31, Credit Card일 때만 사용)
+  
+  // 새로운 타입 시스템 필드들
+  type?: AccountType; // 새로운 계좌 유형 (선택적 - 기존 호환성 유지)
+  creditLimit?: number; // 신용카드 한도 (신용카드일 때만 사용)
 }
 
 export interface Transaction {
@@ -60,6 +71,48 @@ export interface Category {
 }
 
 export type Page = 'dashboard' | 'accounts' | 'transactions' | 'installments' | 'settings';
+
+// 유틸리티 함수: propensity에서 AccountType으로 매핑
+export const getAccountTypeFromPropensity = (propensity: AccountPropensity): AccountType => {
+  switch (propensity) {
+    case AccountPropensity.CASH:
+      return AccountType.CASH;
+    case AccountPropensity.CREDIT_CARD:
+      return AccountType.CREDIT;
+    case AccountPropensity.CHECKING:
+    case AccountPropensity.SAVINGS:
+    case AccountPropensity.INVESTMENT:
+    case AccountPropensity.LOAN:
+    default:
+      return AccountType.DEBIT;
+  }
+};
+
+// 계좌의 실제 타입을 가져오는 함수 (type 필드가 있으면 우선, 없으면 propensity에서 추론)
+export const getAccountType = (account: Account): AccountType => {
+  return account.type || getAccountTypeFromPropensity(account.propensity);
+};
+
+// 신용카드 관련 유틸리티 함수들
+export const getCreditCardAvailableAmount = (account: Account): number => {
+  if (getAccountType(account) !== AccountType.CREDIT || !account.creditLimit) {
+    return 0;
+  }
+  const usedAmount = Math.max(0, account.balance); // balance가 사용액 (양수)
+  return Math.max(0, account.creditLimit - usedAmount);
+};
+
+export const getCreditCardUsageRate = (account: Account): number => {
+  if (getAccountType(account) !== AccountType.CREDIT || !account.creditLimit) {
+    return 0;
+  }
+  const usedAmount = Math.max(0, account.balance); // balance가 사용액 (양수)
+  return account.creditLimit > 0 ? (usedAmount / account.creditLimit) * 100 : 0;
+};
+
+export const isCreditCard = (account: Account): boolean => {
+  return getAccountType(account) === AccountType.CREDIT;
+};
 
 export interface AITransaction {
   date: string; // YYYY-MM-DD

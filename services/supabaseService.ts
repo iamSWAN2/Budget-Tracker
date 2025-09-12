@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { Account, Transaction, Category, TransactionType, AccountPropensity } from '../types';
+import { Account, Transaction, Category, TransactionType, AccountPropensity, AccountType, getAccountTypeFromPropensity } from '../types';
 import { DEFAULT_CATEGORIES, DEFAULT_ACCOUNTS } from '../constants';
 
 // Convert database row to Account type
@@ -9,7 +9,10 @@ const mapDbAccount = (row: any): Account => ({
   balance: parseFloat(row.balance),
   initialBalance: parseFloat(row.initial_balance || 0),
   propensity: row.propensity as AccountPropensity,
-  paymentDay: row.payment_day
+  paymentDay: row.payment_day,
+  // 새로운 필드들 (선택적)
+  type: row.account_type ? row.account_type as AccountType : undefined,
+  creditLimit: row.credit_limit ? parseFloat(row.credit_limit) : undefined
 });
 
 // Convert database row to Transaction type
@@ -195,7 +198,10 @@ export const addAccount = async (account: Omit<Account, 'id'>): Promise<Account>
     balance: account.balance,
     initial_balance: account.initialBalance,
     propensity: account.propensity,
-    payment_day: account.propensity === 'Credit Card' ? account.paymentDay || null : null
+    payment_day: account.propensity === 'Credit Card' ? account.paymentDay || null : null,
+    // 새로운 필드들
+    account_type: account.type || getAccountTypeFromPropensity(account.propensity),
+    credit_limit: account.propensity === 'Credit Card' ? account.creditLimit || null : null
   };
 
   const { data, error } = await supabase
@@ -220,7 +226,10 @@ export const updateAccount = async (account: Account): Promise<Account> => {
     balance: account.balance,
     initial_balance: account.initialBalance,
     propensity: account.propensity,
-    payment_day: account.propensity === 'Credit Card' ? account.paymentDay || null : null
+    payment_day: account.propensity === 'Credit Card' ? account.paymentDay || null : null,
+    // 새로운 필드들
+    account_type: account.type || getAccountTypeFromPropensity(account.propensity),
+    credit_limit: account.propensity === 'Credit Card' ? account.creditLimit || null : null
   };
 
   const { data, error } = await supabase

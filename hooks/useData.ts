@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { Account, Transaction, Category, Installment, AITransaction, TransactionType } from '../types';
+import { Account, Transaction, Category, Installment, AITransaction, TransactionType, AccountType, getAccountType } from '../types';
 import { 
   getAccounts, 
   getTransactions, 
@@ -28,19 +28,39 @@ export const useData = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 클라이언트 사이드 잔액 계산 함수
+  // 신용카드 사용액 계산 함수 (부채 관점)
+  const calculateCreditCardUsage = useCallback((transactions: Transaction[]): number => {
+    return transactions.reduce((usage, transaction) => {
+      // 신용카드에서는 지출이 사용액 증가, 수입(결제)이 사용액 감소
+      return transaction.type === TransactionType.EXPENSE 
+        ? usage + transaction.amount 
+        : usage - transaction.amount;
+    }, 0);
+  }, []);
+
+  // 클라이언트 사이드 잔액 계산 함수 (계좌 유형별 로직 분리)
   const calculateAccountBalances = useCallback((accountsList: Account[], transactionsList: Transaction[]) => {
     return accountsList.map(account => {
       const accountTransactions = transactionsList.filter(t => t.accountId === account.id);
-      const balance = accountTransactions.reduce((acc, transaction) => {
-        return transaction.type === TransactionType.INCOME 
-          ? acc + transaction.amount 
-          : acc - transaction.amount;
-      }, account.initialBalance || 0);
+      const accountType = getAccountType(account);
+      
+      let balance: number;
+      
+      if (accountType === AccountType.CREDIT) {
+        // 신용카드: 사용액 계산 (양수 = 빚)
+        balance = calculateCreditCardUsage(accountTransactions);
+      } else {
+        // 일반 계좌: 기존 로직
+        balance = accountTransactions.reduce((acc, transaction) => {
+          return transaction.type === TransactionType.INCOME 
+            ? acc + transaction.amount 
+            : acc - transaction.amount;
+        }, account.initialBalance || 0);
+      }
       
       return { ...account, balance };
     });
-  }, []);
+  }, [calculateCreditCardUsage]);
 
   const fetchData = useCallback(async () => {
     try {

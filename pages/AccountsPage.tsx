@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Button } from '../components/ui/Button';
 import { UseDataReturn } from '../hooks/useData';
-import { Account, AccountPropensity, TransactionType } from '../types';
+import { Account, AccountPropensity, TransactionType, AccountType, isCreditCard, getCreditCardAvailableAmount, getCreditCardUsageRate } from '../types';
 import { Modal } from '../components/ui/Modal';
 import { formatCurrency } from '../utils/format';
 import { useI18n } from '../i18n/I18nProvider';
@@ -122,13 +122,14 @@ const AccountForm: React.FC<{
         balance: '',
         initialBalance: '',
         paymentDay: account?.paymentDay || 14,
+        creditLimit: account?.creditLimit || '',
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ 
             ...prev, 
-            [name]: name === 'balance' || name === 'initialBalance' ? value :
+            [name]: name === 'balance' || name === 'initialBalance' || name === 'creditLimit' ? value :
                    name === 'paymentDay' ? parseInt(value) || 1 : value 
         }));
     };
@@ -136,11 +137,13 @@ const AccountForm: React.FC<{
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         
-        // Credit Card가 아닌 경우 payment_day를 null로 설정
+        // Credit Card가 아닌 경우 payment_day와 creditLimit을 null로 설정
         const processedFormData = {
             ...formData,
             initialBalance: parseFloat(formData.initialBalance as string) || 0,
-            paymentDay: formData.propensity === AccountPropensity.CREDIT_CARD ? formData.paymentDay : null
+            paymentDay: formData.propensity === AccountPropensity.CREDIT_CARD ? formData.paymentDay : null,
+            creditLimit: formData.propensity === AccountPropensity.CREDIT_CARD ? 
+                (parseFloat(formData.creditLimit as string) || null) : null
         };
         
         if (account && 'id' in account) {
@@ -436,20 +439,39 @@ const AccountForm: React.FC<{
                         </div>
                     )}
                     {formData.propensity === AccountPropensity.CREDIT_CARD && (
-                        <div>
-                            <label htmlFor="account-paymentDay" className={modalFormStyles.label}>결제일</label>
-                            <select
-                                id="account-paymentDay"
-                                name="paymentDay"
-                                value={formData.paymentDay}
-                                onChange={handleChange}
-                                className={modalFormStyles.select}
-                            >
-                                {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
-                                    <option key={day} value={day}>{day}일</option>
-                                ))}
-                            </select>
-                        </div>
+                        <>
+                            <div>
+                                <label htmlFor="account-creditLimit" className={modalFormStyles.label}>신용 한도</label>
+                                <input 
+                                    id="account-creditLimit"
+                                    type="number" 
+                                    name="creditLimit" 
+                                    value={formData.creditLimit || ''} 
+                                    onChange={handleChange} 
+                                    step="10000" 
+                                    min="0"
+                                    placeholder="신용카드 한도를 입력하세요" 
+                                    className={modalFormStyles.input} 
+                                />
+                                <p className="mt-1 text-xs text-slate-500">
+                                    신용카드의 사용 가능한 총 한도를 입력하세요.
+                                </p>
+                            </div>
+                            <div>
+                                <label htmlFor="account-paymentDay" className={modalFormStyles.label}>결제일</label>
+                                <select
+                                    id="account-paymentDay"
+                                    name="paymentDay"
+                                    value={formData.paymentDay}
+                                    onChange={handleChange}
+                                    className={modalFormStyles.select}
+                                >
+                                    {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                                        <option key={day} value={day}>{day}일</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </>
                     )}
                     <div className={modalFormStyles.actions}>
                         <Button type="button" onClick={onClose} variant="secondary" size="sm">취소</Button>
@@ -826,11 +848,17 @@ export const AccountsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
             {/* Accounts Summary */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {accountsWithStats.map(account => (
-                    <div key={account.id} className="bg-white rounded-lg shadow-lg border border-slate-200 p-6">
+                    <div key={account.id} className={`bg-white rounded-lg shadow-lg p-6 ${
+                        isCreditCard(account) 
+                            ? 'border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-red-50' 
+                            : 'border border-slate-200'
+                    }`}>
                         <div className="flex items-center justify-between mb-4">
                             <div>
                                 <div className="flex items-center gap-2">
-                                    <h3 className="text-lg font-semibold text-indigo-600">{account.name}</h3>
+                                    <h3 className={`text-lg font-semibold ${
+                                        isCreditCard(account) ? 'text-orange-600' : 'text-indigo-600'
+                                    }`}>{account.name}</h3>
                                     {account.id === '00000000-0000-0000-0000-000000000001' && (
                                         <span className="inline-block px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded-full font-medium">
                                             기본
@@ -852,26 +880,78 @@ export const AccountsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
                             </div>
                         </div>
                         
-                        <div className="space-y-3">
-                            <div className="flex justify-between items-center">
-                                <span className="text-sm text-slate-600">{t('summary.income')}:</span>
-                                <span className="font-semibold text-green-600">{formatCurrency(account.totalIncome)}</span>
-                            </div>
-                            
-                            <div className="flex justify-between items-center">
-                                <span className="text-sm text-slate-600">{t('summary.expense')}:</span>
-                                <span className="font-semibold text-red-600">{formatCurrency(account.totalExpenses)}</span>
-                            </div>
-                            
-                            <div className="border-t pt-3">
+                        {isCreditCard(account) ? (
+                            // 신용카드 전용 표시
+                            <div className="space-y-3">
                                 <div className="flex justify-between items-center">
-                                    <span className="text-sm font-medium text-slate-700">{t('summary.balance')}:</span>
-                                    <span className={`text-lg font-bold ${account.balance >= 0 ? 'text-slate-800' : 'text-red-600'}`}>
-                                        {formatCurrency(account.balance)}
-                                    </span>
+                                    <span className="text-sm text-slate-600">사용액:</span>
+                                    <span className="font-semibold text-orange-600">{formatCurrency(Math.max(0, account.balance))}</span>
+                                </div>
+                                
+                                {account.creditLimit && account.creditLimit > 0 && (
+                                    <>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-sm text-slate-600">한도:</span>
+                                            <span className="font-semibold text-slate-700">{formatCurrency(account.creditLimit)}</span>
+                                        </div>
+                                        
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-sm text-slate-600">사용가능:</span>
+                                            <span className="font-semibold text-green-600">{formatCurrency(getCreditCardAvailableAmount(account))}</span>
+                                        </div>
+                                        
+                                        {/* 사용률 진행바 */}
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-xs text-slate-500">사용률</span>
+                                                <span className="text-xs text-slate-600">{getCreditCardUsageRate(account).toFixed(1)}%</span>
+                                            </div>
+                                            <div className="w-full bg-slate-200 rounded-full h-2">
+                                                <div 
+                                                    className={`h-2 rounded-full transition-all duration-300 ${
+                                                        getCreditCardUsageRate(account) > 80 
+                                                            ? 'bg-red-500' 
+                                                            : getCreditCardUsageRate(account) > 60 
+                                                                ? 'bg-orange-500' 
+                                                                : 'bg-green-500'
+                                                    }`}
+                                                    style={{ width: `${Math.min(100, getCreditCardUsageRate(account))}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                                
+                                {account.paymentDay && (
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-sm text-slate-600">결제일:</span>
+                                        <span className="text-sm text-slate-700">{account.paymentDay}일</span>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            // 일반 계좌 표시 (기존 로직)
+                            <div className="space-y-3">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-slate-600">{t('summary.income')}:</span>
+                                    <span className="font-semibold text-green-600">{formatCurrency(account.totalIncome)}</span>
+                                </div>
+                                
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-slate-600">{t('summary.expense')}:</span>
+                                    <span className="font-semibold text-red-600">{formatCurrency(account.totalExpenses)}</span>
+                                </div>
+                                
+                                <div className="border-t pt-3">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-sm font-medium text-slate-700">{t('summary.balance')}:</span>
+                                        <span className={`text-lg font-bold ${account.balance >= 0 ? 'text-slate-800' : 'text-red-600'}`}>
+                                            {formatCurrency(account.balance)}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
                         
                         <div className="mt-4 pt-4 border-t">
                             <div className="flex gap-2">
