@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Button } from '../components/ui/Button';
 import { UseDataReturn } from '../hooks/useData';
-import { Account, AccountPropensity, TransactionType, AccountType, isCreditCard, getCreditCardAvailableAmount, getCreditCardUsageRate } from '../types';
+import { Account, AccountPropensity, TransactionType, getAccountType, AccountType } from '../types';
 import { Modal } from '../components/ui/Modal';
 import { formatCurrency } from '../utils/format';
 import { useI18n } from '../i18n/I18nProvider';
@@ -10,22 +10,14 @@ import { modalFormStyles } from '../components/ui/FormStyles';
 const AIAssist = React.lazy(() => import('../components/AIAssist'));
 import { AIAssistRef } from '../components/AIAssist';
 import { FloatingActionToggle } from '../components/ui/FloatingActionToggle';
+import { AccountViewToggle, ViewMode } from '../components/accounts/AccountViewToggle';
+import { AccountListView } from '../components/accounts/AccountListView';
+import { AccountCardView } from '../components/accounts/AccountCardView';
+import { AccountTableView } from '../components/accounts/AccountTableView';
+import { AddAccountButton } from '../components/accounts/AddAccountButton';
+import { AccountFilterBar, FilterType, SortType, SortOrder } from '../components/accounts/AccountFilterBar';
+import { AccountSummary } from '../components/accounts/AccountSummary';
 
-// 계좌 유형별 분류 함수
-const getAccountCategory = (propensity: AccountPropensity): string => {
-    switch (propensity) {
-        case AccountPropensity.CHECKING:
-        case AccountPropensity.SAVINGS:
-        case AccountPropensity.INVESTMENT:
-        case AccountPropensity.LOAN:
-            return '계좌';
-        case AccountPropensity.CASH:
-        case AccountPropensity.CREDIT_CARD:
-            return '결제수단';
-        default:
-            return '기타';
-    }
-};
 
 // CSV 파싱 유틸리티 함수
 const parseCSV = (csvText: string): Partial<Account>[] => {
@@ -756,10 +748,15 @@ const AccountForm: React.FC<{
 
 export const AccountsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
     const { accounts, transactions, addAccount, updateAccount, deleteAccount } = data;
-    const { t } = useI18n();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingAccount, setEditingAccount] = useState<Account | null>(null);
     const [isDesktop, setIsDesktop] = useState(false);
+    const [viewMode, setViewMode] = useState<ViewMode>('card');
+    const [filterType, setFilterType] = useState<FilterType>('all');
+    const [sortType, setSortType] = useState<SortType>('name');
+    const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isSummaryCollapsed, setIsSummaryCollapsed] = useState(false);
     const aiAssistRef = useRef<AIAssistRef>(null);
 
     // 데스크톱 감지
@@ -775,7 +772,9 @@ export const AccountsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
       };
     }, []);
 
-    const accountsWithStats = useMemo(() => {
+    // 필터링 및 정렬된 계좌 목록
+    const filteredAndSortedAccounts = useMemo(() => {
+        // 1. 기본 데이터 생성
         const accountsWithData = accounts.map(account => {
             const accountTransactions = transactions.filter(t => t.accountId === account.id);
             const totalIncome = accountTransactions
@@ -793,14 +792,89 @@ export const AccountsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
             };
         });
 
-        // 기본 계좌를 맨 앞으로 정렬
-        return accountsWithData.sort((a, b) => {
+        // 2. 필터링
+        let filteredAccounts = accountsWithData;
+        
+        // 검색 필터
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase().trim();
+            filteredAccounts = filteredAccounts.filter(account =>
+                account.name.toLowerCase().includes(query) ||
+                account.propensity.toLowerCase().includes(query)
+            );
+        }
+
+        // 계좌 유형 필터
+        if (filterType !== 'all') {
+            filteredAccounts = filteredAccounts.filter(account => {
+                const accountType = getAccountType(account);
+                switch (filterType) {
+                    case 'debit':
+                        return accountType === AccountType.DEBIT;
+                    case 'credit':
+                        return accountType === AccountType.CREDIT;
+                    case 'cash':
+                        return accountType === AccountType.CASH;
+                    case 'liability':
+                        return accountType === AccountType.LIABILITY;
+                    default:
+                        return true;
+                }
+            });
+        }
+
+        // 3. 정렬
+        filteredAccounts.sort((a, b) => {
+            let compareValue = 0;
+            
+            // 먼저 기본 계좌를 맨 앞으로 (정렬에 상관없이)
             const isADefault = a.id === '00000000-0000-0000-0000-000000000001';
             const isBDefault = b.id === '00000000-0000-0000-0000-000000000001';
             
             if (isADefault && !isBDefault) return -1;
             if (!isADefault && isBDefault) return 1;
-            return 0; // 기본 계좌가 아닌 경우 원래 순서 유지
+            
+            // 기본 계좌가 아닌 경우 선택된 정렬 기준 적용
+            switch (sortType) {
+                case 'name':
+                    compareValue = a.name.localeCompare(b.name);
+                    break;
+                case 'balance':
+                    compareValue = a.balance - b.balance;
+                    break;
+                case 'activity':
+                    compareValue = a.transactionCount - b.transactionCount;
+                    break;
+                case 'type':
+                    compareValue = a.propensity.localeCompare(b.propensity);
+                    break;
+                default:
+                    compareValue = 0;
+            }
+            
+            return sortOrder === 'desc' ? -compareValue : compareValue;
+        });
+
+        return filteredAccounts;
+    }, [accounts, transactions, searchQuery, filterType, sortType, sortOrder]);
+
+    // 전체 계좌 통계 (필터링 이전)
+    const accountsWithStats = useMemo(() => {
+        return accounts.map(account => {
+            const accountTransactions = transactions.filter(t => t.accountId === account.id);
+            const totalIncome = accountTransactions
+                .filter(t => t.type === TransactionType.INCOME)
+                .reduce((sum, t) => sum + t.amount, 0);
+            const totalExpenses = accountTransactions
+                .filter(t => t.type === TransactionType.EXPENSE)
+                .reduce((sum, t) => sum + t.amount, 0);
+
+            return {
+                ...account,
+                totalIncome,
+                totalExpenses,
+                transactionCount: accountTransactions.length
+            };
         });
     }, [accounts, transactions]);
 
@@ -844,151 +918,82 @@ export const AccountsPage: React.FC<{ data: UseDataReturn }> = ({ data }) => {
     };
 
     return (
-        <div className="space-y-8">
-            {/* Accounts Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {accountsWithStats.map(account => (
-                    <div key={account.id} className={`bg-white rounded-lg shadow-lg p-6 ${
-                        isCreditCard(account) 
-                            ? 'border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-red-50' 
-                            : 'border border-slate-200'
-                    }`}>
-                        <div className="flex items-center justify-between mb-4">
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <h3 className={`text-lg font-semibold ${
-                                        isCreditCard(account) ? 'text-orange-600' : 'text-indigo-600'
-                                    }`}>{account.name}</h3>
-                                    {account.id === '00000000-0000-0000-0000-000000000001' && (
-                                        <span className="inline-block px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded-full font-medium">
-                                            기본
-                                        </span>
-                                    )}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="inline-block px-2 py-1 text-xs bg-slate-100 text-slate-600 rounded-full">
-                                        {account.propensity}
-                                    </span>
-                                    <span className={`inline-block px-2 py-1 text-xs rounded-full font-medium ${
-                                        getAccountCategory(account.propensity) === '계좌' 
-                                            ? 'bg-blue-100 text-blue-700' 
-                                            : 'bg-green-100 text-green-700'
-                                    }`}>
-                                        {getAccountCategory(account.propensity)}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        {isCreditCard(account) ? (
-                            // 신용카드 전용 표시
-                            <div className="space-y-3">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm text-slate-600">사용액:</span>
-                                    <span className="font-semibold text-orange-600">{formatCurrency(Math.max(0, account.balance))}</span>
-                                </div>
-                                
-                                {account.creditLimit && account.creditLimit > 0 && (
-                                    <>
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-sm text-slate-600">한도:</span>
-                                            <span className="font-semibold text-slate-700">{formatCurrency(account.creditLimit)}</span>
-                                        </div>
-                                        
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-sm text-slate-600">사용가능:</span>
-                                            <span className="font-semibold text-green-600">{formatCurrency(getCreditCardAvailableAmount(account))}</span>
-                                        </div>
-                                        
-                                        {/* 사용률 진행바 */}
-                                        <div className="space-y-2">
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-xs text-slate-500">사용률</span>
-                                                <span className="text-xs text-slate-600">{getCreditCardUsageRate(account).toFixed(1)}%</span>
-                                            </div>
-                                            <div className="w-full bg-slate-200 rounded-full h-2">
-                                                <div 
-                                                    className={`h-2 rounded-full transition-all duration-300 ${
-                                                        getCreditCardUsageRate(account) > 80 
-                                                            ? 'bg-red-500' 
-                                                            : getCreditCardUsageRate(account) > 60 
-                                                                ? 'bg-orange-500' 
-                                                                : 'bg-green-500'
-                                                    }`}
-                                                    style={{ width: `${Math.min(100, getCreditCardUsageRate(account))}%` }}
-                                                ></div>
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
-                                
-                                {account.paymentDay && (
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-sm text-slate-600">결제일:</span>
-                                        <span className="text-sm text-slate-700">{account.paymentDay}일</span>
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            // 일반 계좌 표시 (기존 로직)
-                            <div className="space-y-3">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm text-slate-600">{t('summary.income')}:</span>
-                                    <span className="font-semibold text-green-600">{formatCurrency(account.totalIncome)}</span>
-                                </div>
-                                
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm text-slate-600">{t('summary.expense')}:</span>
-                                    <span className="font-semibold text-red-600">{formatCurrency(account.totalExpenses)}</span>
-                                </div>
-                                
-                                <div className="border-t pt-3">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-sm font-medium text-slate-700">{t('summary.balance')}:</span>
-                                        <span className={`text-lg font-bold ${account.balance >= 0 ? 'text-slate-800' : 'text-red-600'}`}>
-                                            {formatCurrency(account.balance)}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                        
-                        <div className="mt-4 pt-4 border-t">
-                            <div className="flex gap-2">
-                                <button 
-                                    onClick={() => handleEdit(account)}
-                                    className="flex-1 bg-indigo-50 text-indigo-600 py-2 px-4 rounded-md hover:bg-indigo-100 text-sm font-medium"
-                                >
-                                    수정
-                                </button>
-                                {/* 기본 계좌가 아닌 경우에만 삭제 버튼 표시 */}
-                                {account.id !== '00000000-0000-0000-0000-000000000001' && (
-                                    <button 
-                                        onClick={() => handleDelete(account.id)}
-                                        className="flex-1 bg-red-50 text-red-600 py-2 px-4 rounded-md hover:bg-red-100 text-sm font-medium"
-                                    >
-                                        삭제
-                                    </button>
-                                )}
-                            </div>
-                        </div>
+        <div className={`space-y-6 ${isDesktop && viewMode === 'table' ? 'lg:grid lg:grid-cols-12 lg:gap-6 lg:space-y-0' : ''}`}>
+            {/* 데스크톱 사이드바 요약 (테이블 뷰) */}
+            {isDesktop && viewMode === 'table' && (
+                <div className="lg:col-span-4 xl:col-span-3">
+                    <div className="sticky top-6 space-y-6">
+                        <AccountSummary accounts={accountsWithStats} />
+                        <AddAccountButton onAdd={handleAdd} />
                     </div>
-                ))}
-                
-                {/* Add New Account Card */}
-                <div className="bg-white rounded-lg shadow-lg border-2 border-dashed border-slate-400 p-6 flex items-center justify-center hover:border-slate-500 transition-colors">
-                    <button 
-                        onClick={handleAdd}
-                        className="text-center text-slate-500 hover:text-indigo-600"
-                    >
-                        <div className="w-12 h-12 mx-auto mb-2 rounded-full bg-slate-100 flex items-center justify-center">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                            </svg>
+                </div>
+            )}
+
+            {/* 메인 컨텐츠 영역 */}
+            <div className={`${isDesktop && viewMode === 'table' ? 'lg:col-span-8 xl:col-span-9' : ''}`}>
+                <div className="space-y-6">
+                    {/* 뷰 토글 헤더 */}
+                    <AccountViewToggle 
+                        viewMode={viewMode} 
+                        onViewModeChange={setViewMode}
+                        accountCount={filteredAndSortedAccounts.length}
+                    />
+
+                    {/* 모바일 요약 (접기/펼치기) */}
+                    {(!isDesktop || viewMode !== 'table') && (
+                        <AccountSummary 
+                            accounts={accountsWithStats}
+                            isCollapsible={true}
+                            isCollapsed={isSummaryCollapsed}
+                            onToggleCollapse={() => setIsSummaryCollapsed(!isSummaryCollapsed)}
+                        />
+                    )}
+
+                    {/* 필터 바 */}
+                    <AccountFilterBar
+                        filterType={filterType}
+                        sortType={sortType}
+                        sortOrder={sortOrder}
+                        searchQuery={searchQuery}
+                        onFilterChange={setFilterType}
+                        onSortChange={setSortType}
+                        onSortOrderChange={setSortOrder}
+                        onSearchChange={setSearchQuery}
+                        totalCount={accountsWithStats.length}
+                        filteredCount={filteredAndSortedAccounts.length}
+                    />
+
+                    {/* 계좌 목록 */}
+                    {viewMode === 'card' ? (
+                        <AccountCardView 
+                            accounts={filteredAndSortedAccounts}
+                            onEdit={handleEdit}
+                            onDelete={handleDelete}
+                            onAdd={handleAdd}
+                        />
+                    ) : viewMode === 'list' ? (
+                        <div className="space-y-4">
+                            <AccountListView 
+                                accounts={filteredAndSortedAccounts}
+                                onEdit={handleEdit}
+                                onDelete={handleDelete}
+                            />
+                            {!isDesktop && (
+                                <AddAccountButton onAdd={handleAdd} />
+                            )}
                         </div>
-                        <p className="font-medium">Add New Account</p>
-                        <p className="text-xs text-slate-400 mt-1">Create a new account to track</p>
-                    </button>
+                    ) : (
+                        <div className="space-y-4">
+                            <AccountTableView 
+                                accounts={filteredAndSortedAccounts}
+                                onEdit={handleEdit}
+                                onDelete={handleDelete}
+                            />
+                            {!isDesktop && (
+                                <AddAccountButton onAdd={handleAdd} />
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 
